@@ -1,0 +1,397 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Eye, Pencil, Power, Trash2, Star, CheckCircle, Layers, PlusCircle } from "lucide-react";
+import { api, ApiProperty, mediaUrl } from "@/lib/api";
+import { useAuth } from "@/lib/AuthContext";
+import Header from "@/components/Header";
+import BottomNav from "@/components/BottomNav";
+import StatusBadge from "@/components/StatusBadge";
+import { useAddProperty } from "@/lib/AddPropertyContext";
+import PropertyActivationModal from "@/components/PropertyActivationModal";
+import SubscriptionPaywallModal from "@/components/SubscriptionPaywallModal";
+
+type Tab = "All" | ApiProperty["status"];
+const tabs: Tab[] = ["All", "Active", "Pending", "Inactive", "Sold", "Draft"];
+const FALLBACK_IMAGE =
+  "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&q=80";
+
+function formatPrice(price: number): string {
+  if (price >= 10000000) return `₹${(price / 10000000).toFixed(2)} Cr`;
+  if (price >= 100000) return `₹${(price / 100000).toFixed(1)} L`;
+  return `₹${price.toLocaleString("en-IN")}`;
+}
+
+export default function MyProperties() {
+  const navigate = useNavigate();
+  const { user, refreshUser } = useAuth();
+  const { startEditing } = useAddProperty();
+  const [tab, setTab] = useState<Tab>("All");
+  const [properties, setProperties] = useState<ApiProperty[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [showActivationChoice, setShowActivationChoice] = useState<ApiProperty | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
+
+  function loadProperties() {
+    setLoading(true);
+    setError(null);
+    api
+      .fetchMyProperties()
+      .then(setProperties)
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadProperties();
+    refreshUser();
+  }, []);
+
+  async function handleToggleActive(p: ApiProperty) {
+    if (p.status !== "Active" && (user?.listingSlotsLeft ?? 0) <= 0) {
+      setShowPaywall(true);
+      return;
+    }
+
+    setBusyId(p.id);
+    try {
+      const nextStatus = p.status === "Active" ? "Inactive" : "Active";
+      await api.updatePropertyStatus(p.id, nextStatus);
+      setProperties((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: nextStatus } : x)));
+      await refreshUser();
+    } catch (err: any) {
+      if (err.requiresListingSlots || (err.message && err.message.toLowerCase().includes("slot"))) {
+        setShowPaywall(true);
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to update status");
+      }
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleMarkSold(p: ApiProperty) {
+    const confirmed = window.confirm(
+      `Mark "${p.title}" as Sold?\n\nThis will mark the listing as Sold and release 1 listing slot back into your balance.`
+    );
+    if (!confirmed) return;
+
+    setBusyId(p.id);
+    try {
+      await api.updatePropertyStatus(p.id, "Sold");
+      setProperties((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: "Sold" } : x)));
+      await refreshUser();
+      alert("Property marked as Sold! 1 listing slot restored to your active balance.");
+    } catch (err: any) {
+      setError(err instanceof Error ? err.message : "Failed to mark property as Sold");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleActivateFree(p: ApiProperty) {
+    setShowActivationChoice(null);
+    setBusyId(p.id);
+    try {
+      const nextStatus = "Active";
+      await api.updatePropertyStatus(p.id, nextStatus, true);
+      setProperties((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: nextStatus } : x)));
+      setTimeout(() => {
+        alert("Property activated successfully under Admin Number fallback!");
+      }, 100);
+    } catch (err: any) {
+      setError(err instanceof Error ? err.message : "Failed to activate property");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleDelete(p: ApiProperty) {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${p.title}"?${
+        p.status === "Active"
+          ? "\n\nThis is an Active property. Deleting it will restore 1 listing slot back into your balance."
+          : ""
+      }`
+    );
+    if (!confirmed) return;
+
+    setBusyId(p.id);
+    try {
+      await api.deleteProperty(p.id);
+      setProperties((prev) => prev.filter((x) => x.id !== p.id));
+      await refreshUser();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete property");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handlePromoteProperty(p: ApiProperty) {
+    const confirmed = window.confirm(
+      `Promote "${p.title}" as a Featured Advertisement?\n\nThis will feature your property listing at the top of the Home feed to boost inquiries. Proceed to secure checkout?`
+    );
+    if (!confirmed) return;
+
+    setBusyId(p.id);
+    try {
+      const scriptLoaded = await new Promise((resolve) => {
+        if ((window as any).Razorpay) {
+          resolve(true);
+          return;
+        }
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.async = true;
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+      });
+
+      if (!scriptLoaded) {
+        alert("Failed to load payment gateway script. Please check your network connection.");
+        setBusyId(null);
+        return;
+      }
+
+      const order = await (api as any).initiateFeaturedPayment(p.id);
+      
+      const options = {
+        key: (order as any).key || (order as any).key_id || import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_TM4O5ux1X08MBy",
+        amount: order.amount,
+        currency: order.currency,
+        order_id: order.id,
+        name: "Kerala Realty",
+        description: `Featured Ad: ${p.title}`,
+        handler: async function (response: any) {
+          setBusyId(p.id);
+          try {
+            await (api as any).verifyFeaturedPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              propertyId: p.id
+            });
+            alert("Payment Verified! Property is now Featured.");
+            loadProperties();
+          } catch (err: any) {
+            alert("Verification failed: " + (err.message || err));
+          } finally {
+            setBusyId(null);
+          }
+        },
+        prefill: {
+          name: "",
+          email: "",
+          contact: "",
+        },
+        theme: {
+          color: "#60A963",
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err: any) {
+      alert(err.message || "Failed to initiate featured promotion payment.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const filtered = properties.filter((p) => tab === "All" || p.status === tab);
+
+  return (
+    <div className="min-h-screen pb-28">
+      <Header title="My Properties" showBack />
+
+      {/* Listing Slots Balance Card */}
+      <div className="mx-4 mb-4 p-3.5 bg-gradient-to-r from-forest/10 via-emerald-500/10 to-teal-500/10 rounded-2xl border border-forest/20 shadow-sm flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-forest text-cream flex items-center justify-center shrink-0 shadow-sm">
+            <Layers size={20} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] uppercase tracking-wider font-extrabold text-charcoal/70">
+                Active Listing Slots
+              </span>
+              <span className={`text-xs font-black px-2 py-0.5 rounded-full ${
+                (user?.listingSlotsLeft ?? 0) > 0 
+                  ? "bg-forest/15 text-forest" 
+                  : "bg-coral/15 text-coral"
+              }`}>
+                {user?.listingSlotsLeft ?? 0} Available
+              </span>
+            </div>
+            <p className="text-[11px] text-slate mt-0.5 line-clamp-1">
+              Active listings use 1 slot. Sold/Inactive release slots.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => setShowPaywall(true)}
+          className="px-3 py-1.5 bg-forest hover:bg-forest/90 text-cream text-xs font-bold rounded-xl shadow-sm transition-transform active:scale-95 shrink-0 flex items-center gap-1 cursor-pointer"
+        >
+          <PlusCircle size={13} /> Buy Slots
+        </button>
+      </div>
+
+      <div className="px-4 mb-4 flex gap-2 overflow-x-auto no-scrollbar">
+        {tabs.map((t) => {
+          const count = t === "All" ? properties.length : properties.filter((p) => p.status === t).length;
+          const active = t === tab;
+          return (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                active ? "bg-ink text-cream" : "bg-white text-charcoal border border-charcoal/10"
+              }`}
+            >
+              {t} ({count})
+            </button>
+          );
+        })}
+      </div>
+
+      {loading && <p className="px-4 text-sm text-slate">Loading your properties…</p>}
+      {error && <p className="px-4 text-sm text-coral mb-3">{error}</p>}
+
+      <div className="px-4 flex flex-col gap-4">
+        {!loading && filtered.length === 0 && (
+          <div className="text-center py-16">
+            <p className="text-slate text-sm">No properties in "{tab}" yet.</p>
+          </div>
+        )}
+        {filtered.map((p) => (
+          <div key={p.id} className="bg-white rounded-card shadow-card overflow-hidden">
+            <button
+              onClick={() => navigate(`/my-properties/${p.id}`)}
+              className="w-full flex gap-3 p-3 text-left"
+            >
+              <img
+                src={p.images[0] ? mediaUrl(p.images[0]) : FALLBACK_IMAGE}
+                alt={p.title}
+                className="w-20 h-20 rounded-xl object-cover shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="font-display font-bold text-ink">{formatPrice(p.price)}</p>
+                <p className="text-sm text-charcoal truncate">{p.title}</p>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <StatusBadge status={p.status} />
+                  <span className="text-xs text-slate flex items-center gap-1">
+                    <Eye size={12} /> {p.views} Views
+                  </span>
+                  {p.avgRating !== undefined && p.avgRating > 0 && (
+                    <span className="text-xs text-amber font-semibold flex items-center gap-0.5 ml-1">
+                      <Star size={11} className="fill-gold text-gold shrink-0" />
+                      <span>{p.avgRating.toFixed(1)} ({p.ratingCount})</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            </button>
+            <div className="flex border-t border-charcoal/6 flex-wrap">
+              <button
+                onClick={() => navigate(`/my-properties/${p.id}`)}
+                className="flex-1 min-w-[70px] flex items-center justify-center gap-1.5 py-2.5 text-xs sm:text-sm font-semibold text-ink border-r border-charcoal/6 cursor-pointer"
+              >
+                <Eye size={14} /> View
+              </button>
+              <button 
+                onClick={() => {
+                  startEditing(p);
+                  navigate("/add-property/details");
+                }}
+                className="flex-1 min-w-[70px] flex items-center justify-center gap-1.5 py-2.5 text-xs sm:text-sm font-semibold text-forest border-r border-charcoal/6 cursor-pointer"
+              >
+                <Pencil size={14} /> Edit
+              </button>
+              {p.status === "Active" ? (
+                <>
+                  <button
+                    disabled={busyId === p.id}
+                    onClick={() => handleToggleActive(p)}
+                    title="Deactivate listing to release 1 slot"
+                    className="flex-1 min-w-[85px] flex items-center justify-center gap-1 py-2.5 text-xs sm:text-sm font-semibold text-amber border-r border-charcoal/6 disabled:opacity-40 cursor-pointer"
+                  >
+                    <Power size={13} /> Deactivate
+                  </button>
+                  <button
+                    disabled={busyId === p.id}
+                    onClick={() => handleMarkSold(p)}
+                    title="Mark listing as Sold to release 1 slot"
+                    className="flex-1 min-w-[85px] flex items-center justify-center gap-1 py-2.5 text-xs sm:text-sm font-semibold text-blue-600 border-r border-charcoal/6 disabled:opacity-40 cursor-pointer"
+                  >
+                    <CheckCircle size={13} /> Sold
+                  </button>
+                </>
+              ) : (
+                <button
+                  disabled={busyId === p.id || p.status === "Pending"}
+                  onClick={() => handleToggleActive(p)}
+                  title="Activate listing (uses 1 slot)"
+                  className="flex-1 min-w-[85px] flex items-center justify-center gap-1.5 py-2.5 text-xs sm:text-sm font-semibold text-forest border-r border-charcoal/6 disabled:opacity-40 cursor-pointer"
+                >
+                  <Power size={14} /> Activate
+                </button>
+              )}
+              <button
+                disabled={busyId === p.id}
+                onClick={() => handleDelete(p)}
+                className="flex-1 min-w-[70px] flex items-center justify-center gap-1.5 py-2.5 text-xs sm:text-sm font-semibold text-coral disabled:opacity-40 cursor-pointer"
+              >
+                <Trash2 size={14} /> Delete
+              </button>
+            </div>
+            {p.status === "Active" && (
+              <div className="bg-emerald-50/40 px-4 py-2.5 border-t border-charcoal/6 flex items-center justify-between">
+                <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
+                  <Star size={13} className={p.isFeatured ? "fill-emerald-600 text-emerald-600 animate-pulse" : "text-emerald-700"} />
+                  {p.isFeatured ? "Featured Ad Active" : "Promote as Advertisement"}
+                </span>
+                {!p.isFeatured && (
+                  <button
+                    disabled={busyId === p.id}
+                    onClick={() => handlePromoteProperty(p)}
+                    className="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-3 py-1.5 rounded-xl flex items-center gap-1 active:scale-95 transition-all select-none shadow-sm disabled:opacity-50"
+                  >
+                    Promote Ad
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <BottomNav />
+
+      {showActivationChoice && (
+        <PropertyActivationModal
+          onClose={() => setShowActivationChoice(null)}
+          onUpgrade={() => {
+            setShowActivationChoice(null);
+            setShowPaywall(true);
+          }}
+          onContinueFree={() => handleActivateFree(showActivationChoice)}
+        />
+      )}
+
+      {showPaywall && (
+        <SubscriptionPaywallModal
+          initialPlanType="listing_slots"
+          onClose={() => setShowPaywall(false)}
+          onSuccess={() => {
+            setShowPaywall(false);
+            loadProperties();
+            refreshUser();
+          }}
+        />
+      )}
+    </div>
+  );
+}

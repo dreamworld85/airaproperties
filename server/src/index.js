@@ -1,0 +1,1491 @@
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+dotenv.config({ override: true });
+import path from "path";
+import fs from "fs";
+
+// Auto-configure persistent UPLOADS_DIR on Hostinger server immediately at startup
+const hostingerUploadsDir = "/home/u859202671/domains/api.greensparrows.com/uploads";
+if (!process.env.UPLOADS_DIR && (process.cwd().includes("api.greensparrows.com") || fs.existsSync(hostingerUploadsDir))) {
+  process.env.UPLOADS_DIR = hostingerUploadsDir;
+}
+
+import { fileURLToPath } from "url";
+import { pool } from "./db.js";
+
+// Ensure uploads directory exists
+const serverUploadsDir = process.env.UPLOADS_DIR ? path.resolve(process.env.UPLOADS_DIR) : path.join(process.cwd(), "uploads");
+if (!fs.existsSync(serverUploadsDir)) {
+  console.log("Creating uploads directory...");
+  fs.mkdirSync(serverUploadsDir, { recursive: true });
+}
+
+import { seedPlans } from "./seedPlans.js";
+
+import authRoutes from "./routes/auth.js";
+import propertyRoutes from "./routes/properties.js";
+import adminRoutes from "./routes/admin.js";
+import userRoutes from "./routes/users.js";
+import paymentRoutes from "./routes/payments.js";
+import builderRoutes from "./routes/builders.js";
+
+// Auto-migrate database table columns for subscription offers
+async function checkDbMigration() {
+  try {
+    // Ensure base tables exist before checking columns
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(120) NOT NULL,
+        email VARCHAR(160) UNIQUE,
+        phone VARCHAR(20) UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        location VARCHAR(160),
+        avatar_url VARCHAR(500),
+        role VARCHAR(50) NOT NULL DEFAULT 'user',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS properties (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        owner_id INT NOT NULL,
+        title VARCHAR(200) NOT NULL,
+        property_type ENUM('House','Villa','Apartment','Land','Commercial Space') NOT NULL,
+        purpose ENUM('For Sale','For Rent') NOT NULL,
+        price DECIMAL(14,2) NOT NULL,
+        area_sqft INT NOT NULL,
+        address VARCHAR(255) NOT NULL,
+        district VARCHAR(80) NOT NULL,
+        bedrooms INT DEFAULT 0,
+        bathrooms INT DEFAULT 0,
+        furnishing ENUM('Unfurnished','Semi-Furnished','Fully Furnished') DEFAULT NULL,
+        facing VARCHAR(20),
+        property_age VARCHAR(30),
+        description TEXT,
+        listing_role ENUM('Owner','Broker','Agency') NOT NULL,
+        contact_number VARCHAR(20),
+        whatsapp_number VARCHAR(20),
+        owner_name VARCHAR(120),
+        broker_name VARCHAR(120),
+        agency_name VARCHAR(120),
+        agency_logo_url VARCHAR(500),
+        status ENUM('Draft','Pending','Active','Inactive','Rejected') DEFAULT 'Pending',
+        views INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS property_media (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        property_id INT NOT NULL,
+        media_type ENUM('image','video') NOT NULL,
+        url VARCHAR(500) NOT NULL,
+        sort_order INT DEFAULT 0,
+        FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS saved_properties (
+        user_id INT NOT NULL,
+        property_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, property_id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS enquiries (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        property_id INT NOT NULL,
+        visitor_id INT NOT NULL,
+        name VARCHAR(255) NULL,
+        phone VARCHAR(50) NULL,
+        email VARCHAR(255) NULL,
+        message VARCHAR(500),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+        FOREIGN KEY (visitor_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    // Ensure columns exist if table was already created
+    await pool.query(`
+      ALTER TABLE enquiries 
+        ADD COLUMN IF NOT EXISTS name VARCHAR(255) NULL AFTER visitor_id,
+        ADD COLUMN IF NOT EXISTS phone VARCHAR(50) NULL AFTER name,
+        ADD COLUMN IF NOT EXISTS email VARCHAR(255) NULL AFTER phone;
+    `).catch(() => {});
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS subscription_plans (
+        role VARCHAR(50) NOT NULL,
+        duration_months INT NOT NULL DEFAULT 1,
+        price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        discount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        description VARCHAR(255) NULL DEFAULT '',
+        features TEXT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (role, duration_months)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS role_switch_requests (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        requested_role ENUM('Broker', 'Agency') NOT NULL,
+        status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS reported_listings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        property_id INT NOT NULL,
+        reporter_id INT NOT NULL,
+        reason VARCHAR(255) NOT NULL,
+        status ENUM('Pending', 'Resolved') DEFAULT 'Pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+        FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS activity_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NULL,
+        action VARCHAR(255) NOT NULL,
+        category ENUM('Users', 'Properties', 'System') NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    const [userCols] = await pool.query("SHOW COLUMNS FROM users");
+    const userColNames = userCols.map(c => c.Field);
+    if (!userColNames.includes("reset_otp")) {
+      console.log("Adding reset_otp column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN reset_otp VARCHAR(10) NULL");
+    }
+    if (!userColNames.includes("reset_otp_expires_at")) {
+      console.log("Adding reset_otp_expires_at column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN reset_otp_expires_at DATETIME NULL");
+    }
+    if (!userColNames.includes("enquiry_credits_left")) {
+      console.log("Adding enquiry_credits_left column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN enquiry_credits_left INT NOT NULL DEFAULT 3");
+    }
+    if (!userColNames.includes("listing_slots_left")) {
+      console.log("Adding listing_slots_left column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN listing_slots_left INT NOT NULL DEFAULT 2");
+    }
+
+    // Verify credit_transactions table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS credit_transactions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        credit_type ENUM('enquiry', 'listing_slot') NOT NULL,
+        transaction_type ENUM('purchase', 'usage', 'refund', 'bonus', 'admin_adjustment') NOT NULL,
+        amount_credits INT NOT NULL,
+        balance_after INT NOT NULL,
+        price_paid DECIMAL(10,2) DEFAULT 0.00,
+        currency VARCHAR(10) DEFAULT 'INR',
+        payment_id VARCHAR(255) DEFAULT NULL,
+        order_id VARCHAR(255) DEFAULT NULL,
+        property_id INT DEFAULT NULL,
+        notes VARCHAR(255) DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_user_type (user_id, credit_type)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    const [cols] = await pool.query("SHOW COLUMNS FROM subscription_plans");
+    const colNames = cols.map(c => c.Field);
+    if (!colNames.includes("description")) {
+      console.log("Adding description column to subscription_plans...");
+      await pool.query("ALTER TABLE subscription_plans ADD COLUMN description VARCHAR(255) NULL DEFAULT ''");
+    }
+    if (!colNames.includes("discount")) {
+      console.log("Adding discount column to subscription_plans...");
+      await pool.query("ALTER TABLE subscription_plans ADD COLUMN discount DECIMAL(10,2) NOT NULL DEFAULT 0.00");
+    }
+    if (!colNames.includes("plan_type")) {
+      console.log("Adding plan_type column to subscription_plans...");
+      await pool.query("ALTER TABLE subscription_plans ADD COLUMN plan_type ENUM('enquiry_pack', 'listing_slots') NOT NULL DEFAULT 'enquiry_pack'");
+    }
+    if (!colNames.includes("credits")) {
+      console.log("Adding credits column to subscription_plans...");
+      await pool.query("ALTER TABLE subscription_plans ADD COLUMN credits INT NOT NULL DEFAULT 10");
+    }
+    if (!colNames.includes("plan_id")) {
+      console.log("Adding plan_id column to subscription_plans...");
+      await pool.query("ALTER TABLE subscription_plans ADD COLUMN plan_id VARCHAR(60) NULL");
+    }
+    
+    // Create notifications table if it does not exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        sender_id INT NULL,
+        type VARCHAR(50) NOT NULL,
+        message VARCHAR(500) NOT NULL,
+        property_id INT NULL,
+        is_read TINYINT(1) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
+      )
+    `);
+    console.log("Database notifications table verified.");
+
+    const [notifCols] = await pool.query("SHOW COLUMNS FROM notifications");
+    const notifColNames = notifCols.map(c => c.Field);
+    if (!notifColNames.includes("title")) {
+      console.log("Adding title column to notifications...");
+      await pool.query("ALTER TABLE notifications ADD COLUMN title VARCHAR(120) NULL");
+    }
+    if (!notifColNames.includes("link")) {
+      console.log("Adding link column to notifications...");
+      await pool.query("ALTER TABLE notifications ADD COLUMN link VARCHAR(255) NULL");
+    }
+
+    // Verify settings table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS settings (
+        \`key\` VARCHAR(120) PRIMARY KEY,
+        \`value\` TEXT NOT NULL
+      )
+    `);
+
+    // Verify social_accounts table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS social_accounts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        provider VARCHAR(20) NOT NULL,
+        provider_user_id VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_provider_user (provider, provider_user_id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+    console.log("Database social_accounts table verified.");
+
+    // Seed default landing page settings if they don't exist
+    const defaultSettings = [
+      { key: "landing_hero_title", value: "Find Your Perfect Kerala Nest & Escape" },
+      { key: "landing_hero_description", value: "Explore curated houses, villas, apartments, and land plots across the lush greenery of Kerala. Connect directly with owners, brokers, and certified agencies." },
+      { key: "landing_hero_image", value: "https://images.unsplash.com/photo-1564507592333-c60657eea523?w=1000&q=80" },
+      { key: "landing_app_title", value: "Download Our Mobile App For Real-Time Notifications" },
+      { key: "landing_app_description", value: "Visiting our mobile app gives you access to maps, instant push notifications for matching properties, real-time agent chats, and location-aware search features. Scan the QR code or click the download button below to load the mobile-optimized experience directly on your smartphone." },
+      { key: "landing_app_download_url", value: "http://localhost:5173/login" },
+      { key: "landing_app_qr_image", value: "" },
+      { key: "login_heading", value: "Hello!" },
+      { key: "login_subheading", value: "Welcome to Property" },
+      { key: "desktop_logo_url", value: "/brand_logo-web.png" },
+      { key: "mobile_logo_url", value: "/brand_logo.png" }
+    ];
+
+    for (const setting of defaultSettings) {
+      await pool.query(
+        "INSERT IGNORE INTO settings (`key`, `value`) VALUES (?, ?)",
+        [setting.key, setting.value]
+      );
+    }
+
+    // Verify app_download_page_settings table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS app_download_page_settings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        brand_logo_url VARCHAR(255) NULL,
+        main_title VARCHAR(255) NOT NULL,
+        subtitle VARCHAR(500) NOT NULL,
+        google_play_url VARCHAR(255) NOT NULL,
+        app_store_url VARCHAR(255) NOT NULL,
+        safe_secure_title VARCHAR(255) NOT NULL,
+        safe_secure_desc VARCHAR(255) NOT NULL,
+        trusted_users_title VARCHAR(255) NOT NULL,
+        trusted_users_desc VARCHAR(255) NOT NULL,
+        footer_brand VARCHAR(255) NOT NULL,
+        footer_tagline VARCHAR(255) NOT NULL
+      )
+    `);
+
+    const [downloadSettingsCount] = await pool.query("SELECT COUNT(*) as count FROM app_download_page_settings");
+    if (downloadSettingsCount[0].count === 0) {
+      await pool.query(`
+        INSERT INTO app_download_page_settings (
+          brand_logo_url, 
+          main_title, 
+          subtitle, 
+          google_play_url, 
+          app_store_url, 
+          safe_secure_title, 
+          safe_secure_desc, 
+          trusted_users_title, 
+          trusted_users_desc, 
+          footer_brand, 
+          footer_tagline
+        ) VALUES (
+          '', 
+          'You\\'ve received a property on Kerala Realty', 
+          'To view this property and more details, download the Kerala Realty app.', 
+          'https://play.google.com/store', 
+          'https://www.apple.com/app-store', 
+          'Safe & Secure', 
+          'We don\\'t share any personal information.', 
+          'Trusted by thousands', 
+          'Trusted by thousands of users across Kerala.', 
+          'Kerala Realty', 
+          'Your trusted property partner in Kerala'
+        )
+      `);
+      console.log("Seeded default app download page settings successfully.");
+    }
+
+    // Verify mobile_share_page_settings table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS mobile_share_page_settings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        brand_name VARCHAR(150) NOT NULL,
+        brand_logo_url VARCHAR(255) NULL,
+        tagline VARCHAR(255) NOT NULL,
+        illustration_url VARCHAR(255) NULL,
+        description_quote VARCHAR(500) NOT NULL,
+        button_text VARCHAR(150) NOT NULL,
+        google_play_url VARCHAR(255) NOT NULL,
+        app_store_url VARCHAR(255) NOT NULL,
+        trust_text VARCHAR(255) NOT NULL
+      )
+    `);
+
+    const [shareCols] = await pool.query("SHOW COLUMNS FROM mobile_share_page_settings");
+    const shareColNames = shareCols.map(c => c.Field);
+    if (!shareColNames.includes("background_image_url")) {
+      console.log("Adding background_image_url column to mobile_share_page_settings...");
+      await pool.query("ALTER TABLE mobile_share_page_settings ADD COLUMN background_image_url VARCHAR(255) NULL DEFAULT '/share_interstitial_bg.png'");
+    }
+
+    const [mobileShareSettingsCount] = await pool.query("SELECT COUNT(*) as count FROM mobile_share_page_settings");
+    if (mobileShareSettingsCount[0].count === 0) {
+      await pool.query(`
+        INSERT INTO mobile_share_page_settings (
+          brand_name,
+          brand_logo_url,
+          tagline,
+          illustration_url,
+          description_quote,
+          button_text,
+          google_play_url,
+          app_store_url,
+          trust_text
+        ) VALUES (
+          'Sparrow Properties',
+          '/brand_logo.png',
+          'Your trusted property partner',
+          '',
+          'The best way to buy, sell and rent properties.',
+          'Download the App to continue',
+          'https://play.google.com/store',
+          'https://www.apple.com/app-store',
+          'Secure. Trusted. Reliable.'
+        )
+      `);
+      console.log("Seeded default mobile share page settings successfully.");
+    }
+
+    // Verify landing_features table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS landing_features (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(150) NOT NULL,
+        description TEXT NOT NULL,
+        icon VARCHAR(80) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Seed default landing features if empty
+    const [featuresCount] = await pool.query("SELECT COUNT(*) as count FROM landing_features");
+    if (featuresCount[0].count === 0) {
+      const defaultFeatures = [
+        { title: "Verified Listings", description: "Every property on our platform goes through mandatory moderation and title review checks, ensuring high-quality leads and scam-free deals.", icon: "CheckCircle2" },
+        { title: "District & Local Maps", description: "Easily filter properties by district, location, area size, and exact budget. Make informed choices with local community map references.", icon: "Map" },
+        { title: "Direct Inquiry Channels", description: "Direct phone and WhatsApp integrations let you contact owners or certified agents instantly, cutting out unnecessary delay or middleman margins.", icon: "Shield" }
+      ];
+      for (const feat of defaultFeatures) {
+        await pool.query(
+          "INSERT INTO landing_features (title, description, icon) VALUES (?, ?, ?)",
+          [feat.title, feat.description, feat.icon]
+        );
+      }
+      console.log("Seeded default landing page features successfully.");
+    }
+
+    // Verify property_reviews table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS property_reviews (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        property_id INT NOT NULL,
+        user_id INT NOT NULL,
+        rating INT NOT NULL,
+        comment TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+    console.log("Database property_reviews table verified.");
+
+    // Verify property_views table exists and has all columns
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS property_views (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        property_id INT NOT NULL,
+        visitor_id INT NULL,
+        ip_address VARCHAR(100) NULL,
+        user_agent VARCHAR(500) NULL,
+        viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+        FOREIGN KEY (visitor_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    // Migrate property_views if columns are missing
+    const [viewCols] = await pool.query("SHOW COLUMNS FROM property_views");
+    const viewColNames = viewCols.map(c => c.Field);
+    if (!viewColNames.includes("ip_address")) {
+      console.log("Adding ip_address column to property_views...");
+      await pool.query("ALTER TABLE property_views ADD COLUMN ip_address VARCHAR(100) NULL");
+    }
+    if (!viewColNames.includes("user_agent")) {
+      console.log("Adding user_agent column to property_views...");
+      await pool.query("ALTER TABLE property_views ADD COLUMN user_agent VARCHAR(500) NULL");
+    }
+    console.log("Database property_views table verified.");
+    
+    // Seed default trial days if not exists
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('default_trial_days', '5')");
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('default_trial_days_broker', '5')");
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('default_trial_days_agency', '3')");
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('contact_email', 'support@greensparrows.com')");
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('contact_phone', '+91 484 2901234 (10 AM - 6 PM)')");
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('contact_address', 'GreenSparrows Ventures Private Limited,\\nSkyline Signature Heights, Kakkanad,\\nKochi, Kerala - 682030')");
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('featured_price', '299')");
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('featured_text', 'Pin your listing to the top of home feed and search results to get up to 10x more leads.')");
+
+    // Add custom trial and free subscription columns to users table
+    const [existingUserCols] = await pool.query("SHOW COLUMNS FROM users");
+    const existingUserColNames = existingUserCols.map(c => c.Field);
+    
+    if (!existingUserColNames.includes("role")) {
+      console.log("Adding role column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN role VARCHAR(50) NOT NULL DEFAULT 'user'");
+    }
+
+    if (!existingUserColNames.includes("trial_ends_at")) {
+      console.log("Adding trial_ends_at column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN trial_ends_at DATETIME NULL");
+    }
+
+    if (!existingUserColNames.includes("subscription_status")) {
+      console.log("Adding subscription_status column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN subscription_status VARCHAR(50) NULL");
+    }
+
+    if (!existingUserColNames.includes("razorpay_subscription_id")) {
+      console.log("Adding razorpay_subscription_id column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN razorpay_subscription_id VARCHAR(255) NULL");
+    }
+
+    if (!existingUserColNames.includes("is_disabled")) {
+      console.log("Adding is_disabled column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN is_disabled TINYINT(1) NOT NULL DEFAULT 0");
+    }
+
+    if (!userColNames.includes("last_login")) {
+      console.log("Adding last_login column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN last_login TIMESTAMP NULL");
+    }
+
+    if (!userColNames.includes("custom_trial_expiry")) {
+      console.log("Adding custom_trial_expiry column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN custom_trial_expiry DATETIME NULL");
+    }
+    
+    if (!userColNames.includes("is_free_subscription_granted")) {
+      console.log("Adding is_free_subscription_granted column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN is_free_subscription_granted TINYINT(1) NOT NULL DEFAULT 0");
+    }
+
+    if (!userColNames.includes("subscription_expires_at")) {
+      console.log("Adding subscription_expires_at column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN subscription_expires_at DATETIME NULL");
+    }
+
+    if (!userColNames.includes("subscription_duration_months")) {
+      console.log("Adding subscription_duration_months column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN subscription_duration_months INT NULL");
+    }
+
+    if (!userColNames.includes("agency_address")) {
+      console.log("Adding agency_address column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN agency_address TEXT NULL");
+    }
+
+    if (!userColNames.includes("agency_district")) {
+      console.log("Adding agency_district column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN agency_district VARCHAR(100) NULL");
+    }
+
+    if (!userColNames.includes("agency_logo_url")) {
+      console.log("Adding agency_logo_url column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN agency_logo_url VARCHAR(255) NULL");
+    }
+
+    if (!userColNames.includes("whatsapp_number")) {
+      console.log("Adding whatsapp_number column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN whatsapp_number VARCHAR(50) NULL");
+    }
+
+    // Modify subscription_plans table schema
+    const [planCols] = await pool.query("SHOW COLUMNS FROM subscription_plans");
+    const planColNames = planCols.map(c => c.Field);
+    if (!planColNames.includes("duration_months")) {
+      console.log("Upgrading subscription_plans table for multi-duration plans...");
+      await pool.query("ALTER TABLE subscription_plans DROP PRIMARY KEY");
+      await pool.query("ALTER TABLE subscription_plans ADD COLUMN duration_months INT NOT NULL DEFAULT 1");
+      await pool.query("ALTER TABLE subscription_plans ADD PRIMARY KEY (role, duration_months)");
+      
+      // Seed 6-month and 12-month plans (and User buyer plans)
+      await pool.query(`
+        INSERT IGNORE INTO subscription_plans (role, duration_months, price, discount, description) VALUES
+        ('Owner', 6, 75.00, 15.00, 'Save 20% on 6-month plan'),
+        ('Owner', 12, 120.00, 30.00, 'Best Value: 1 year premium'),
+        ('Broker', 6, 950.00, 190.00, 'Save 17%: 6 months broker plan'),
+        ('Broker', 12, 1600.00, 400.00, 'Best Value: 1 year broker premium'),
+        ('Agency', 6, 999.00, 199.00, 'Save 17%: 6 months agency plan'),
+        ('Agency', 12, 1699.00, 400.00, 'Best Value: 1 year agency premium'),
+        ('User', 1, 20.00, 0.00, 'Buyer basic subscription to unlock unlimited contacts'),
+        ('User', 6, 99.00, 20.00, 'Save 17%: 6 months buyer plan'),
+        ('User', 12, 150.00, 30.00, 'Best Value: 1 year buyer premium')
+      `);
+    }
+
+    // Ensure role column is VARCHAR(50) and features column exists
+    await pool.query("ALTER TABLE subscription_plans MODIFY COLUMN role VARCHAR(50) NOT NULL");
+    const [updatedPlanCols] = await pool.query("SHOW COLUMNS FROM subscription_plans");
+    const updatedPlanColNames = updatedPlanCols.map(c => c.Field);
+    if (!updatedPlanColNames.includes("features")) {
+      await pool.query("ALTER TABLE subscription_plans ADD COLUMN features TEXT NULL");
+    }
+
+    if (!updatedPlanColNames.includes("is_active")) {
+      await pool.query("ALTER TABLE subscription_plans ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1");
+    }
+
+    // Add use_admin_contact column to properties table
+    const [propCols] = await pool.query("SHOW COLUMNS FROM properties");
+    const propColNames = propCols.map(c => c.Field);
+    if (!propColNames.includes("use_admin_contact")) {
+      console.log("Adding use_admin_contact column to properties...");
+      await pool.query("ALTER TABLE properties ADD COLUMN use_admin_contact TINYINT(1) NOT NULL DEFAULT 0");
+    }
+
+    if (!propColNames.includes("is_price_negotiable")) {
+      console.log("Adding is_price_negotiable column to properties...");
+      await pool.query("ALTER TABLE properties ADD COLUMN is_price_negotiable TINYINT(1) NOT NULL DEFAULT 0");
+    }
+
+    if (!propColNames.includes("is_featured")) {
+      console.log("Adding is_featured column to properties...");
+      await pool.query("ALTER TABLE properties ADD COLUMN is_featured TINYINT(1) NOT NULL DEFAULT 0");
+    }
+
+    if (!propColNames.includes("is_broker_personal_property")) {
+      console.log("Adding is_broker_personal_property column to properties...");
+      await pool.query("ALTER TABLE properties ADD COLUMN is_broker_personal_property TINYINT(1) NOT NULL DEFAULT 0");
+    }
+
+    if (!propColNames.includes("state")) {
+      console.log("Adding state column to properties...");
+      await pool.query("ALTER TABLE properties ADD COLUMN state VARCHAR(100) NOT NULL DEFAULT 'Kerala'");
+    }
+
+    // Run role migration: User -> user, Owner -> owner, etc.
+    await pool.query("UPDATE users SET role = 'user' WHERE role = 'User' OR role = 'buyer' OR role = ''");
+    await pool.query("UPDATE users SET role = 'owner' WHERE role = 'Owner'");
+    await pool.query("UPDATE users SET role = 'broker' WHERE role = 'Broker'");
+    await pool.query("UPDATE users SET role = 'agency' WHERE role = 'Agency'");
+
+    // Modify Enum column to lowercase
+    await pool.query("ALTER TABLE users MODIFY COLUMN role ENUM('owner','broker','agency','user','Admin') DEFAULT 'user'");
+
+    // Convert subscription plans roles
+    await pool.query("UPDATE subscription_plans SET role = 'user' WHERE role = 'User' OR role = 'buyer'");
+    await pool.query("UPDATE subscription_plans SET role = 'owner' WHERE role = 'Owner'");
+    await pool.query("UPDATE subscription_plans SET role = 'broker' WHERE role = 'Broker'");
+    await pool.query("UPDATE subscription_plans SET role = 'agency' WHERE role = 'Agency'");
+
+    // Seed default admin contact number and email
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('admin_contact_number', '+91 94460 12345')");
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('admin_email', 'admin@keralarealty.com')");
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('default_trial_days_user', '30')");
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('default_free_inquiries_limit', '20')");
+
+    // Create contact_clicks table tracking unique contact clicks
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS contact_clicks (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        property_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_user_property (user_id, property_id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    // Create top_locations table if it does not exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS top_locations (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        image_url VARCHAR(500) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    console.log("Database top_locations table verified.");
+
+    // Create service_enquiries table if it does not exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS service_enquiries (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NULL,
+        name VARCHAR(120) NOT NULL,
+        email VARCHAR(120) NOT NULL,
+        city VARCHAR(120) NOT NULL,
+        user_class VARCHAR(50) NOT NULL,
+        phone VARCHAR(50) NOT NULL,
+        service_name VARCHAR(120) NOT NULL,
+        status VARCHAR(50) DEFAULT 'New',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    console.log("Database service_enquiries table verified.");
+
+    // Seed default top locations if empty
+    const [locations] = await pool.query("SELECT COUNT(*) AS count FROM top_locations");
+    if (locations[0].count === 0) {
+      console.log("Seeding default top locations...");
+      const defaultLocations = [
+        { name: "Bali", image_url: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=300&h=300&fit=crop" },
+        { name: "Jakarta", image_url: "https://images.unsplash.com/photo-1505995433366-e12047f3f144?w=300&h=300&fit=crop" },
+        { name: "Yogyakarta", image_url: "https://images.unsplash.com/photo-1584810359583-96fc3448beaa?w=300&h=300&fit=crop" }
+      ];
+      for (const loc of defaultLocations) {
+        await pool.query("INSERT INTO top_locations (name, image_url) VALUES (?, ?)", [loc.name, loc.image_url]);
+      }
+    }
+
+    // Create builder_inquiries table if it does not exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS builder_inquiries (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        company_name VARCHAR(200) NOT NULL,
+        contact_person VARCHAR(120) NOT NULL,
+        phone VARCHAR(30) NOT NULL,
+        email VARCHAR(160) NOT NULL,
+        office_address TEXT NOT NULL,
+        city_district VARCHAR(100) DEFAULT '',
+        active_projects VARCHAR(50) DEFAULT '1-2 Projects',
+        package_preference VARCHAR(100) DEFAULT 'Builder Standard',
+        experience_years INT DEFAULT 0,
+        message TEXT,
+        status ENUM('Pending', 'Contacted', 'Approved', 'Rejected') DEFAULT 'Pending',
+        admin_notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    console.log("Database builder_inquiries table verified.");
+
+    // Create builders table if it does not exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS builders (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(200) NOT NULL,
+        slug VARCHAR(200) UNIQUE NOT NULL,
+        tagline VARCHAR(255) DEFAULT '',
+        logo_url VARCHAR(500) DEFAULT '',
+        banner_url VARCHAR(500) DEFAULT '',
+        about TEXT,
+        experience_years INT DEFAULT 15,
+        total_projects INT DEFAULT 20,
+        ongoing_projects INT DEFAULT 5,
+        completed_projects INT DEFAULT 15,
+        upcoming_projects INT DEFAULT 3,
+        rera_id VARCHAR(100) DEFAULT '',
+        office_address TEXT,
+        district VARCHAR(100) DEFAULT 'Kochi',
+        phone VARCHAR(50) DEFAULT '',
+        email VARCHAR(160) DEFAULT '',
+        website VARCHAR(255) DEFAULT '',
+        is_featured TINYINT(1) DEFAULT 1,
+        is_verified TINYINT(1) DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    console.log("Database builders table verified.");
+
+    // Create builder_projects table if it does not exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS builder_projects (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        builder_id INT NOT NULL,
+        title VARCHAR(200) NOT NULL,
+        project_type VARCHAR(100) DEFAULT 'Luxury Apartments',
+        status ENUM('Completed', 'Ongoing', 'Upcoming') NOT NULL DEFAULT 'Ongoing',
+        location VARCHAR(200) NOT NULL,
+        district VARCHAR(100) NOT NULL,
+        price_range VARCHAR(100) NOT NULL,
+        units_config VARCHAR(150) NOT NULL,
+        area_sqft_range VARCHAR(100) DEFAULT '1200 - 2400 sq.ft',
+        possession_date VARCHAR(100) DEFAULT 'Dec 2026',
+        cover_image VARCHAR(500) NOT NULL,
+        gallery_images JSON,
+        rera_reg_number VARCHAR(100) DEFAULT '',
+        amenities JSON,
+        brochure_url VARCHAR(500) DEFAULT '',
+        is_featured TINYINT(1) DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (builder_id) REFERENCES builders(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    console.log("Database builder_projects table verified.");
+
+    // Create builder_leads table if it does not exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS builder_leads (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        builder_id INT NOT NULL,
+        project_id INT NULL,
+        name VARCHAR(120) NOT NULL,
+        phone VARCHAR(30) NOT NULL,
+        email VARCHAR(160) NULL,
+        message TEXT,
+        source VARCHAR(50) DEFAULT 'microsite',
+        status ENUM('New', 'Contacted', 'Qualified', 'Closed') DEFAULT 'New',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (builder_id) REFERENCES builders(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    console.log("Database builder_leads table verified.");
+
+    // Seed default verified builders and projects if empty
+    const [existingBuilders] = await pool.query("SELECT COUNT(*) AS count FROM builders");
+    if (existingBuilders[0].count === 0) {
+      console.log("Seeding verified builders and project showcases...");
+      
+      // 1. Skyline Builders
+      const [skylineRes] = await pool.query(
+        `INSERT INTO builders (name, slug, tagline, logo_url, banner_url, about, experience_years, total_projects, ongoing_projects, completed_projects, upcoming_projects, rera_id, office_address, district, phone, email, website)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          "Skyline Builders",
+          "skyline-builders",
+          "Crafting Iconic Living Landmarks Across Kerala Since 1989",
+          "https://images.unsplash.com/photo-1541888946425-d0fbb1861593?w=200&h=200&fit=crop",
+          "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1600&h=600&fit=crop",
+          "With over three decades of engineering excellence, Skyline Builders has redefined luxury urban living in Kerala. Having successfully delivered more than 150 landmarks across Kochi, Trivandrum, Kozhikode, and Kottayam, our commitment to architectural purity, green living standards, and punctual handovers makes us Kerala's most awarded real estate pioneer.",
+          35, 154, 8, 142, 4,
+          "K-RERA/PRJ/ERN/042/2021",
+          "Skyline House, Rajaji Road, Kochi, Kerala - 682035",
+          "Ernakulam",
+          "+91 484 4077777",
+          "enquiries@skylinebuilders.com",
+          "https://www.skylinebuilders.com"
+        ]
+      );
+      const skylineId = skylineRes.insertId;
+
+      await pool.query(
+        `INSERT INTO builder_projects (builder_id, title, project_type, status, location, district, price_range, units_config, area_sqft_range, possession_date, cover_image, gallery_images, rera_reg_number, amenities)
+         VALUES 
+         (?, 'Skyline Epic Waterfront', 'Luxury Waterfront Apartments', 'Ongoing', 'Marine Drive', 'Ernakulam', '₹1.85 Cr - ₹3.40 Cr', '3 & 4 BHK Panoramic Sky Suites', '2150 - 3800 sq.ft', 'December 2026', 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1000&fit=crop', '[]', 'K-RERA/PRJ/089/2023', '["Infinity Pool overlooking Arabian Sea", "Rooftop Helipad & Sky Lounge", "Automated Smart Home Controls", "Clubhouse & Squash Court", "EV Superchargers"]'),
+         (?, 'Skyline Cambridge Greens', 'Smart Urban Residences', 'Ongoing', 'Edappally Metro Station', 'Ernakulam', '₹78 Lakhs - ₹1.25 Cr', '2 & 3 BHK Contemporary Homes', '1180 - 1760 sq.ft', 'August 2027', 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1000&fit=crop', '[]', 'K-RERA/PRJ/112/2023', '["Heated Indoor Swimming Pool", "Solar Powered Common Areas", "Children Play Arena", "Fitness Centre & Yoga Deck"]'),
+         (?, 'Skyline Green Woods Estate', 'Exclusive Nature Villas', 'Upcoming', 'Kakkanad Infopark Corridor', 'Ernakulam', '₹1.45 Cr - ₹2.80 Cr', '3 & 4 BHK Independent Luxury Villas', '2400 - 3600 sq.ft', 'Booking Open (2028)', 'https://images.unsplash.com/photo-1613977257363-707ba9348227?w=1000&fit=crop', '[]', 'K-RERA/PRJ/144/2024', '["Private Landscaped Gardens", "Gated 24/7 Security", "Central Clubhouse", "Rainwater Harvesting", "Tennis Court"]'),
+         (?, 'Skyline 24 Carat', 'Ultra Luxury Ready Residences', 'Completed', 'Panampilly Nagar', 'Ernakulam', '₹1.35 Cr - ₹2.10 Cr', '3 BHK Ready To Move Living', '1920 - 2450 sq.ft', 'Ready to Move (Occupancy Certified)', 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1000&fit=crop', '[]', 'K-RERA/PRJ/015/2020', '["Occupancy Certificate Issued", "Immediate Registry", "Full Generator Backup", "Double Height Grand Lobby"]')`,
+        [skylineId, skylineId, skylineId, skylineId]
+      );
+
+      // 2. Asset Homes
+      const [assetRes] = await pool.query(
+        `INSERT INTO builders (name, slug, tagline, logo_url, banner_url, about, experience_years, total_projects, ongoing_projects, completed_projects, upcoming_projects, rera_id, office_address, district, phone, email, website)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          "Asset Homes",
+          "asset-homes",
+          "The Responsible Builder — 100+ Delightful Communities Delivered",
+          "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=200&h=200&fit=crop",
+          "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1600&h=600&fit=crop",
+          "Asset Homes is an ISO 9001:2015 certified builder committed to sustainable development and client delight. Known for our 10-year free transit insurance and pioneering 25-point life care commitments, we build homes with love, intelligence, and environmental consciousness.",
+          18, 112, 6, 102, 4,
+          "K-RERA/PRJ/TRV/018/2022",
+          "Asset Tree, G-129, Panampilly Nagar, Kochi, Kerala - 682036",
+          "Ernakulam",
+          "+91 484 6755555",
+          "sales@assethomes.in",
+          "https://www.assethomes.in"
+        ]
+      );
+      const assetId = assetRes.insertId;
+
+      await pool.query(
+        `INSERT INTO builder_projects (builder_id, title, project_type, status, location, district, price_range, units_config, area_sqft_range, possession_date, cover_image, gallery_images, rera_reg_number, amenities)
+         VALUES 
+         (?, 'Asset Signature Tech Smart', 'Modern Tech Residences', 'Ongoing', 'Kazhakoottam Technopark', 'Thiruvananthapuram', '₹65 Lakhs - ₹1.10 Cr', '2 & 3 BHK Tech-Savvy Apartments', '1050 - 1650 sq.ft', 'June 2027', 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1000&fit=crop', '[]', 'K-RERA/PRJ/TRV/076/2023', '["Walk-to-Work Proximity", "Coworking Lounge with Hi-Speed Fiber", "Rooftop Swimming Pool", "EV Charging Station"]'),
+         (?, 'Asset Marina Bay Sky Suites', 'Sea-facing Sky Villas', 'Upcoming', 'Calicut Beachfront', 'Kozhikode', '₹1.60 Cr - ₹2.95 Cr', '3 & 4 BHK Panoramic Sea-facing Homes', '2200 - 3400 sq.ft', 'Pre-Launch Booking', 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=1000&fit=crop', '[]', 'K-RERA/PRJ/KKD/033/2024', '["180 Degree Arabian Sea Views", "Private Jacuzzi in Balconies", "State-of-the-Art Wellness Spa"]'),
+         (?, 'Asset Zenith High-Rise', 'Premium Finished Living', 'Completed', 'Vyttila Mobility Hub', 'Ernakulam', '₹95 Lakhs - ₹1.50 Cr', '3 BHK Ready To Occupy', '1580 - 2100 sq.ft', 'Ready to Move', 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1000&fit=crop', '[]', 'K-RERA/PRJ/ERN/012/2019', '["Multi-level Car Parking", "Grand Banquet Hall", "24/7 Power Back-up"]')`,
+        [assetId, assetId, assetId]
+      );
+
+      // 3. Sobha Developers
+      const [sobhaRes] = await pool.query(
+        `INSERT INTO builders (name, slug, tagline, logo_url, banner_url, about, experience_years, total_projects, ongoing_projects, completed_projects, upcoming_projects, rera_id, office_address, district, phone, email, website)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          "Sobha Developers",
+          "sobha-developers",
+          "Passion at Work — Unmatched German Craftsmanship & Architectural Purity",
+          "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=200&h=200&fit=crop",
+          "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1600&h=600&fit=crop",
+          "Sobha is India's premier backward-integrated real estate developer with an unblemished record of quality and timely deliveries. With our own concrete, glazing, interior woodwork, and metal fabrication divisions, we deliver European finishing and structural durability that lasts generations.",
+          28, 170, 10, 152, 8,
+          "K-RERA/PRJ/TCR/005/2020",
+          "Sobha City, Puzhakkal Padam, Thrissur, Kerala - 680553",
+          "Thrissur",
+          "+91 487 2388888",
+          "sales@sobha.com",
+          "https://www.sobha.com"
+        ]
+      );
+      const sobhaId = sobhaRes.insertId;
+
+      await pool.query(
+        `INSERT INTO builder_projects (builder_id, title, project_type, status, location, district, price_range, units_config, area_sqft_range, possession_date, cover_image, gallery_images, rera_reg_number, amenities)
+         VALUES 
+         (?, 'Sobha Silverstar Residency', 'Integrated Luxury Living', 'Ongoing', 'Puzhakkal Sobha City', 'Thrissur', '₹85 Lakhs - ₹1.95 Cr', '2, 3 & 4 BHK German Standard Residences', '1350 - 2800 sq.ft', 'October 2026', 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1000&fit=crop', '[]', 'K-RERA/PRJ/TCR/041/2022', '["55-Acre Gated Integrated Township", "Private 6.5 Acre Artificial Lake", "Olympic Size Swimming Pool", "Commercial Mall On-premises"]'),
+         (?, 'Sobha City Topaz', 'Township Luxury Apartments', 'Completed', 'Puzhakkal', 'Thrissur', '₹1.10 Cr - ₹2.25 Cr', '3 & 4 BHK Ready Luxury Homes', '1800 - 3100 sq.ft', 'Ready to Move', 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1000&fit=crop', '[]', 'K-RERA/PRJ/TCR/008/2019', '["Clubhouse with Squash & Badminton", "Central Landscaped Promenades", "24/7 Security & CCTV Surveillance"]'),
+         (?, 'Sobha Riverfront Meadows', 'Exclusive River-edge Gated Villas', 'Upcoming', 'Aluva Riverbanks', 'Ernakulam', '₹2.20 Cr - ₹4.50 Cr', '4 & 5 BHK Bespoke Riverfront Mansions', '3200 - 5200 sq.ft', 'Launching Early 2027', 'https://images.unsplash.com/photo-1613977257363-707ba9348227?w=1000&fit=crop', '[]', 'K-RERA/PRJ/ERN/098/2024', '["Direct Periyar River Access & Private Boating Jetty", "Private Plunge Pools", "Solar-powered Eco-residences"]')`,
+        [sobhaId, sobhaId, sobhaId]
+      );
+
+      // Seed initial partner inquiries so admin has immediate data to test
+      await pool.query(
+        `INSERT INTO builder_inquiries (company_name, contact_person, phone, email, office_address, city_district, active_projects, package_preference, experience_years, message, status)
+         VALUES 
+         ('Prestige Group Kerala', 'Rajeev Menon', '+91 98470 11223', 'rajeev@prestigegroup.in', 'Level 4, Prestige TMS Square, NH 47 Bypass, Edappally', 'Ernakulam', '6-10 Projects', 'Builder Elite Showcase', 22, 'We are launching 3 new residential towers along Marine Drive and Kakkanad. Interested in developer showcase and NRI buyer push campaigns.', 'Pending'),
+         ('Muthoot Homez Private Limited', 'Anjali Varma', '+91 94471 88990', 'anjali@muthoothomez.com', 'Muthoot Chambers, Kurians Tower, Banerji Road', 'Ernakulam', '3-5 Projects', 'Builder Launchpad', 14, 'Looking to list our upcoming premium villa gated community in Aluva with 3D walk-through embeds.', 'Contacted'),
+         ('Confident Group Kerala', 'Gireesh Kumar', '+91 97455 33445', 'gireesh@confident-group.com', 'Confident House, S.A. Road, Kadavanthra', 'Ernakulam', '10+ Projects', 'Builder Enterprise Conglomerate', 19, 'We wish to partner for exclusive homepage banners and microsite listings for our upcoming Kochi and Trivandrum high-rises.', 'Approved')`
+      );
+      console.log("Seeded verified builders, project catalogs, and partner inquiries successfully.");
+    }
+
+    // Synchronize pricing & feature plans catalog
+    await seedPlans();
+  } catch (err) {
+    console.error("Database migration check failed:", err);
+  }
+}
+checkDbMigration();
+
+// Auto-generate system-documentation.json in the project root on server startup
+function generateSystemDocumentationFile() {
+  try {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const rootPath = path.resolve(__dirname, "..", "..");
+    const docPath = path.join(rootPath, "system-documentation.json");
+
+    const docContent = {
+      appName: "Kerala Realty",
+      techStack: {
+        frontend: "React, Tailwind CSS, Lucide Icons",
+        backend: "Node.js, Express",
+        database: "MySQL"
+      },
+      overview: {
+        targetAudience: "Kerala-based property buyers, owners, brokers, and agencies",
+        uiDesign: "Senior-friendly, optimized for single-screen views, compact layout design"
+      },
+      userRolesAndWorkflows: {
+        defaultRole: "user (buyer)",
+        freeInquiryLimit: 20,
+        roleTransition: "Permanent role lock (Owner, Broker, or Agency) upon first property creation step based on uploader contact info",
+        adminRoleApproval: "Role switches and upgrades require explicit administrator approval via the admin console"
+      },
+      postingLimitsAndSubscriptions: {
+        limits: {
+          Owner: "2 free listings initially, then up to 5 properties/month under paid plans",
+          Broker: "15 to 20 property postings per month limit",
+          Agency: "15 to 20 property postings per month limit"
+        },
+        subscriptionPlans: {
+          durations: ["1 Month", "6 Months", "1 Year"],
+          dynamicManagement: "Admin manages package features, pricing tiers, and discounts dynamically"
+        }
+      },
+      viewTrackingSystem: {
+        incrementLogic: "Real-time, synchronous increment (+1) per property detail page load",
+        cooldownFilter: {
+          authenticatedUser: "24-hour uniqueness cooldown scoped to visitor_id (prevents duplicate counting)",
+          anonymousVisitor: "24-hour uniqueness cooldown scoped to IP Address + User Agent combination",
+          ownerExclusion: "Owner visits to their own property pages are excluded from view stats"
+        },
+        uiDisplay: "Eye icon (Lucide-react Eye) with view count rendered next to property cards and detail headers"
+      },
+      adminControls: {
+        pricingSettings: "Toggled via general settings panel (e.g., featured listings price)",
+        freeTierTrialConfig: "Default trial days configured per user role (e.g., 5-30 days)",
+        fallbackContact: "Option to fallback to admin contact number for listings uploaded under unpaid/inactive subscriptions"
+      }
+    };
+
+    fs.writeFileSync(docPath, JSON.stringify(docContent, null, 2), "utf8");
+    console.log("System documentation JSON generated successfully at project root.");
+  } catch (err) {
+    console.error("Failed to generate system documentation JSON:", err);
+  }
+}
+generateSystemDocumentationFile();
+
+// Auto-generate kerala-realty-system-blueprint.json in the project root on server startup
+function generateSystemBlueprintFile() {
+  try {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const rootPath = path.resolve(__dirname, "..", "..");
+    const docPath = path.join(rootPath, "kerala-realty-system-blueprint.json");
+
+    const docContent = {
+      blueprintName: "Kerala Realty System Blueprint",
+      version: "1.0.0",
+      projectMetadata: {
+        appName: "Kerala Realty",
+        architecture: "Client-Server (Single Page Application)",
+        techStack: {
+          frontend: "React, React Router DOM, Tailwind CSS, Lucide Icons, Fetch API",
+          backend: "Node.js, Express, Nodemon, JWT, Multer",
+          database: "MySQL",
+          paymentGateway: "Razorpay"
+        }
+      },
+      databaseSchema: {
+        users: {
+          description: "Stores user accounts and their current active subscription status and role.",
+          fields: {
+            id: "INT AUTO_INCREMENT PRIMARY KEY",
+            name: "VARCHAR(255) NOT NULL",
+            email: "VARCHAR(255) UNIQUE NULL",
+            phone: "VARCHAR(50) UNIQUE NULL",
+            whatsapp_number: "VARCHAR(50) NULL",
+            password: "VARCHAR(255) NOT NULL",
+            role: "ENUM('owner','broker','agency','user','Admin') DEFAULT 'user'",
+            trial_ends_at: "DATETIME NULL",
+            subscription_status: "VARCHAR(50) NULL",
+            subscription_expires_at: "DATETIME NULL",
+            subscription_duration_months: "INT NULL",
+            razorpay_subscription_id: "VARCHAR(255) NULL",
+            is_free_subscription_granted: "TINYINT(1) DEFAULT 0",
+            is_disabled: "TINYINT(1) DEFAULT 0",
+            last_login: "TIMESTAMP NULL",
+            created_at: "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+          }
+        },
+        properties: {
+          description: "Stores property listings submitted by owners, brokers, and agencies.",
+          fields: {
+            id: "INT AUTO_INCREMENT PRIMARY KEY",
+            owner_id: "INT NOT NULL (FK users.id)",
+            title: "VARCHAR(255) NOT NULL",
+            property_type: "VARCHAR(100) NOT NULL",
+            purpose: "VARCHAR(50) NOT NULL",
+            price: "DECIMAL(15,2) NOT NULL",
+            area_sqft: "INT NOT NULL",
+            address: "TEXT NOT NULL",
+            district: "VARCHAR(100) NOT NULL",
+            bedrooms: "INT DEFAULT 0",
+            bathrooms: "INT DEFAULT 0",
+            furnishing: "VARCHAR(100) NULL",
+            facing: "VARCHAR(100) NULL",
+            property_age: "VARCHAR(100) NULL",
+            description: "TEXT NULL",
+            listing_role: "VARCHAR(50) NOT NULL",
+            status: "ENUM('Draft','Pending','Active','Inactive','Rejected') DEFAULT 'Pending'",
+            views: "INT DEFAULT 0",
+            youtube_url: "VARCHAR(255) NULL",
+            contact_number: "VARCHAR(50) NULL",
+            whatsapp_number: "VARCHAR(50) NULL",
+            use_admin_contact: "TINYINT(1) DEFAULT 0",
+            is_featured: "TINYINT(1) DEFAULT 0",
+            is_price_negotiable: "TINYINT(1) DEFAULT 0",
+            is_broker_personal_property: "TINYINT(1) DEFAULT 0",
+            created_at: "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+          }
+        },
+        subscription_plans: {
+          description: "Stores the dynamic plans catalog offered to each role.",
+          fields: {
+            role: "VARCHAR(50) NOT NULL",
+            duration_months: "INT NOT NULL",
+            price: "DECIMAL(10,2) NOT NULL",
+            discount: "DECIMAL(10,2) DEFAULT 0.00",
+            description: "VARCHAR(255) NULL",
+            features: "TEXT NULL",
+            "PRIMARY KEY": "(role, duration_months)"
+          }
+        },
+        property_views: {
+          description: "Tracks uniqueness of page views per property.",
+          fields: {
+            id: "INT AUTO_INCREMENT PRIMARY KEY",
+            property_id: "INT NOT NULL (FK properties.id)",
+            visitor_id: "INT NULL (FK users.id)",
+            ip_address: "VARCHAR(100) NULL",
+            user_agent: "VARCHAR(500) NULL",
+            viewed_at: "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+          }
+        },
+        contact_clicks: {
+          description: "Tracks unique seller contact unveils by buyers.",
+          fields: {
+            id: "INT AUTO_INCREMENT PRIMARY KEY",
+            user_id: "INT NOT NULL (FK users.id)",
+            property_id: "INT NOT NULL (FK properties.id)",
+            created_at: "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            "UNIQUE KEY": "(user_id, property_id)"
+          }
+        }
+      },
+      frontendUserPages: {
+        home: {
+          features: [
+            "Welcome banner with customizable URL from settings",
+            "Filter pills for All, Land, House, Villa, Apartment categories",
+            "Search bar with text query matching location & title",
+            "Grid of featured and regular listings as Property Cards",
+            "Bottom Navigation for Home, Search, Add Property, Enquiries, Profile"
+          ]
+        },
+        search: {
+          features: [
+            "Dynamic query-based lookup including seller name, email, contact numbers, address, and location",
+            "Filters for Property Type, Purpose (For Sale / For Rent), and District",
+            "Sleek cards listing price, title, location, views (with Eye icon), and posted date"
+          ]
+        },
+        propertyDetails: {
+          features: [
+            "Dynamic banner image/video slider carousel",
+            "Dynamic Role Badge fetched synchronously from users.role",
+            "Views counter rendered next to small Eye icon",
+            "Primary action CTAs: Call and WhatsApp buttons",
+            "Automatic contact number fallback to Admin contact if owner has no active plan"
+          ]
+        },
+        addPropertyWizard: {
+          steps: [
+            "Step 1: Category (Commercial, Residential, Land), Purpose (Sale, Rent, Lease), Location details",
+            "Step 2: Media Uploader (Compact image thumbnails grid, horizontal video button)",
+            "Step 3: Details & Contact (Furnishing, Age dropdowns, WhatsApp, owner role choice: Owner, Broker, Agency which locks their profile role, personal broker checkbox)",
+            "Step 4: Review (Price, specifications summary with validation to confirm and publish)"
+          ]
+        },
+        subscriptionCheckout: {
+          features: [
+            "Role-specific pricing plans cards (1 Month, 6 Months, 1 Year durations)",
+            "Razorpay checkout integration on click of Buy Now button"
+          ]
+        }
+      },
+      adminPanelPages: {
+        pricingSettings: {
+          layout: "2-column grid displaying pricing, discounts, duration, and feature lists for Owner, Broker, and Agency tiers",
+          controls: "Allows adding, deleting, and modifying plans dynamically in the database"
+        },
+        trialAndRoleUpgrades: {
+          controls: "Admin approves pending role upgrade requests and extends or expires trial days dynamically"
+        },
+        userAndPropertyManagement: {
+          controls: [
+            "Ability to block, activate, or verify user profiles",
+            "View and moderate all property listings",
+            "Define fallback contact number settings"
+          ]
+        }
+      },
+      businessLogicAndWorkflows: {
+        onboarding: "New users sign up with a default role of 'user' (buyer) and are never prompted to pay until they perform seller actions.",
+        freeInquiryThreshold: "Buyers can unlock details for up to 20 unique properties. Once exceeded, a checkout page unlocks to purchase a Buyer subscription.",
+        roleTransitionLock: "When a buyer uploads their first property, they must pick a seller role (Owner, Broker, or Agency). This role is permanently locked into their user profile.",
+        postingLimits: {
+          Owner: "2 free listings initially, then up to 5 listings/month under a paid subscription.",
+          BrokerAndAgency: "Up to 15-20 listings/month limit depending on plan settings."
+        },
+        viewTracking: "Visits are tracked synchronously. Cooldown prevents counting duplicates from the same visitor ID or IP + User Agent within 24 hours. Owner visits are skipped."
+      }
+    };
+
+    fs.writeFileSync(docPath, JSON.stringify(docContent, null, 2), "utf8");
+    console.log("Master system blueprint JSON generated successfully at project root.");
+  } catch (err) {
+    console.error("Failed to generate master system blueprint JSON:", err);
+  }
+}
+generateSystemBlueprintFile();
+
+dotenv.config({ override: true });
+
+// Auto-configure persistent UPLOADS_DIR on Hostinger server
+if (process.cwd().includes("api.greensparrows.com")) {
+  const envPath = path.resolve(".env");
+  let envContent = "";
+  if (fs.existsSync(envPath)) {
+    envContent = fs.readFileSync(envPath, "utf8");
+  }
+  if (!envContent.includes("UPLOADS_DIR")) {
+    console.log("Auto-injecting persistent UPLOADS_DIR into .env");
+    envContent += "\nUPLOADS_DIR=/home/u859202671/domains/api.greensparrows.com/uploads\n";
+    fs.writeFileSync(envPath, envContent, "utf8");
+    // Reload environment variables
+    dotenv.config({ override: true });
+  }
+}
+
+const app = express();
+const defaultOrigins = ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "https://property.greensparrows.com"];
+const envOrigins = (process.env.CLIENT_ORIGIN || "").split(",").filter(Boolean);
+const allowedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || origin.includes("localhost") || origin.endsWith(".greensparrows.com")) {
+      callback(null, true);
+    } else {
+      callback(null, true);
+    }
+  },
+  credentials: true
+}));
+app.use(express.json());
+
+const uploadsDir = process.env.UPLOADS_DIR 
+  ? path.resolve(process.env.UPLOADS_DIR) 
+  : (fs.existsSync(hostingerUploadsDir) ? hostingerUploadsDir : path.resolve("src/uploads"));
+
+// Ensure persistent upload directory exists
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Auto-migrate files from all candidate folders to persistent uploads folder
+const candidateDirs = [
+  path.resolve("src/uploads"),
+  path.resolve("uploads"),
+  path.join(process.cwd(), "src", "uploads"),
+  path.join(process.cwd(), "uploads"),
+  path.join(process.cwd(), "..", "src", "uploads"),
+  path.join(process.cwd(), "..", "uploads"),
+];
+
+const versionsDir = path.resolve(process.cwd(), "..", "..");
+if (fs.existsSync(versionsDir) && versionsDir.includes("versions")) {
+  try {
+    const versionFolders = fs.readdirSync(versionsDir);
+    for (const v of versionFolders) {
+      candidateDirs.push(path.join(versionsDir, v, "nodejs", "src", "uploads"));
+      candidateDirs.push(path.join(versionsDir, v, "nodejs", "uploads"));
+    }
+  } catch (e) {
+    console.error("Error reading versionsDir:", e);
+  }
+}
+
+for (const cand of candidateDirs) {
+  if (fs.existsSync(cand) && path.resolve(cand) !== path.resolve(uploadsDir)) {
+    try {
+      const files = fs.readdirSync(cand);
+      files.forEach(file => {
+        const srcFile = path.join(cand, file);
+        const destFile = path.join(uploadsDir, file);
+        try {
+          if (fs.statSync(srcFile).isFile() && !fs.existsSync(destFile)) {
+            fs.copyFileSync(srcFile, destFile);
+            console.log(`Migrated upload asset from ${cand}: ${file}`);
+          }
+        } catch (copyErr) {}
+      });
+    } catch (err) {
+      console.error(`Failed to migrate upload assets from ${cand}:`, err);
+    }
+  }
+}
+
+app.use("/uploads", express.static(uploadsDir));
+app.use("/uploads", express.static(path.resolve("src/uploads")));
+app.use("/uploads", express.static(path.resolve("uploads")));
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
+// Dynamic fallback route for /uploads/:filename to catch and auto-sync any missed files
+app.get("/uploads/:filename", (req, res, next) => {
+  const filename = path.basename(req.params.filename);
+  const searchPaths = [
+    path.join(uploadsDir, filename),
+    path.join(path.resolve("src/uploads"), filename),
+    path.join(path.resolve("uploads"), filename),
+    path.join(process.cwd(), "src", "uploads", filename),
+    path.join(process.cwd(), "uploads", filename),
+    path.join(hostingerUploadsDir, filename),
+  ];
+
+  if (fs.existsSync(versionsDir) && versionsDir.includes("versions")) {
+    try {
+      const versionFolders = fs.readdirSync(versionsDir);
+      for (const v of versionFolders) {
+        searchPaths.push(path.join(versionsDir, v, "nodejs", "src", "uploads", filename));
+        searchPaths.push(path.join(versionsDir, v, "nodejs", "uploads", filename));
+      }
+    } catch (e) {}
+  }
+
+  for (const p of searchPaths) {
+    if (fs.existsSync(p)) {
+      try {
+        const dest = path.join(uploadsDir, filename);
+        if (path.resolve(p) !== path.resolve(dest) && !fs.existsSync(dest)) {
+          fs.copyFileSync(p, dest);
+          console.log(`Auto-synced /uploads/${filename} from ${p} to ${dest}`);
+        }
+      } catch (copyErr) {
+        console.error("Auto-sync error:", copyErr);
+      }
+      return res.sendFile(p);
+    }
+  }
+
+  // Fallback: If not found on local disk and running in local dev, fetch from live production server
+  if (!filename.endsWith(".apk") && !process.cwd().includes("api.greensparrows.com")) {
+    import("https").then(({ default: https }) => {
+      const remoteUrl = `https://api.greensparrows.com/uploads/${filename}`;
+      https.get(remoteUrl, (remoteRes) => {
+        if (remoteRes.statusCode === 200) {
+          const dest = path.join(uploadsDir, filename);
+          const fileStream = fs.createWriteStream(dest);
+          remoteRes.pipe(fileStream);
+          fileStream.on("finish", () => {
+            fileStream.close();
+            console.log(`Auto-downloaded /uploads/${filename} from live server`);
+          });
+          // Pipe to response immediately
+          if (remoteRes.headers["content-type"]) {
+            res.setHeader("Content-Type", remoteRes.headers["content-type"]);
+          }
+          return remoteRes.pipe(res);
+        } else {
+          return next();
+        }
+      }).on("error", () => next());
+    }).catch(() => next());
+    return;
+  }
+
+  next();
+});
+
+app.use("/apk", express.static(uploadsDir));
+
+app.get(["/apk", "/apk/"], (_req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Download Sparrows Android APK</title>
+        <style>
+          body { font-family: system-ui, -apple-system, sans-serif; background: #FAF8F3; color: #22302E; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; text-align: center; }
+          .card { background: #fff; padding: 32px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); max-width: 400px; width: 100%; box-sizing: border-box; }
+          h1 { color: #0F3D3E; margin-bottom: 8px; font-size: 24px; }
+          p { color: #6B7A78; font-size: 14px; margin-bottom: 24px; }
+          .btn { display: block; width: 100%; padding: 14px 20px; margin: 10px 0; background: #1B5E4F; color: #fff; text-decoration: none; border-radius: 12px; font-weight: 600; box-sizing: border-box; transition: background 0.2s; }
+          .btn:hover { background: #0F3D3E; }
+          .btn-admin { background: #0F3D3E; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <h1>Sparrows Mobile Apps</h1>
+          <p>Download the official Android APK files below:</p>
+          <a href="/apk/sparrows.apk?v=2.0" class="btn" download>📱 Download Sparrows App (User)</a>
+          <a href="/apk/sparrows-admin.apk?v=2.0" class="btn btn-admin" download>🛠️ Download Sparrows Admin App</a>
+        </div>
+      </body>
+    </html>
+  `);
+});
+
+app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
+// GET /api/settings (Public batch settings getter)
+app.get("/api/settings", async (_req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT `key`, `value` FROM settings");
+    const settingsMap = {};
+    for (const r of rows) {
+      settingsMap[r.key] = r.value;
+    }
+    res.json(settingsMap);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/settings/:key (Public settings getter)
+app.get("/api/settings/:key", async (req, res) => {
+  try {
+    const { key } = req.params;
+    const [rows] = await pool.query("SELECT `value` FROM settings WHERE `key` = ?", [key]);
+    if (rows.length === 0) {
+      return res.json({ key, value: null });
+    }
+    res.json({ key, value: rows[0].value });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/debug-files", (req, res) => {
+  try {
+    const cwd = process.cwd();
+    const exists = fs.existsSync(uploadsDir);
+    let files = [];
+    if (exists) {
+      files = fs.readdirSync(uploadsDir).map(name => {
+        const filePath = path.join(uploadsDir, name);
+        try {
+          const stat = fs.statSync(filePath);
+          return { name, size: stat.size, mtime: stat.mtimeMs };
+        } catch (e) {
+          return { name, size: 0, mtime: 0 };
+        }
+      });
+      // Sort newest files first
+      files.sort((a, b) => b.mtime - a.mtime);
+    }
+
+    const checkFile = req.query.file || "1789930502497-33597333.webp";
+    const foundInUploads = fs.existsSync(path.join(uploadsDir, checkFile));
+    let foundInOther = null;
+
+    for (const cand of candidateDirs) {
+      const p = path.join(cand, checkFile);
+      if (fs.existsSync(p)) {
+        foundInOther = p;
+        // Auto-copy to uploadsDir immediately
+        try {
+          fs.copyFileSync(p, path.join(uploadsDir, checkFile));
+        } catch (e) {}
+        break;
+      }
+    }
+
+    res.json({
+      cwd,
+      uploadsDir,
+      exists,
+      filesCount: files.length,
+      checkFile,
+      foundInUploads: foundInUploads || !!foundInOther,
+      foundInOther,
+      candidateDirs: candidateDirs.map(d => ({ dir: d, exists: fs.existsSync(d) })),
+      latestFiles: files.slice(0, 30).map(f => f.name),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// POST /api/service-enquiries
+app.post("/api/service-enquiries", async (req, res) => {
+  try {
+    const { userId, name, email, city, userClass, phone, serviceName } = req.body;
+    if (!name || !email || !city || !userClass || !phone) {
+      return res.status(400).json({ error: "All required fields must be provided" });
+    }
+    const [result] = await pool.query(
+      `INSERT INTO service_enquiries (user_id, name, email, city, user_class, phone, service_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [userId || null, name, email, city, userClass, phone, serviceName || "General Service"]
+    );
+    res.json({ success: true, id: result.insertId });
+  } catch (err) {
+    console.error("Failed to save service enquiry:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.use("/api/auth", authRoutes);
+app.use("/api/properties", propertyRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/builders", builderRoutes);
+
+// Serve frontend static build assets from dist if present
+const rootDistDir = path.resolve(process.cwd(), "..", "dist");
+const localDistDir = path.resolve(process.cwd(), "dist");
+const activeDistDir = fs.existsSync(rootDistDir) ? rootDistDir : (fs.existsSync(localDistDir) ? localDistDir : null);
+
+if (activeDistDir) {
+  console.log(`Serving static frontend build from: ${activeDistDir}`);
+  app.use(express.static(activeDistDir));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api/") || req.path.startsWith("/uploads/") || req.path.startsWith("/apk/")) {
+      return next();
+    }
+    const indexHtmlPath = path.join(activeDistDir, "index.html");
+    if (fs.existsSync(indexHtmlPath)) {
+      return res.sendFile(indexHtmlPath);
+    }
+    next();
+  });
+}
+
+app.use((err, _req, res, _next) => {
+  console.error(err);
+  res.status(500).json({ error: "Internal server error" });
+});
+
+const port = process.env.PORT || 4000;
+app.listen(port, () => {
+  console.log(`Kerala Realty API listening on http://localhost:${port}`);
+});

@@ -1,0 +1,224 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Visible keyboard focus for accessibility */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid #59AD63;
+  outline-offset: 2px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.25s ease-out forwards;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-down {
+  animation: slideDown 0.2s ease-out forwards;
+}
+
+@keyframes fadeInDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-28px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes bellRing {
+  0%, 100% { transform: rotate(0); }
+  10%, 30%, 50%, 70%, 90% { transform: rotate(10deg); }
+  20%, 40%, 60%, 80% { transform: rotate(-10deg); }
+}
+
+.animate-bell-ring {
+  animation: bellRing 2s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+@media (max-width: 960px) and (orientation: landscape) {
+  .app-container, .bottom-nav-container {
+    max-width: 100% !important;
+  }
+}
+
+@media (min-width: 1000px) {
+  .bottom-nav-container {
+    display: none !important;
+  }
+}
+
+/* Agent Profile Responsive Scaling */
+@media (max-width: 375px) {
+  .agent-contact-btn {
+    width: 2rem !important; /* 32px */
+    height: 2rem !important; /* 32px */
+  }
+  .agent-contact-icon-wa {
+    width: 0.95rem !important; /* 15.2px */
+    height: 0.95rem !important; /* 15.2px */
+  }
+  .agent-contact-icon-phone {
+    width: 0.85rem !important; /* 13.6px */
+    height: 0.85rem !important; /* 13.6px */
+  }
+}
+
+@media (max-width: 365px) {
+  .agent-avatar-circle {
+    width: 2.75rem !important; /* 44px */
+    height: 2.75rem !important; /* 44px */
+  }
+  .agent-avatar-text {
+    font-size: 0.85rem !important;
+  }
+  .agent-verified-badge {
+    width: 13.5px !important;
+    height: 13.5px !important;
+  }
+  .agent-verified-check {
+    width: 8px !important;
+    height: 8px !important;
+  }
+}
+
+/* Redefine font-black to weight 500 */
+.font-black {
+  font-weight: 500 !important;
+}
+
+.rounded-3xl {
+  border-radius: 0.5rem !important;
+}
+.rounded-2xl {
+  border-radius: 10px !important;
+}
+
+/* Leaflet Detail & Picker Marker Box Fixes */
+.leaflet-marker-icon,
+.leaflet-marker-icon.custom-leaflet-detail-marker,
+.custom-leaflet-detail-marker,
+.custom-leaflet-picker-pin,
+.custom-leaflet-price-pin {
+  width: auto !important;
+  font-weight: 500 !important;
+}
+
+.leaflet-marker-icon div,
+.custom-leaflet-detail-marker > div,
+.custom-leaflet-picker-pin > div,
+.custom-leaflet-price-pin > div {
+  font-weight: 500 !important;
+}
+
+/* Ensure Leaflet container internal panes don't bleed above top dropdowns */
+.leaflet-container {
+  z-index: 1 !important;
+}
+
+/* Custom Dropdown Scrollbar matching reference design */
+.custom-dropdown-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.custom-dropdown-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-dropdown-scrollbar::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 4px;
+}
+
+.custom-dropdown-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Responsive Property Grid: 1000px - 1200px: 6 columns, > 1200px: 7 columns */
+.property-responsive-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.1rem;
+}
+
+@media (min-width: 640px) {
+  .property-responsive-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .property-responsive-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1000px) and (max-width: 1200px) {
+  .property-responsive-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 1200.1px) {
+  .property-responsive-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  }
+}
+

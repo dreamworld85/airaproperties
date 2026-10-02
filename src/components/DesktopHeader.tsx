@@ -1,0 +1,408 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/lib/AuthContext";
+import { useBrand } from "@/lib/BrandContext";
+import { 
+  Building2, 
+  Home, 
+  Store, 
+  Trees, 
+  Search, 
+  SlidersHorizontal, 
+  MapPin, 
+  User, 
+  PlusCircle,
+  ChevronDown,
+  LayoutGrid,
+  Sparkles
+} from "lucide-react";
+import { api } from "@/lib/api";
+import CustomFilterDropdown from "./CustomFilterDropdown";
+import { INDIAN_STATES, getDistrictsForState, getAllDistricts, getStateForDistrict } from "@/lib/indiaLocationData";
+
+const TYPE_ICON_MAP: Record<string, { label: string; icon: string }> = {
+  "All": { label: "All Properties", icon: "/images/all-properties.svg" },
+  "Villa": { label: "Independent House / Villa", icon: "/images/villa.svg" },
+  "Land": { label: "Plot / Land", icon: "/images/land-plot.svg" },
+  "Apartment": { label: "Apartment", icon: "/images/Apartment.svg" },
+  "House": { label: "House", icon: "/images/house.svg" },
+  "Commercial Space": { label: "Commercial", icon: "/images/Apartment.svg" },
+};
+
+const CATEGORY_ITEMS = [
+  { key: "All", label: "All Properties", icon: "/images/all-properties.svg", type: "All Types" },
+  { key: "Villa", label: "Independent House / Villa", icon: "/images/villa.svg", type: "Villa" },
+  { key: "Land", label: "Plot / Land", icon: "/images/land-plot.svg", type: "Land" },
+  { key: "Apartment", label: "Apartment", icon: "/images/Apartment.svg", type: "Apartment" },
+  { key: "House", label: "House", icon: "/images/house.svg", type: "House" },
+];
+
+const STATES = [
+  "All States (India)",
+  ...INDIAN_STATES
+];
+
+const getDistrictOptionsForState = (st: string) => {
+  if (!st || st === "All States (India)") {
+    return ["All Districts", ...getAllDistricts()];
+  }
+  const dists = getDistrictsForState(st);
+  return ["All Districts", ...dists];
+};
+
+interface DesktopHeaderProps {
+  onSearchChange?: (filters: { purpose: string; location: string; state: string; district: string; propertyType: string }) => void;
+  onToggleMap?: () => void;
+  isMapOpen?: boolean;
+  initialPurpose?: string;
+  initialLocation?: string;
+  initialState?: string;
+  initialDistrict?: string;
+  initialType?: string;
+  availableTypes?: string[];
+}
+
+export default function DesktopHeader({
+  onSearchChange,
+  onToggleMap,
+  isMapOpen = false,
+  initialPurpose = "",
+  initialLocation = "",
+  initialState = "All States (India)",
+  initialDistrict = "All Districts",
+  initialType = "All Types",
+  availableTypes,
+}: DesktopHeaderProps) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { desktopLogoUrl } = useBrand();
+
+  const [purpose, setPurpose] = useState(initialPurpose);
+  const [locationInput, setLocationInput] = useState(initialLocation);
+  const [selectedState, setSelectedState] = useState(initialState);
+  const [district, setDistrict] = useState(initialDistrict);
+  const [propertyType, setPropertyType] = useState(initialType);
+  const [activeCategory, setActiveCategory] = useState<string>("All");
+  const [dynamicTypes, setDynamicTypes] = useState<string[]>(availableTypes || []);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    setPurpose(initialPurpose);
+  }, [initialPurpose]);
+
+  useEffect(() => {
+    setSelectedState(initialState);
+  }, [initialState]);
+
+  useEffect(() => {
+    setDistrict(initialDistrict);
+  }, [initialDistrict]);
+
+  useEffect(() => {
+    setPropertyType(initialType);
+  }, [initialType]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (availableTypes && availableTypes.length > 0) {
+      setDynamicTypes(availableTypes);
+    } else {
+      api.fetchProperties({})
+        .then((data) => {
+          if (data) {
+            const types = Array.from(new Set(data.map(p => p.propertyType))).filter(Boolean);
+            setDynamicTypes(types);
+          }
+        })
+        .catch((err) => console.error("Failed to load property types for header:", err));
+    }
+  }, [availableTypes]);
+
+  const currentDistrictOptions = getDistrictOptionsForState(selectedState);
+
+  const handleSearch = (newPurpose = purpose, newType = propertyType, newState = selectedState, newDistrict = district) => {
+    let effectiveState = newState;
+    let effectiveDistrict = newDistrict;
+    if (!effectiveState || effectiveState === "All States (India)") {
+      const matched = INDIAN_STATES.find((s) => s.toLowerCase() === locationInput.trim().toLowerCase());
+      if (matched) {
+        effectiveState = matched;
+        setSelectedState(effectiveState);
+        effectiveDistrict = `All ${matched}`;
+        setDistrict(effectiveDistrict);
+      }
+    }
+
+    if (onSearchChange) {
+      onSearchChange({ purpose: newPurpose, location: locationInput, state: effectiveState, district: effectiveDistrict, propertyType: newType });
+    } else {
+      const params = new URLSearchParams();
+      if (newPurpose) params.set("purpose", newPurpose);
+      if (locationInput) params.set("search", locationInput);
+      if (effectiveState && effectiveState !== "All States (India)") params.set("state", effectiveState);
+      if (effectiveDistrict && !effectiveDistrict.startsWith("All ")) params.set("district", effectiveDistrict);
+      if (newType && newType !== "All Types") params.set("propertyType", newType);
+      navigate(`/search?${params.toString()}`);
+    }
+  };
+
+  const handlePurposeClick = (p: string) => {
+    const val = p === "All" ? "" : p;
+    setPurpose(val);
+    handleSearch(val, propertyType);
+  };
+
+  const handleCategoryClick = (typeLabel: string) => {
+    setActiveCategory(typeLabel);
+    const matchedType = typeLabel === "All" ? "All Types" : typeLabel;
+    setPropertyType(matchedType);
+    handleSearch(purpose, matchedType);
+  };
+
+  const dropdownTypes = ["All Types", ...dynamicTypes];
+
+  return (
+    <div className="w-full flex flex-col z-50">
+      {/* Top Header Row (Logo, Category Icons, Auth) */}
+      <div className="w-full bg-white border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-6">
+          {/* Brand Logo */}
+          <div 
+            onClick={() => navigate("/")} 
+            className="flex items-center cursor-pointer select-none shrink-0"
+          >
+            <img 
+              src={desktopLogoUrl} 
+              alt="Brand Logo" 
+              className="h-14 sm:h-16 lg:h-18 max-h-[72px] w-auto object-contain transition-transform duration-200 hover:scale-[1.02]"
+            />
+          </div>
+
+          {/* Category Icons Horizontal Bar */}
+          <div className="hidden min-[1150px]:flex items-center gap-3 overflow-x-auto py-1 px-2 no-scrollbar">
+            {CATEGORY_ITEMS.map((cat) => {
+              const isSelected =
+                activeCategory === cat.key ||
+                activeCategory === cat.label ||
+                propertyType === cat.type ||
+                (cat.key === "All" && (propertyType === "All Types" || !propertyType || propertyType === "All"));
+              return (
+                <button
+                  key={cat.key}
+                  onClick={() => handleCategoryClick(cat.key === "All" ? "All" : cat.type)}
+                  className={`flex flex-col items-center gap-0.5 px-3 py-1.5 transition-all whitespace-nowrap group cursor-pointer ${
+                    isSelected
+                      ? "bg-[#E8F0EA] text-[#1B5E4F] font-semibold"
+                      : "text-gray-700 hover:bg-gray-50 font-medium"
+                  }`}
+                >
+                  <div
+                    className={`p-0 flex items-center justify-center transition-colors ${
+                      isSelected ? "text-[#1B5E4F]" : "text-gray-600"
+                    }`}
+                  >
+                    <img
+                      src={cat.icon}
+                      alt={cat.label}
+                      className={`w-6 h-6 object-contain group-hover:scale-110 transition-transform ${
+                        isSelected ? "brightness-90" : "opacity-80"
+                      }`}
+                    />
+                  </div>
+                  <span className="text-[11.5px] tracking-tight truncate max-w-[120px]">
+                    {cat.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* User Auth Info & Add Listing Button */}
+          <div className="flex items-center gap-3 shrink-0">
+
+            <button
+              type="button"
+              onClick={() => navigate("/add-property")}
+              className="hidden sm:flex items-center gap-2 px-4 py-2 bg-[#60A963] hover:bg-[#529355] text-white rounded-full text-xs font-extrabold uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Post Listing</span>
+            </button>
+
+            {user ? (
+              <div 
+                onClick={() => navigate("/profile")}
+                className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full py-1.5 px-3 hover:bg-gray-100 cursor-pointer transition-colors"
+              >
+                {user.avatarUrl ? (
+                  <img 
+                    src={user.avatarUrl} 
+                    alt={user.name || "User"} 
+                    className="w-7 h-7 rounded-full object-cover border border-gray-300"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-[#60A963] text-white flex items-center justify-center text-xs font-bold uppercase">
+                    {(user.name || "U").charAt(0)}
+                  </div>
+                )}
+                <span className="text-xs font-bold text-gray-800 max-w-[100px] truncate">
+                  {user.name || "Profile"}
+                </span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => navigate("/login")}
+                className="flex items-center gap-1.5 px-4 py-2 bg-black hover:bg-neutral-800 text-white rounded-full text-xs font-bold shadow-sm transition-all cursor-pointer"
+              >
+                <User className="w-4 h-4 text-white" />
+                <span>Sign In</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Search Filter Bar (FIXED STICKY TOP-0 ON SCROLL matching user mockup) */}
+      {isScrolled && <div className="w-full h-[68px]" />}
+      <div 
+        className={`w-full transition-all duration-300 border-b z-50 ${
+          isScrolled
+            ? "fixed top-0 left-0 right-0 bg-[#FAF8F3]/95 backdrop-blur-md border-gray-300 shadow-md py-3 px-6"
+            : "relative bg-[#FAF8F3] border-gray-200/80 py-4 px-6"
+        }`}
+      >
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center gap-3 justify-between">
+          {/* Purpose Tabs (All / Buy / Rent / Lease) */}
+          <div className="flex items-center bg-gray-100/80 p-1 rounded-full border border-gray-200 shrink-0">
+            {["All", "For Sale", "For Rent", "For Lease"].map((p) => {
+              const isActive = (p === "All" && !purpose) || purpose === p;
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => handlePurposeClick(p)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-white text-gray-900 shadow-xs"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  {p === "All" ? "All Properties" : p}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Location Input */}
+          <div className="flex-1 min-w-[200px] flex items-center bg-white border border-gray-300 rounded-full px-4 py-2 text-sm shadow-xs focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500">
+            <MapPin className="w-4 h-4 text-gray-400 mr-2 shrink-0" />
+            <input
+              type="text"
+              placeholder="Search location or keyword..."
+              value={locationInput}
+              onChange={(e) => {
+                const val = e.target.value;
+                setLocationInput(val);
+                const matched = INDIAN_STATES.find((s) => s.toLowerCase() === val.trim().toLowerCase());
+                if (matched && matched !== selectedState) {
+                  setSelectedState(matched);
+                  const newDistOptions = getDistrictOptionsForState(matched);
+                  setDistrict(newDistOptions[0]);
+                }
+              }}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              className="w-full bg-transparent outline-none text-gray-800 placeholder-gray-400 font-medium"
+            />
+          </div>
+
+          {/* State Dropdown */}
+          <CustomFilterDropdown
+            value={selectedState}
+            defaultValue="All States (India)"
+            options={STATES}
+            searchPlaceholder="Search state..."
+            maxHeight="180px"
+            onChange={(newSt) => {
+              setSelectedState(newSt);
+              const newDistrictOpts = getDistrictOptionsForState(newSt);
+              const newDist = newDistrictOpts[0];
+              setDistrict(newDist);
+              if (onSearchChange) onSearchChange({ purpose, location: locationInput, state: newSt, district: newDist, propertyType });
+            }}
+          />
+
+          {/* District Dropdown */}
+          <CustomFilterDropdown
+            value={district}
+            defaultValue={currentDistrictOptions[0]}
+            options={currentDistrictOptions}
+            isMultiSelect={true}
+            searchPlaceholder="Search district..."
+            maxHeight="180px"
+            onChange={(newDist) => {
+              setDistrict(newDist);
+              if (onSearchChange) onSearchChange({ purpose, location: locationInput, state: selectedState, district: newDist, propertyType });
+            }}
+          />
+
+          {/* Property Type Dropdown */}
+          <CustomFilterDropdown
+            value={propertyType}
+            defaultValue="All Types"
+            options={dropdownTypes}
+            isMultiSelect={true}
+            searchPlaceholder="Search type..."
+            maxHeight="180px"
+            onChange={(newType) => {
+              setPropertyType(newType);
+              setActiveCategory(newType === "All Types" ? "All" : newType);
+              if (onSearchChange) onSearchChange({ purpose, location: locationInput, state: selectedState, district, propertyType: newType });
+            }}
+          />
+
+          {/* Google Maps Icon Toggle Button matching user mockup */}
+          <button
+            type="button"
+            onClick={() => {
+              if (onToggleMap) {
+                onToggleMap();
+              } else {
+                navigate("/search?map=true");
+              }
+            }}
+            title={isMapOpen ? "Hide Google Map" : "Show Google Map"}
+            className={`flex items-center justify-center p-1.5 rounded-full border transition-all duration-300 shadow-xs cursor-pointer shrink-0 active:scale-95 ${
+              isMapOpen
+                ? "bg-blue-50 border-blue-500 ring-4 ring-blue-400/30 scale-105 shadow-md"
+                : "bg-white border-gray-300 hover:border-blue-400 hover:bg-blue-50/50"
+            }`}
+          >
+            <img 
+              src="/google_maps_icon.png" 
+              alt="Google Maps" 
+              className="w-7 h-7 object-contain pointer-events-none rounded-full"
+            />
+          </button>
+
+          {/* Submit Search Button */}
+          <button
+            type="button"
+            onClick={() => handleSearch()}
+            className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-sm font-semibold shadow-md transition"
+          >
+            <Search className="w-4 h-4" />
+            <span>Search</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
