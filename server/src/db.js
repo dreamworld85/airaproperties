@@ -23,11 +23,11 @@ function createMySqlPool(config) {
 }
 
 const hostingerProdConfig = {
-  host: "localhost",
+  host: "127.0.0.1",
   port: 3306,
-  user: "u859202671_RealEstateUS",
-  password: "Sparrow_Realty_2026@",
-  database: "u859202671_RealEstatein",
+  user: "u859202671_airapropertus",
+  password: "IGWXTwM|Y7y@Usaa",
+  database: "u859202671_airaproperties",
 };
 
 let activePool = createMySqlPool({
