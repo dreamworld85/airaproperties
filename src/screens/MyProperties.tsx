@@ -159,11 +159,12 @@ export default function MyProperties() {
       const order = await (api as any).initiateFeaturedPayment(p.id);
       
       const options = {
-        key: (order as any).key || (order as any).key_id || import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_TM4O5ux1X08MBy",
+        key: (order as any).key || (order as any).key_id || import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_TjCoQOO2xpM24Y",
         amount: order.amount,
         currency: order.currency,
         order_id: order.id,
-        name: "Kerala Realty",
+        name: "Aira Properties",
+        image: window.location.origin + "/brand_logo-web.png",
         description: `Featured Ad: ${p.title}`,
         handler: async function (response: any) {
           setBusyId(p.id);

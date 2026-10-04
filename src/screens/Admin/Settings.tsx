@@ -2135,7 +2135,7 @@ export default function Settings() {
                 <div className="absolute inset-0 flex flex-col justify-end p-4 bg-gradient-to-t from-black/85 via-black/30 to-transparent">
                   <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Preview: Loading Screen BG</span>
                   <h2 className="font-display font-extrabold text-sm text-white leading-tight mt-0.5">
-                    SPARROWS PROPERTY
+                    AIRA PROPERTIES
                   </h2>
                   <p className="text-white/80 text-[10px] mt-0.5 leading-none">
                     Loading your professional workspace...

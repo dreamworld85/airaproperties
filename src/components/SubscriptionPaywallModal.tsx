@@ -101,11 +101,12 @@ export default function SubscriptionPaywallModal({
       });
       
       const options = {
-        key: subscription.key || subscription.key_id || import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_TM4O5ux1X08MBy",
+        key: subscription.key || subscription.key_id || import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_TjCoQOO2xpM24Y",
         amount: subscription.amount,
         currency: subscription.currency,
         order_id: subscription.id,
-        name: "Sparrows Property",
+        name: "Aira Properties",
+        image: window.location.origin + "/brand_logo-web.png",
         description: selectedPlan.name ? `${selectedPlan.name} (${selectedPlan.listing_slots} Slots + ${selectedPlan.enquiry_tokens} Tokens)` : "Credit & Slot Top-up",
         handler: async function (response: any) {
           try {

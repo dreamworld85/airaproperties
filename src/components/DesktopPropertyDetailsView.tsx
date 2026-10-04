@@ -188,7 +188,7 @@ export default function DesktopPropertyDetailsView({
 
   const priceFormatted = formatPrice(localProperty.price);
   const locationFormatted = [localProperty.address, localProperty.district, localProperty.state].filter(Boolean).join(", ");
-  const waText = `Hi, I am interested in "${localProperty.title}" (ID: #${localProperty.id}) listed on Sparrows Property.\nPrice: ${priceFormatted}\nLocation: ${locationFormatted}\n\nPlease share more details.`;
+  const waText = `Hi, I am interested in "${localProperty.title}" (ID: #${localProperty.id}) listed on Aira Properties.\nPrice: ${priceFormatted}\nLocation: ${locationFormatted}\n\nPlease share more details.`;
   const waEncoded = encodeURIComponent(waText);
 
   const handleContactAction = async (type: "Call" | "WhatsApp" | "Unlock") => {

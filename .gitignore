@@ -1,0 +1,10 @@
+node_modules/
+dist/
+server/node_modules/
+server/dist/
+*.zip
+*.log
+*.tmp
+hostinger_import.sql
+.DS_Store
+Thumbs.db

@@ -170,14 +170,14 @@ export default function PartnerWithUs() {
           </div>
         </section>
 
-        {/* Why Partner With Sparrows Property? */}
+        {/* Why Partner With Aira Properties? */}
         <section className="space-y-6">
           <div className="text-center max-w-2xl mx-auto space-y-2">
             <span className="text-[11px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-100/80 px-3 py-1 rounded-full">
               ENTERPRISE ADVANTAGES
             </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 font-display">
-              Why Top Builders Choose Sparrows
+              Why Top Builders Choose Aira Properties
             </h2>
             <p className="text-xs sm:text-sm text-gray-600">
               Designed specifically to meet the high-volume demand of primary residential & commercial project launches.
@@ -256,7 +256,7 @@ export default function PartnerWithUs() {
                 Application Received!
               </h2>
               <p className="text-xs sm:text-sm text-gray-600 leading-relaxed font-medium">
-                Thank you for choosing to partner with Sparrows Property. Our Builder Relations Director will review your company details and reach out within 24 hours to initiate your developer onboarding and project catalog setup.
+                Thank you for choosing to partner with Aira Properties. Our Builder Relations Director will review your company details and reach out within 24 hours to initiate your developer onboarding and project catalog setup.
               </p>
               <div className="flex items-center gap-3 pt-4">
                 <Link

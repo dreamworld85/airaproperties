@@ -8,7 +8,7 @@ const dbPort = Number(process.env.DB_PORT) || 3306;
 const dbUser = process.env.DB_USER || "root";
 const rawDbPass = (process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : "").trim();
 const dbPassword = (rawDbPass === "none" || rawDbPass === "null") ? "" : rawDbPass;
-const dbName = process.env.DB_NAME || "realastate_sparrow";
+const dbName = process.env.DB_NAME || "aira";
 
 function createMySqlPool(config) {
   return mysql.createPool({
