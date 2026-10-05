@@ -146,28 +146,11 @@ export default function App() {
         <Route path="/builder/:idOrSlug" element={<BuilderMicrosite />} />
         <Route path="/builders" element={<BuildersDirectory />} />
 
-        {/* App Download Page with Google Play & App Store buttons */}
-        <Route
-          path="/myapp"
-          element={
-            <div className="w-full min-h-screen min-[1000px]:bg-[#FAF8F3] flex justify-center">
-              <div className="w-full min-[1000px]:max-w-[500px] min-[1000px]:shadow-xl min-[1000px]:border-x min-[1000px]:border-slate-200 bg-[#FAF8F3] min-h-screen relative flex flex-col">
-                <MyApp />
-              </div>
-            </div>
-          }
-        />
-        <Route
-          path="/myapp/*"
-          element={
-            <div className="w-full min-h-screen min-[1000px]:bg-[#FAF8F3] flex justify-center">
-              <div className="w-full min-[1000px]:max-w-[500px] min-[1000px]:shadow-xl min-[1000px]:border-x min-[1000px]:border-slate-200 bg-[#FAF8F3] min-h-screen relative flex flex-col">
-                <MyApp />
-              </div>
-            </div>
-          }
-        />
-        <Route path="/download" element={<Navigate to="/myapp" replace />} />
+        {/* App Download Page with Android APK & iOS Web App */}
+        <Route path="/myapp" element={<MyApp />} />
+        <Route path="/myapp/*" element={<MyApp />} />
+        <Route path="/download" element={<MyApp />} />
+        <Route path="/download-app" element={<MyApp />} />
 
         {/* Add Property wizard — shares form state via AddPropertyProvider */}
         <Route

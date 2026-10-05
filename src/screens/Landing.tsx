@@ -441,33 +441,33 @@ export default function Landing() {
               </p>
               
               <div className="flex flex-wrap items-center gap-4 mt-2">
-                {/* Google Play Store Badge */}
+                {/* Download Android App Button (Replaces Google Play button) */}
                 <a 
-                  href={googlePlayUrl} 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="active:scale-95 transition-all block"
+                  href="/airaproperties.apk" 
+                  download="airaproperties.apk"
+                  className="bg-black hover:bg-neutral-900 border border-white/20 text-white px-5 py-2.5 rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-3 group"
                 >
-                  <img 
-                    src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" 
-                    alt="Get it on Google Play" 
-                    className="h-[44px] w-auto object-contain rounded-lg shadow-md border border-white/5"
-                  />
+                  <svg viewBox="0 0 24 24" className="w-6 h-6 text-[#3DDC84] group-hover:scale-110 transition-transform" fill="currentColor">
+                    <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5802 8.411 13.8407 8.0872 12 8.0872c-1.8413 0-3.5804.3238-5.1373.8625L4.8404 5.4467a.416.416 0 00-.5676-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396" />
+                  </svg>
+                  <div className="text-left flex flex-col">
+                    <span className="text-[9px] font-semibold text-neutral-300 uppercase tracking-wider leading-none">
+                      Direct APK Download
+                    </span>
+                    <span className="text-sm font-extrabold text-white tracking-tight leading-tight mt-0.5">
+                      Download Android App
+                    </span>
+                  </div>
                 </a>
 
-                {/* Apple App Store Badge */}
-                <a 
-                  href={appStoreUrl} 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="active:scale-95 transition-all block"
+                {/* More Options / MyApp Page Button */}
+                <button
+                  type="button"
+                  onClick={() => navigate("/myapp")}
+                  className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-4 py-2.5 rounded-xl shadow-md active:scale-95 transition-all text-xs font-bold"
                 >
-                  <img 
-                    src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" 
-                    alt="Download on the App Store" 
-                    className="h-[44px] w-auto object-contain rounded-lg shadow-md border border-white/5"
-                  />
-                </a>
+                  View App Page →
+                </button>
               </div>
             </div>
 

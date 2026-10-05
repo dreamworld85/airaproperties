@@ -12,3 +12,5 @@ Thumbs.db
 .env.*
 server/.env
 server/.env.*
+public/*.apk
+public/uploads/*.apk
