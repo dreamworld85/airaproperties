@@ -764,4 +764,17 @@ router.get("/facebook/callback", async (req, res) => {
   }
 });
 
+// ALL /api/auth/facebook/deauthorize - Handle Facebook deauthorize webhook
+router.all("/facebook/deauthorize", (req, res) => {
+  res.json({ success: true, message: "Deauthorized successfully" });
+});
+
+// ALL /api/auth/facebook/data-deletion - Handle Facebook data deletion request
+router.all("/facebook/data-deletion", (req, res) => {
+  res.json({
+    url: "https://airaproperties.in/privacy-policy",
+    confirmation_code: "aira_data_del_" + Date.now()
+  });
+});
+
 export default router;
