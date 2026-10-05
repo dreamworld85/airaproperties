@@ -13,11 +13,73 @@ const countries = [
   { code: "+974", name: "Qatar", flag: "🇶🇦" },
   { code: "+973", name: "Bahrain", flag: "🇧🇭" },
   { code: "+965", name: "Kuwait", flag: "🇰🇼" },
-  { code: "+1", name: "USA/Canada", flag: "🇺🇸" },
+  { code: "+1", name: "USA / Canada", flag: "🇺🇸" },
   { code: "+44", name: "UK", flag: "🇬🇧" },
   { code: "+65", name: "Singapore", flag: "🇸🇬" },
   { code: "+61", name: "Australia", flag: "🇦🇺" },
+  { code: "+60", name: "Malaysia", flag: "🇲🇾" },
+  { code: "+49", name: "Germany", flag: "🇩🇪" },
+  { code: "+33", name: "France", flag: "🇫🇷" },
 ];
+
+function detectUserCountry(): { code: string; name: string; flag: string } {
+  try {
+    if (typeof window !== "undefined") {
+      const savedCode = localStorage.getItem("sparrow_country_code");
+      const savedFlag = localStorage.getItem("sparrow_country_flag");
+      if (savedCode && savedFlag) {
+        const found = countries.find((c) => c.code === savedCode);
+        if (found) return found;
+      }
+    }
+
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    const locale = (navigator.language || (navigator.languages && navigator.languages[0]) || "").toUpperCase();
+
+    if (/Calcutta|Kolkata|India/i.test(tz) || locale.endsWith("-IN")) {
+      return { code: "+91", name: "India", flag: "🇮🇳" };
+    }
+    if (/Dubai/i.test(tz) || locale.endsWith("-AE")) {
+      return { code: "+971", name: "UAE", flag: "🇦🇪" };
+    }
+    if (/Riyadh/i.test(tz) || locale.endsWith("-SA")) {
+      return { code: "+966", name: "Saudi Arabia", flag: "🇸🇦" };
+    }
+    if (/Muscat/i.test(tz) || locale.endsWith("-OM")) {
+      return { code: "+968", name: "Oman", flag: "🇴🇲" };
+    }
+    if (/Qatar/i.test(tz) || locale.endsWith("-QA")) {
+      return { code: "+974", name: "Qatar", flag: "🇶🇦" };
+    }
+    if (/Bahrain/i.test(tz) || locale.endsWith("-BH")) {
+      return { code: "+973", name: "Bahrain", flag: "🇧🇭" };
+    }
+    if (/Kuwait/i.test(tz) || locale.endsWith("-KW")) {
+      return { code: "+965", name: "Kuwait", flag: "🇰🇼" };
+    }
+    if (/Singapore/i.test(tz) || locale.endsWith("-SG")) {
+      return { code: "+65", name: "Singapore", flag: "🇸🇬" };
+    }
+    if (/London/i.test(tz) || locale.endsWith("-GB")) {
+      return { code: "+44", name: "UK", flag: "🇬🇧" };
+    }
+    if (/Sydney|Melbourne|Brisbane|Perth|Adelaide|Australia/i.test(tz) || locale.endsWith("-AU")) {
+      return { code: "+61", name: "Australia", flag: "🇦🇺" };
+    }
+    if (/New_York|Chicago|Denver|Los_Angeles|Toronto|America/i.test(tz) || locale.endsWith("-US") || locale.endsWith("-CA")) {
+      return { code: "+1", name: "USA / Canada", flag: "🇺🇸" };
+    }
+    if (/Kuala_Lumpur|Malaysia/i.test(tz) || locale.endsWith("-MY")) {
+      return { code: "+60", name: "Malaysia", flag: "🇲🇾" };
+    }
+    if (/Berlin|Germany/i.test(tz) || locale.endsWith("-DE")) {
+      return { code: "+49", name: "Germany", flag: "🇩🇪" };
+    }
+  } catch (e) {
+    // ignore
+  }
+  return { code: "+91", name: "India", flag: "🇮🇳" };
+}
 
 export default function Login() {
   const navigate = useNavigate();
@@ -31,6 +93,7 @@ export default function Login() {
     }
     return "loading";
   });
+  const [loginMethod, setLoginMethod] = useState<"phone" | "email">("phone");
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [identifier, setIdentifier] = useState("");
@@ -51,9 +114,9 @@ export default function Login() {
   const bgUrl = bannerUrl.startsWith("/uploads/") ? mediaUrl(bannerUrl) : bannerUrl;
   const loadingBgUrl = loadingBannerUrl.startsWith("/uploads/") ? mediaUrl(loadingBannerUrl) : loadingBannerUrl;
 
-  // Country Code Dropdown State
-  const [countryCode, setCountryCode] = useState("+91");
-  const [countryFlag, setCountryFlag] = useState("🇮🇳");
+  // Country Code Dropdown State with automatic geolocation / timezone identification
+  const [countryCode, setCountryCode] = useState(() => detectUserCountry().code);
+  const [countryFlag, setCountryFlag] = useState(() => detectUserCountry().flag);
   const [countrySearch, setCountrySearch] = useState("");
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
 
@@ -78,6 +141,36 @@ export default function Login() {
   }, [token, user, navigate, mode, location]);
 
   const [connectingProvider, setConnectingProvider] = useState<"google" | "facebook" | null>(null);
+
+  // Desktop background (above 1000px): loginbg-1000.svg repeat-x at bottom
+  useEffect(() => {
+    const applyDesktopBg = () => {
+      if (typeof window !== "undefined" && window.innerWidth >= 1000) {
+        document.body.style.backgroundColor = "#FAF8F3";
+        document.body.style.backgroundImage = "url('/images/loginbg-1000.svg')";
+        document.body.style.backgroundRepeat = "repeat-x";
+        document.body.style.backgroundPosition = "bottom center";
+        document.body.style.backgroundSize = "auto 240px";
+      } else {
+        document.body.style.backgroundImage = "";
+        document.body.style.backgroundColor = "";
+        document.body.style.backgroundRepeat = "";
+        document.body.style.backgroundPosition = "";
+        document.body.style.backgroundSize = "";
+      }
+    };
+
+    applyDesktopBg();
+    window.addEventListener("resize", applyDesktopBg);
+    return () => {
+      window.removeEventListener("resize", applyDesktopBg);
+      document.body.style.backgroundImage = "";
+      document.body.style.backgroundColor = "";
+      document.body.style.backgroundRepeat = "";
+      document.body.style.backgroundPosition = "";
+      document.body.style.backgroundSize = "";
+    };
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -162,6 +255,17 @@ export default function Login() {
       .catch((err) => console.error("Failed to load loading banner setting:", err));
   }, []);
 
+  const selectCountry = (code: string, flag: string) => {
+    setCountryCode(code);
+    setCountryFlag(flag);
+    setShowCountryDropdown(false);
+    setCountrySearch("");
+    try {
+      localStorage.setItem("sparrow_country_code", code);
+      localStorage.setItem("sparrow_country_flag", flag);
+    } catch (e) {}
+  };
+
   const handlePhoneChange = (val: string) => {
     let cleaned = val.replace(/[^\d+]/g, "");
 
@@ -169,8 +273,7 @@ export default function Login() {
       const sortedCountries = [...countries].sort((a, b) => b.code.length - a.code.length);
       for (const c of sortedCountries) {
         if (cleaned.startsWith(c.code)) {
-          setCountryCode(c.code);
-          setCountryFlag(c.flag);
+          selectCountry(c.code, c.flag);
           cleaned = cleaned.substring(c.code.length);
           break;
         }
@@ -179,9 +282,8 @@ export default function Login() {
       const sortedCountries = [...countries].sort((a, b) => b.code.length - a.code.length);
       for (const c of sortedCountries) {
         const codeWithoutPlus = c.code.substring(1);
-        if (cleaned.startsWith(codeWithoutPlus)) {
-          setCountryCode(c.code);
-          setCountryFlag(c.flag);
+        if (cleaned.startsWith(codeWithoutPlus) && cleaned.length > codeWithoutPlus.length + 5) {
+          selectCountry(c.code, c.flag);
           cleaned = cleaned.substring(codeWithoutPlus.length);
           break;
         }
@@ -197,7 +299,32 @@ export default function Login() {
     setLoading(true);
     try {
       if (mode === "login") {
-        const { token, user } = await api.login(identifier.trim(), password);
+        let loginIdentifier = "";
+        if (loginMethod === "phone") {
+          const raw = phone.trim();
+          if (!raw) {
+            setError("Please enter your mobile number");
+            setLoading(false);
+            return;
+          }
+          if (raw.includes("@")) {
+            loginIdentifier = raw;
+          } else if (raw.startsWith("+")) {
+            loginIdentifier = raw;
+          } else {
+            loginIdentifier = `${countryCode}${raw}`;
+          }
+        } else {
+          const raw = email.trim() || identifier.trim();
+          if (!raw) {
+            setError("Please enter your email address");
+            setLoading(false);
+            return;
+          }
+          loginIdentifier = raw;
+        }
+
+        const { token, user } = await api.login(loginIdentifier, password);
         login(token, user);
       } else if (mode === "register") {
         const fullPhone = phone.trim() ? (countryCode + phone.trim()) : undefined;
@@ -305,7 +432,18 @@ export default function Login() {
     );
   }
   return (
-    <div className="min-h-screen bg-[#FAF8F3] flex items-center justify-center p-0 select-none overflow-x-hidden">
+    <div className="min-h-screen bg-[#FAF8F3] login-desktop-bg flex items-center justify-center p-0 select-none overflow-x-hidden relative">
+      <style>{`
+        @media (min-width: 1000px) {
+          .login-desktop-bg {
+            background-color: #FAF8F3;
+            background-image: url('/images/loginbg-1000.svg');
+            background-repeat: repeat-x;
+            background-position: bottom center;
+            background-size: auto 240px;
+          }
+        }
+      `}</style>
       <div 
         style={{ backgroundImage: `url(${bgUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
         className="w-full max-w-md min-h-screen flex flex-col justify-start relative overflow-hidden font-display shadow-2xl"
@@ -373,6 +511,36 @@ export default function Login() {
           )}
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {/* Mode: Login method toggle (Mobile Number vs Email) */}
+            {mode === "login" && (
+              <div className="flex bg-[#EAE8F2] p-1 rounded-[10px] gap-1 mb-1">
+                <button
+                  type="button"
+                  onClick={() => { setLoginMethod("phone"); setError(null); }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-[8px] transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    loginMethod === "phone"
+                      ? "bg-white text-[#0F5B5C] shadow-sm"
+                      : "text-slate-500 hover:text-charcoal"
+                  }`}
+                >
+                  <Phone size={13} />
+                  <span>Mobile Number</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setLoginMethod("email"); setError(null); }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-[8px] transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    loginMethod === "email"
+                      ? "bg-white text-[#0F5B5C] shadow-sm"
+                      : "text-slate-500 hover:text-charcoal"
+                  }`}
+                >
+                  <Mail size={13} />
+                  <span>Email Address</span>
+                </button>
+              </div>
+            )}
+
             {/* Full Name field (Register only) */}
             {mode === "register" && (
               <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
@@ -389,24 +557,77 @@ export default function Login() {
               </div>
             )}
 
-            {/* Email or Phone field (Login only) */}
-            {mode === "login" && (
-              <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
-                <Mail size={16} className="text-slate/40 shrink-0" />
-                <input
-                  type="text"
-                  required
-                  placeholder="Email or Mobile Number"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  autoComplete="username"
-                  className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-300"
-                />
+            {/* Mobile Number with Country Code (Login with Phone OR Register) */}
+            {((mode === "login" && loginMethod === "phone") || mode === "register") && (
+              <div className="flex gap-2 relative">
+                <button
+                  type="button"
+                  onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                  className="bg-white rounded-[8px] px-3.5 py-3.5 text-xs text-charcoal flex items-center gap-1.5 hover:bg-slate-50 shadow-sm border border-[#59AD63]/30 select-none whitespace-nowrap min-w-[76px] justify-center cursor-pointer font-bold transition-all shrink-0"
+                  title="Select Country Code"
+                >
+                  <span className="text-sm leading-none">{countryFlag}</span>
+                  <span className="font-semibold text-charcoal">{countryCode}</span>
+                </button>
+
+                <div className="flex-1 flex items-center bg-white rounded-[8px] px-4 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
+                  <Phone size={16} className="text-slate/40 shrink-0" />
+                  <input
+                    type="tel"
+                    required={mode === "login" && loginMethod === "phone"}
+                    placeholder="Mobile Number"
+                    value={phone}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    autoComplete="tel"
+                    className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-300"
+                  />
+                </div>
+
+                {showCountryDropdown && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowCountryDropdown(false)} 
+                    />
+                    <div className="absolute left-0 top-[48px] w-64 bg-white border border-[#59AD63]/30 rounded-[8px] p-2.5 z-50 shadow-2xl flex flex-col gap-2">
+                      <input
+                        type="text"
+                        placeholder="Search country name or code..."
+                        value={countrySearch}
+                        onChange={(e) => setCountrySearch(e.target.value)}
+                        className="w-full bg-slate-50 border border-[#59AD63]/30 rounded-lg px-2.5 py-1.5 text-[11px] text-charcoal placeholder-charcoal/30 focus:outline-none focus:border-[#0F5B5C]"
+                        autoFocus
+                      />
+                      <div className="flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar">
+                        {countries
+                          .filter(
+                            (c) =>
+                              c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+                              c.code.includes(countrySearch)
+                          )
+                          .map((c) => (
+                            <button
+                              key={c.code}
+                              type="button"
+                              onClick={() => selectCountry(c.code, c.flag)}
+                              className="w-full text-left flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-slate-50 text-charcoal text-[11px] font-semibold transition-colors cursor-pointer"
+                            >
+                              <span className="flex items-center gap-2">
+                                <span className="text-sm">{c.flag}</span>
+                                <span>{c.name}</span>
+                              </span>
+                              <span className="text-slate/60 font-mono text-[10px]">{c.code}</span>
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
-            {/* Email Address field (Register, Forgot, Reset) */}
-            {(mode === "register" || mode === "forgot_email" || mode === "reset_password") && (
+            {/* Email Address field (Login with Email, Register, Forgot, Reset) */}
+            {((mode === "login" && loginMethod === "email") || mode === "register" || mode === "forgot_email" || mode === "reset_password") && (
               <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
                 <Mail size={16} className="text-slate/40 shrink-0" />
                 <input
@@ -418,71 +639,6 @@ export default function Login() {
                   autoComplete="email"
                   className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-300"
                 />
-              </div>
-            )}
-
-            {/* Country Selector + Phone input field (Register only) */}
-            {mode === "register" && (
-              <div className="flex gap-2 relative">
-                <button
-                  type="button"
-                  onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                  className="bg-white rounded-[8px] px-4 py-3.5 text-xs text-charcoal flex items-center gap-1.5 hover:bg-slate-50 shadow-sm border border-[#59AD63]/30 select-none whitespace-nowrap min-w-[76px] justify-center cursor-pointer font-bold"
-                >
-                  <span className="text-sm leading-none">{countryFlag}</span>
-                  <span className="font-semibold">{countryCode}</span>
-                </button>
-
-                <div className="flex-1 flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
-                  <Phone size={16} className="text-slate/40 shrink-0" />
-                  <input
-                    type="tel"
-                    placeholder="Mobile Number"
-                    value={phone}
-                    onChange={(e) => handlePhoneChange(e.target.value)}
-                    autoComplete="tel"
-                    className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-300"
-                  />
-                </div>
-
-                {showCountryDropdown && (
-                  <div className="absolute left-0 top-[46px] w-64 bg-white border border-[#59AD63]/30 rounded-[8px] p-2.5 z-50 shadow-2xl flex flex-col gap-2">
-                    <input
-                      type="text"
-                      placeholder="Search country name or code..."
-                      value={countrySearch}
-                      onChange={(e) => setCountrySearch(e.target.value)}
-                      className="w-full bg-slate-50 border border-[#59AD63]/30 rounded-lg px-2.5 py-1.5 text-[11px] text-charcoal placeholder-charcoal/30 focus:outline-none focus:border-ink"
-                    />
-                    <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto no-scrollbar">
-                      {countries
-                        .filter(
-                          (c) =>
-                            c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
-                            c.code.includes(countrySearch)
-                        )
-                        .map((c) => (
-                          <button
-                            key={c.code}
-                            type="button"
-                            onClick={() => {
-                              setCountryCode(c.code);
-                              setCountryFlag(c.flag);
-                              setShowCountryDropdown(false);
-                              setCountrySearch("");
-                            }}
-                            className="w-full text-left flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-slate-50 text-charcoal text-[11px] font-semibold transition-colors cursor-pointer"
-                          >
-                            <span className="flex items-center gap-2">
-                              <span>{c.flag}</span>
-                              <span>{c.name}</span>
-                            </span>
-                            <span className="text-slate/60">{c.code}</span>
-                          </button>
-                        ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 

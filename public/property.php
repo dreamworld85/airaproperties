@@ -2,11 +2,11 @@
 $id = $_GET['id'] ?? '';
 $title = "Kerala Realty - Find Your Dream Home";
 $desc = "Discover amazing properties, villas, lands and apartments in the best locations of Kerala.";
-$image = "https://property.greensparrows.com/kerala_house_banner.jpg";
+$image = "https://airaproperties.in/kerala_house_banner.jpg";
 
 if ($id) {
     // Call the local backend API to fetch property details
-    $apiUrl = "https://api.greensparrows.com/api/properties/" . $id;
+    $apiUrl = "https://api.airaproperties.in/api/properties/" . $id;
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $apiUrl);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -38,7 +38,7 @@ if ($id) {
             
             if (isset($data['images']) && count($data['images']) > 0) {
                 $img = $data['images'][0];
-                $image = (strpos($img, 'http') === 0) ? $img : "https://api.greensparrows.com" . $img;
+                $image = (strpos($img, 'http') === 0) ? $img : "https://api.airaproperties.in" . $img;
             }
         }
     }
@@ -53,7 +53,7 @@ $metaTags = '
     <meta property="og:description" content="' . htmlspecialchars($desc) . '" />
     <meta property="og:image" content="' . htmlspecialchars($image) . '" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://property.greensparrows.com/property/' . htmlspecialchars($id) . '" />
+    <meta property="og:url" content="https://airaproperties.in/property/' . htmlspecialchars($id) . '" />
 ';
 
 // Replace the existing title tag and inject the meta tags

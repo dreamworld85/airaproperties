@@ -8,7 +8,7 @@ const router = Router();
 
 // Helper to retrieve Razorpay credentials dynamically from DB settings or environment
 async function getRazorpay() {
-  let kId = process.env.RAZORPAY_KEY_ID;
+  let kId = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID;
   let kSecret = process.env.RAZORPAY_KEY_SECRET;
 
   try {
@@ -24,8 +24,8 @@ async function getRazorpay() {
     // fallback
   }
 
-  const finalId = kId || "rzp_test_placeholder";
-  const finalSec = kSecret || "placeholder_secret";
+  const finalId = kId || "rzp_test_TjCoQOO2xpM24Y";
+  const finalSec = kSecret || "Dh5EgzAjP6KdMfcisL4uZbSd";
 
   const instance = new Razorpay({
     key_id: finalId,

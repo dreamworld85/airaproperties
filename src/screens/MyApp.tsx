@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Download, ShieldCheck, Smartphone, ArrowRight, CheckCircle2, Info } from "lucide-react";
-import { api, mediaUrl } from "@/lib/api";
+import { api, mediaUrl, API_URL } from "@/lib/api";
 import { useBrand } from "@/lib/BrandContext";
 
 function GooglePlayIcon({ className = "w-10 h-10" }: { className?: string }) {
@@ -55,7 +55,7 @@ export default function MyApp() {
     }
 
     // Attempt to fetch public dynamic store settings if configured
-    fetch("https://api.greensparrows.com/api/admin/app-download-settings")
+    fetch(`${API_URL}/api/admin/app-download-settings`)
       .then((res) => res.json())
       .then((data) => {
         if (data) {

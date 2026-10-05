@@ -5,7 +5,7 @@ export function getApiUrl(): string {
     return envUrl;
   }
   if (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
-    return "https://api.greensparrows.com";
+    return "https://api.airaproperties.in";
   }
   return envUrl || "http://localhost:4000";
 }
@@ -738,7 +738,13 @@ export function mediaUrl(path: string): string {
   if (!path) return "";
   if (path.startsWith("http")) return path;
   if (path.startsWith("/uploads")) {
-    return `${API_URL}${path}`;
+    if (typeof window !== "undefined") {
+      if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+        return `${API_URL}${path}`;
+      }
+      return `${window.location.origin}${path}`;
+    }
+    return `https://airaproperties.in${path}`;
   }
   return path;
 }

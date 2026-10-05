@@ -106,7 +106,9 @@ function toPublicUser(row) {
 }
 
 function setAuthCookie(res, token) {
-  const isProduction = process.env.NODE_ENV === "production" || process.cwd().includes("api.greensparrows.com");
+  const isProduction = process.env.NODE_ENV === "production" || 
+                       process.cwd().includes("airaproperties.in") ||
+                       process.cwd().includes("api.greensparrows.com");
   res.cookie("token", token, {
     httpOnly: true,
     secure: isProduction,
@@ -131,7 +133,9 @@ router.get("/me", requireAuth, async (req, res) => {
 
 // POST /api/auth/logout
 router.post("/logout", (req, res) => {
-  const isProduction = process.env.NODE_ENV === "production" || process.cwd().includes("api.greensparrows.com");
+  const isProduction = process.env.NODE_ENV === "production" || 
+                       process.cwd().includes("airaproperties.in") ||
+                       process.cwd().includes("api.greensparrows.com");
   res.clearCookie("token", {
     httpOnly: true,
     secure: isProduction,
@@ -482,8 +486,11 @@ function getFrontendUrl(req) {
   const host = req ? (req.headers["x-forwarded-host"] || req.get("host") || "") : "";
   const referer = req ? (req.headers.referer || req.headers.origin || "") : "";
   const isProduction = process.env.NODE_ENV === "production" || 
+                       process.cwd().includes("airaproperties.in") ||
                        process.cwd().includes("api.greensparrows.com") ||
+                       host.includes("airaproperties.in") ||
                        host.includes("greensparrows.com") ||
+                       referer.includes("airaproperties.in") ||
                        referer.includes("greensparrows.com");
 
   const envFrontend = process.env.FRONTEND_URL;
@@ -491,7 +498,7 @@ function getFrontendUrl(req) {
     if (envFrontend && !envFrontend.includes("localhost") && !envFrontend.includes("127.0.0.1")) {
       return envFrontend.replace(/\/$/, "");
     }
-    return "https://property.greensparrows.com";
+    return "https://airaproperties.in";
   }
 
   if (envFrontend) {
@@ -505,8 +512,11 @@ function getGoogleCallbackUrl(req) {
   const host = req ? (req.headers["x-forwarded-host"] || req.get("host") || "") : "";
   const referer = req ? (req.headers.referer || req.headers.origin || "") : "";
   const isProduction = process.env.NODE_ENV === "production" || 
+                       process.cwd().includes("airaproperties.in") ||
                        process.cwd().includes("api.greensparrows.com") ||
+                       host.includes("airaproperties.in") ||
                        host.includes("greensparrows.com") ||
+                       referer.includes("airaproperties.in") ||
                        referer.includes("greensparrows.com");
 
   const envCallback = process.env.GOOGLE_CALLBACK_URL;
@@ -514,7 +524,7 @@ function getGoogleCallbackUrl(req) {
     if (envCallback && !envCallback.includes("localhost") && !envCallback.includes("127.0.0.1")) {
       return envCallback;
     }
-    return "https://api.greensparrows.com/api/auth/google/callback";
+    return "https://api.airaproperties.in/api/auth/google/callback";
   }
 
   if (envCallback) {
@@ -529,8 +539,11 @@ function getFacebookCallbackUrl(req) {
   const host = req ? (req.headers["x-forwarded-host"] || req.get("host") || "") : "";
   const referer = req ? (req.headers.referer || req.headers.origin || "") : "";
   const isProduction = process.env.NODE_ENV === "production" || 
+                       process.cwd().includes("airaproperties.in") ||
                        process.cwd().includes("api.greensparrows.com") ||
+                       host.includes("airaproperties.in") ||
                        host.includes("greensparrows.com") ||
+                       referer.includes("airaproperties.in") ||
                        referer.includes("greensparrows.com");
 
   const envCallback = process.env.FACEBOOK_CALLBACK_URL;
@@ -538,7 +551,7 @@ function getFacebookCallbackUrl(req) {
     if (envCallback && !envCallback.includes("localhost") && !envCallback.includes("127.0.0.1")) {
       return envCallback;
     }
-    return "https://api.greensparrows.com/api/auth/facebook/callback";
+    return "https://api.airaproperties.in/api/auth/facebook/callback";
   }
 
   if (envCallback) {
@@ -560,7 +573,9 @@ router.get("/google", (req, res) => {
   }
 
   const state = crypto.randomBytes(16).toString("hex");
-  const isProduction = process.env.NODE_ENV === "production" || process.cwd().includes("api.greensparrows.com");
+  const isProduction = process.env.NODE_ENV === "production" || 
+                       process.cwd().includes("airaproperties.in") ||
+                       process.cwd().includes("api.greensparrows.com");
   res.cookie("oauth_state", state, {
     httpOnly: true,
     secure: isProduction,
@@ -587,7 +602,9 @@ router.get("/google/callback", async (req, res) => {
   const { code, state, error: oauthError } = req.query;
   const savedState = getCookie(req, "oauth_state");
 
-  const isProduction = process.env.NODE_ENV === "production" || process.cwd().includes("api.greensparrows.com");
+  const isProduction = process.env.NODE_ENV === "production" || 
+                       process.cwd().includes("airaproperties.in") ||
+                       process.cwd().includes("api.greensparrows.com");
   res.clearCookie("oauth_state", {
     httpOnly: true,
     secure: isProduction,
@@ -685,7 +702,9 @@ router.get("/facebook/callback", async (req, res) => {
   const { code, state, error: oauthError, error_description } = req.query;
   const savedState = getCookie(req, "oauth_state");
 
-  const isProduction = process.env.NODE_ENV === "production" || process.cwd().includes("api.greensparrows.com");
+  const isProduction = process.env.NODE_ENV === "production" || 
+                       process.cwd().includes("airaproperties.in") ||
+                       process.cwd().includes("api.greensparrows.com");
   res.clearCookie("oauth_state", {
     httpOnly: true,
     secure: isProduction,

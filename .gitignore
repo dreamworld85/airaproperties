@@ -8,3 +8,7 @@ server/dist/
 hostinger_import.sql
 .DS_Store
 Thumbs.db
+.env
+.env.*
+server/.env
+server/.env.*
