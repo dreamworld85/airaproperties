@@ -677,7 +677,9 @@ router.get("/facebook", (req, res) => {
   }
 
   const state = crypto.randomBytes(16).toString("hex");
-  const isProduction = process.env.NODE_ENV === "production" || process.cwd().includes("api.greensparrows.com");
+  const isProduction = process.env.NODE_ENV === "production" || 
+                       process.cwd().includes("airaproperties.in") ||
+                       process.cwd().includes("api.greensparrows.com");
   res.cookie("oauth_state", state, {
     httpOnly: true,
     secure: isProduction,
@@ -688,7 +690,7 @@ router.get("/facebook", (req, res) => {
   const fbAuthUrl = `https://www.facebook.com/v18.0/dialog/oauth?` + new URLSearchParams({
     client_id: appId,
     redirect_uri: redirectUri,
-    scope: "public_profile",
+    scope: "public_profile,email",
     state: state,
   }).toString();
 
