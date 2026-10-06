@@ -119,6 +119,8 @@ dependencies {
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
@@ -126,10 +128,11 @@ dependencies {
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="{app_name}"
         android:supportsRtl="true"
         android:theme="@style/Theme.App"
+        android:hardwareAccelerated="true"
         android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
@@ -174,12 +177,15 @@ dependencies {
 
 import android.annotation.SuppressLint;
 import android.os.Bundle;
+import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.WebChromeClient;
 import android.webkit.ValueCallback;
 import android.webkit.SslErrorHandler;
+import android.webkit.CookieManager;
+import android.webkit.GeolocationPermissions;
 import android.net.http.SslError;
 import android.content.Intent;
 import android.net.Uri;
@@ -197,6 +203,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         
         mWebView = new WebView(this);
+        mWebView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         setContentView(mWebView);
 
         WebSettings webSettings = mWebView.getSettings();
@@ -211,9 +218,24 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setAllowFileAccess(true);
         webSettings.setAllowContentAccess(true);
         webSettings.setMediaPlaybackRequiresUserGesture(false);
+        webSettings.setLoadsImagesAutomatically(true);
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            webSettings.setOffscreenPreRaster(true);
+        }
+
+        // Enable session persistence and third-party cookies for seamless auth
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setAcceptCookie(true);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            cookieManager.setAcceptThirdPartyCookies(mWebView, true);
+        }
+
+        // Clean user agent so Google and social OAuth logins work seamlessly without rejection
+        String defaultUa = webSettings.getUserAgentString();
+        if (defaultUa != null && defaultUa.contains("; wv")) {
+            webSettings.setUserAgentString(defaultUa.replace("; wv", ""));
         }
 
         mWebView.setWebViewClient(new WebViewClient() {
@@ -221,6 +243,12 @@ public class MainActivity extends AppCompatActivity {
             public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
                 // Safeguard against legacy Android CA certificate bundle mismatches
                 handler.proceed();
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                CookieManager.getInstance().flush();
             }
 
             @Override
@@ -241,6 +269,11 @@ public class MainActivity extends AppCompatActivity {
         });
 
         mWebView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+                callback.invoke(origin, true, false);
+            }
+
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
                 if (mUploadMessage != null) {
