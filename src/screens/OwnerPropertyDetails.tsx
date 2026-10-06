@@ -298,8 +298,8 @@ export default function OwnerPropertyDetails() {
 
   // Unified media items list
   const mediaItems: Array<{ type: "image" | "video"; url: string }> = [
-    ...(property.images || []).map((img) => ({ type: "image" as const, url: img })),
-    ...(property.videos || []).map((vid) => ({ type: "video" as const, url: vid }))
+    ...(property.images || []).map((img) => ({ type: "image" as const, url: mediaUrl(img) })),
+    ...(property.videos || []).map((vid) => ({ type: "video" as const, url: mediaUrl(vid) }))
   ];
   if (mediaItems.length === 0) {
     mediaItems.push({ type: "image", url: FALLBACK_IMAGE });

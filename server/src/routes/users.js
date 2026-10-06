@@ -3,13 +3,12 @@ import { pool } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { checkUserAccess } from "../utils/access.js";
 import { deleteUploadedFile } from "../utils/fileHelper.js";
+import { getUploadDir } from "../middleware/upload.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-const uploadDir = process.env.UPLOADS_DIR 
-  ? path.resolve(process.env.UPLOADS_DIR) 
-  : path.resolve("src/uploads");
+const uploadDir = getUploadDir();
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }

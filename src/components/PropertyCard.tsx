@@ -58,9 +58,7 @@ export default function PropertyCard({
   }
 
   const firstImg = property.images && property.images[0] ? property.images[0] : null;
-  const image = firstImg
-    ? (firstImg.startsWith("/uploads/") ? mediaUrl(firstImg) : firstImg)
-    : FALLBACK_IMAGE;
+  const image = firstImg ? mediaUrl(firstImg) : FALLBACK_IMAGE;
 
   const rating = property.avgRating !== undefined && property.avgRating > 0 ? property.avgRating : 5.0;
 

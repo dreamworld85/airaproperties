@@ -12,6 +12,8 @@ if (!process.env.UPLOADS_DIR && (process.cwd().includes("api.airaproperties.in")
 }
 
 import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import { pool } from "./db.js";
 
 // Ensure uploads directory exists
@@ -1210,10 +1212,17 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Auto-migrate files from all candidate folders to persistent uploads folder
 const candidateDirs = [
+  path.join(__dirname, "uploads"),
+  path.join(process.cwd(), "server", "src", "uploads"),
+  path.join(process.cwd(), "server", "uploads"),
+  path.resolve("server/src/uploads"),
+  path.resolve("server/uploads"),
   path.resolve("src/uploads"),
   path.resolve("uploads"),
   path.join(process.cwd(), "src", "uploads"),
   path.join(process.cwd(), "uploads"),
+  path.join(process.cwd(), "..", "server", "src", "uploads"),
+  path.join(process.cwd(), "..", "server", "uploads"),
   path.join(process.cwd(), "..", "src", "uploads"),
   path.join(process.cwd(), "..", "uploads"),
 ];
@@ -1223,8 +1232,11 @@ if (fs.existsSync(versionsDir) && versionsDir.includes("versions")) {
   try {
     const versionFolders = fs.readdirSync(versionsDir);
     for (const v of versionFolders) {
+      candidateDirs.push(path.join(versionsDir, v, "nodejs", "server", "src", "uploads"));
+      candidateDirs.push(path.join(versionsDir, v, "nodejs", "server", "uploads"));
       candidateDirs.push(path.join(versionsDir, v, "nodejs", "src", "uploads"));
       candidateDirs.push(path.join(versionsDir, v, "nodejs", "uploads"));
+      candidateDirs.push(path.join(versionsDir, v, "server", "src", "uploads"));
     }
   } catch (e) {
     console.error("Error reading versionsDir:", e);
@@ -1252,15 +1264,44 @@ for (const cand of candidateDirs) {
 }
 
 app.use("/uploads", express.static(uploadsDir));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads", express.static(path.join(process.cwd(), "server", "src", "uploads")));
+app.use("/uploads", express.static(path.resolve("server/src/uploads")));
 app.use("/uploads", express.static(path.resolve("src/uploads")));
 app.use("/uploads", express.static(path.resolve("uploads")));
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
+app.get("/api/sync-uploads", (req, res) => {
+  let newlySynced = 0;
+  for (const cand of candidateDirs) {
+    if (fs.existsSync(cand) && path.resolve(cand) !== path.resolve(uploadsDir)) {
+      try {
+        const files = fs.readdirSync(cand);
+        files.forEach(file => {
+          const srcFile = path.join(cand, file);
+          const destFile = path.join(uploadsDir, file);
+          if (fs.statSync(srcFile).isFile() && !fs.existsSync(destFile)) {
+            fs.copyFileSync(srcFile, destFile);
+            newlySynced++;
+          }
+        });
+      } catch (err) {}
+    }
+  }
+  const total = fs.existsSync(uploadsDir) ? fs.readdirSync(uploadsDir).length : 0;
+  res.json({ success: true, newlySynced, totalUploads: total });
+});
 
 // Dynamic fallback route for /uploads/:filename to catch and auto-sync any missed files
 app.get("/uploads/:filename", (req, res, next) => {
   const filename = path.basename(req.params.filename);
   const searchPaths = [
     path.join(uploadsDir, filename),
+    path.join(__dirname, "uploads", filename),
+    path.join(process.cwd(), "server", "src", "uploads", filename),
+    path.join(process.cwd(), "server", "uploads", filename),
+    path.join(path.resolve("server/src/uploads"), filename),
+    path.join(path.resolve("server/uploads"), filename),
     path.join(path.resolve("src/uploads"), filename),
     path.join(path.resolve("uploads"), filename),
     path.join(process.cwd(), "src", "uploads", filename),
@@ -1272,8 +1313,11 @@ app.get("/uploads/:filename", (req, res, next) => {
     try {
       const versionFolders = fs.readdirSync(versionsDir);
       for (const v of versionFolders) {
+        searchPaths.push(path.join(versionsDir, v, "nodejs", "server", "src", "uploads", filename));
+        searchPaths.push(path.join(versionsDir, v, "nodejs", "server", "uploads", filename));
         searchPaths.push(path.join(versionsDir, v, "nodejs", "src", "uploads", filename));
         searchPaths.push(path.join(versionsDir, v, "nodejs", "uploads", filename));
+        searchPaths.push(path.join(versionsDir, v, "server", "src", "uploads", filename));
       }
     } catch (e) {}
   }
