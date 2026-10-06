@@ -28,7 +28,7 @@ const MOCK_AGENTS = [
 
 export default function Home() {
   const { user } = useAuth();
-  const { mobileLogoUrl } = useBrand();
+  const { mobileLogoUrl, welcomeBannerUrl } = useBrand();
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1000);
 
   useEffect(() => {
@@ -42,7 +42,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("All");
-  const [bannerUrl, setBannerUrl] = useState("/kerala_house_banner.jpg");
+  const [bannerUrl, setBannerUrl] = useState(() => {
+    return localStorage.getItem("sparrow_welcome_banner") || "/kerala_house_banner.jpg";
+  });
   const [bannerTitle, setBannerTitle] = useState("Find homes, villas, lands & escapes");
   const [bannerSubtitle, setBannerSubtitle] = useState("Discover unique properties that match your lifestyle.");
   const isVideoBanner = (url: string) => {
@@ -71,6 +73,7 @@ export default function Home() {
       .then((data) => {
         if (data && data.value) {
           setBannerUrl(data.value);
+          localStorage.setItem("sparrow_welcome_banner", data.value);
         }
       })
       .catch((err) => console.error("Failed to load banner setting:", err));
@@ -90,6 +93,15 @@ export default function Home() {
         }
       })
       .catch((err) => console.error("Failed to load banner subtitle setting:", err));
+  }, []);
+
+  useEffect(() => {
+    const handleBannersUpdated = () => {
+      const savedWelcome = localStorage.getItem("sparrow_welcome_banner");
+      if (savedWelcome) setBannerUrl(savedWelcome);
+    };
+    window.addEventListener("sparrow-banners-updated", handleBannersUpdated);
+    return () => window.removeEventListener("sparrow-banners-updated", handleBannersUpdated);
   }, []);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -333,12 +345,12 @@ export default function Home() {
           )}
 
           {/* Welcome Banner */}
-          {activeCategory === "All" && bannerUrl && (
+          {activeCategory === "All" && (welcomeBannerUrl || bannerUrl) && (
             <div className="px-5 mt-6 select-none">
               <div className="relative h-[11rem] rounded-2xl overflow-hidden border border-charcoal/5 shadow-sm bg-slate-100 flex items-center">
-                {isVideoBanner(bannerUrl) ? (
+                {isVideoBanner(welcomeBannerUrl || bannerUrl) ? (
                   <video 
-                    src={mediaUrl(bannerUrl)} 
+                    src={mediaUrl(welcomeBannerUrl || bannerUrl)} 
                     autoPlay 
                     loop 
                     muted 
@@ -347,7 +359,7 @@ export default function Home() {
                   />
                 ) : (
                   <img 
-                    src={mediaUrl(bannerUrl)} 
+                    src={mediaUrl(welcomeBannerUrl || bannerUrl)} 
                     alt="Homepage Banner" 
                     className="absolute inset-0 w-full h-full object-cover brightness-[0.7]"
                   />

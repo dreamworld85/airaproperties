@@ -85,7 +85,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, token, user } = useAuth();
-  const { activeLogoUrl } = useBrand();
+  const { activeLogoUrl, loadingBannerUrl: brandLoadingBanner, loginBannerUrl: brandLoginBanner } = useBrand();
 
   const [mode, setMode] = useState<"loading" | "login" | "register" | "forgot_email" | "reset_password">(() => {
     if (typeof window !== "undefined" && (localStorage.getItem("pending_deep_link") || (location.state as any)?.from)) {
@@ -106,13 +106,21 @@ export default function Login() {
   const [role, setRole] = useState<"owner" | "broker" | "agency" | "user">("user");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [bannerUrl, setBannerUrl] = useState("/app_background.jpg");
-  const [loadingBannerUrl, setLoadingBannerUrl] = useState("/app_background.jpg");
+  const [bannerUrl, setBannerUrl] = useState<string>(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem("sparrow_login_banner") : null;
+    if (!saved || saved === "/app_background.jpg") return "/kerala_house_login.jpg";
+    return saved;
+  });
+  const [loadingBannerUrl, setLoadingBannerUrl] = useState<string>(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem("sparrow_loading_banner") : null;
+    if (!saved || saved === "/app_background.jpg") return "";
+    return saved;
+  });
   const [loginHeading, setLoginHeading] = useState("Hello!");
   const [loginSubheading, setLoginSubheading] = useState("Welcome to Property");
 
-  const bgUrl = mediaUrl(bannerUrl) || "/app_background.jpg";
-  const loadingBgUrl = mediaUrl(loadingBannerUrl) || "/app_background.jpg";
+  const bgUrl = brandLoginBanner || (bannerUrl ? mediaUrl(bannerUrl) : "/kerala_house_login.jpg");
+  const loadingBgUrl = brandLoadingBanner || (loadingBannerUrl ? mediaUrl(loadingBannerUrl) : "");
 
   // Country Code Dropdown State with automatic geolocation / timezone identification
   const [countryCode, setCountryCode] = useState(() => detectUserCountry().code);
@@ -226,6 +234,7 @@ export default function Login() {
       .then((data) => {
         if (data && data.value) {
           setBannerUrl(data.value);
+          localStorage.setItem("sparrow_login_banner", data.value);
         }
       })
       .catch((err) => console.error("Failed to load login banner setting:", err));
@@ -250,10 +259,29 @@ export default function Login() {
       .then((data) => {
         if (data && data.value) {
           setLoadingBannerUrl(data.value);
+          localStorage.setItem("sparrow_loading_banner", data.value);
         }
       })
       .catch((err) => console.error("Failed to load loading banner setting:", err));
   }, []);
+
+  useEffect(() => {
+    const handleBannersUpdated = () => {
+      const savedLoading = localStorage.getItem("sparrow_loading_banner");
+      if (savedLoading) setLoadingBannerUrl(savedLoading);
+      const savedLogin = localStorage.getItem("sparrow_login_banner");
+      if (savedLogin) setBannerUrl(savedLogin);
+    };
+    window.addEventListener("sparrow-banners-updated", handleBannersUpdated);
+    return () => window.removeEventListener("sparrow-banners-updated", handleBannersUpdated);
+  }, []);
+
+  useEffect(() => {
+    if (loadingBgUrl) {
+      const img = new Image();
+      img.src = loadingBgUrl;
+    }
+  }, [loadingBgUrl]);
 
   const selectCountry = (code: string, flag: string) => {
     setCountryCode(code);
@@ -396,7 +424,7 @@ export default function Login() {
     return (
       <div className="min-h-screen bg-[#0D2436] flex items-center justify-center p-0 select-none overflow-x-hidden relative">
         <div 
-          style={{ backgroundImage: `url(${loadingBgUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
+          style={loadingBgUrl ? { backgroundImage: `url(${loadingBgUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
           className="w-full max-w-md min-h-screen flex flex-col justify-center relative overflow-hidden font-display shadow-2xl"
         >
           {/* Top clover-like abstract background curves */}
@@ -458,13 +486,6 @@ export default function Login() {
           style={{ backgroundImage: `url(${bgUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
           className="text-white p-8 relative flex flex-col justify-center items-center overflow-hidden shrink-0 h-[240px]"
         >
-          {/* Abstract leaf shape decoration on top left */}
-          <div className="absolute top-0 left-0 w-32 h-32 text-[#8AD4CB]/25 z-10 pointer-events-none">
-            <svg viewBox="0 0 100 100" fill="currentColor" className="w-full h-full">
-              <path d="M0 0c50 0 80 30 80 80H0V0z" />
-            </svg>
-          </div>
-
           {/* Brand Logo centered */}
           <div className="relative z-20 w-full flex items-center justify-center select-none pt-4">
             <img 

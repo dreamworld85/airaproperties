@@ -53,9 +53,19 @@ export default function Settings() {
     }
   }, [location.search]);
   const [selectedSetting, setSelectedSetting] = useState<"welcome_banner_url" | "login_banner_url" | "loading_banner_url">("welcome_banner_url");
-  const [currentBanner, setCurrentBanner] = useState("/kerala_house_banner.jpg");
-  const [currentLoginBanner, setCurrentLoginBanner] = useState("/kerala_house_login.jpg");
-  const [currentLoadingBanner, setCurrentLoadingBanner] = useState("/app_background.jpg");
+  const [currentBanner, setCurrentBanner] = useState<string>(() => {
+    return localStorage.getItem("sparrow_welcome_banner") || "/kerala_house_banner.jpg";
+  });
+  const [currentLoginBanner, setCurrentLoginBanner] = useState<string>(() => {
+    const val = localStorage.getItem("sparrow_login_banner");
+    if (!val || val === "/app_background.jpg") return "/kerala_house_login.jpg";
+    return val;
+  });
+  const [currentLoadingBanner, setCurrentLoadingBanner] = useState<string>(() => {
+    const val = localStorage.getItem("sparrow_loading_banner");
+    if (!val || val === "/app_background.jpg") return "";
+    return val;
+  });
   const [saving, setSaving] = useState(false);
 
   // Brand Logo States
@@ -468,6 +478,7 @@ export default function Settings() {
       .then(data => {
         if (data && data.value) {
           setCurrentBanner(data.value);
+          localStorage.setItem("sparrow_welcome_banner", data.value);
         }
       })
       .catch(err => console.error("Error loading welcome banner:", err));
@@ -478,6 +489,7 @@ export default function Settings() {
       .then(data => {
         if (data && data.value) {
           setCurrentLoginBanner(data.value);
+          localStorage.setItem("sparrow_login_banner", data.value);
         }
       })
       .catch(err => console.error("Error loading login banner:", err));
@@ -488,6 +500,7 @@ export default function Settings() {
       .then(data => {
         if (data && data.value) {
           setCurrentLoadingBanner(data.value);
+          localStorage.setItem("sparrow_loading_banner", data.value);
         }
       })
       .catch(err => console.error("Error loading loading banner setting:", err));
@@ -710,11 +723,15 @@ export default function Settings() {
       const data = await adminApi.updateSetting(selectedSetting, selectedFile);
       if (selectedSetting === "welcome_banner_url") {
         setCurrentBanner(data.value);
+        localStorage.setItem("sparrow_welcome_banner", data.value);
       } else if (selectedSetting === "login_banner_url") {
         setCurrentLoginBanner(data.value);
+        localStorage.setItem("sparrow_login_banner", data.value);
       } else {
         setCurrentLoadingBanner(data.value);
+        localStorage.setItem("sparrow_loading_banner", data.value);
       }
+      window.dispatchEvent(new Event("sparrow-banners-updated"));
       setSelectedFile(null);
       setPreviewUrl(null);
       alert("Image updated successfully!");
@@ -730,12 +747,20 @@ export default function Settings() {
     try {
       let defaultVal = "/kerala_house_banner.jpg";
       if (selectedSetting === "login_banner_url") defaultVal = "/kerala_house_login.jpg";
-      else if (selectedSetting === "loading_banner_url") defaultVal = "/app_background.jpg";
+      else if (selectedSetting === "loading_banner_url") defaultVal = "";
 
       await adminApi.updateSetting(selectedSetting, defaultVal);
-      if (selectedSetting === "welcome_banner_url") setCurrentBanner(defaultVal);
-      else if (selectedSetting === "login_banner_url") setCurrentLoginBanner(defaultVal);
-      else setCurrentLoadingBanner(defaultVal);
+      if (selectedSetting === "welcome_banner_url") {
+        setCurrentBanner(defaultVal);
+        localStorage.setItem("sparrow_welcome_banner", defaultVal);
+      } else if (selectedSetting === "login_banner_url") {
+        setCurrentLoginBanner(defaultVal);
+        localStorage.setItem("sparrow_login_banner", defaultVal);
+      } else {
+        setCurrentLoadingBanner(defaultVal);
+        localStorage.setItem("sparrow_loading_banner", defaultVal);
+      }
+      window.dispatchEvent(new Event("sparrow-banners-updated"));
       setSelectedFile(null);
       setPreviewUrl(null);
       alert("Banner reset to default asset successfully!");
@@ -2165,15 +2190,16 @@ export default function Settings() {
                 </div>
               </div>
             ) : (
-              <div className="relative h-40 rounded-2xl overflow-hidden border border-charcoal/10 shadow-inner bg-slate-100 mb-4">
-                <img 
-                  src={mediaUrl(previewUrl || currentLoadingBanner)} 
-                  alt="Loading Preview" 
-                  className="w-full h-full object-cover brightness-[0.75]"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = "/app_background.jpg";
-                  }}
-                />
+              <div className="relative h-40 rounded-2xl overflow-hidden border border-charcoal/10 shadow-inner bg-[#0D2436] mb-4 flex items-center justify-center">
+                {(previewUrl || currentLoadingBanner) ? (
+                  <img 
+                    src={mediaUrl(previewUrl || currentLoadingBanner)} 
+                    alt="Loading Preview" 
+                    className="w-full h-full object-cover brightness-[0.75]"
+                  />
+                ) : (
+                  <div className="text-white/60 text-xs font-semibold">Clean Default Theme (Solid #0D2436)</div>
+                )}
                 <div className="absolute inset-0 flex flex-col justify-end p-4 bg-gradient-to-t from-black/85 via-black/30 to-transparent">
                   <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Preview: Loading Screen BG</span>
                   <h2 className="font-display font-extrabold text-sm text-white leading-tight mt-0.5">
