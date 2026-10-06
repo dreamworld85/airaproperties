@@ -399,9 +399,6 @@ export default function Login() {
           style={{ backgroundImage: `url(${loadingBgUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
           className="w-full max-w-md min-h-screen flex flex-col justify-center relative overflow-hidden font-display shadow-2xl"
         >
-          {/* Semi-transparent Dark Overlay */}
-          <div className="absolute inset-0 bg-black/40 z-0 pointer-events-none" />
-          
           {/* Top clover-like abstract background curves */}
           <div className="absolute -top-10 -left-10 w-44 h-44 text-[#e1e9ee]/5 pointer-events-none">
             <svg viewBox="0 0 100 100" fill="currentColor" className="w-full h-full">
@@ -461,9 +458,6 @@ export default function Login() {
           style={{ backgroundImage: `url(${bgUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
           className="text-white p-8 relative flex flex-col justify-center items-center overflow-hidden shrink-0 h-[240px]"
         >
-          {/* Semi-transparent Dark Overlay */}
-          <div className="absolute inset-0 bg-black/40 z-0 pointer-events-none" />
-
           {/* Abstract leaf shape decoration on top left */}
           <div className="absolute top-0 left-0 w-32 h-32 text-[#8AD4CB]/25 z-10 pointer-events-none">
             <svg viewBox="0 0 100 100" fill="currentColor" className="w-full h-full">

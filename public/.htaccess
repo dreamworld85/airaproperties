@@ -2,8 +2,8 @@
   RewriteEngine On
   RewriteBase /
   
-  # Redirect any direct uploads requests to the API backend
-  RewriteRule ^uploads/(.*)$ https://api.airaproperties.in/uploads/$1 [R=301,L]
+  # Serve uploads directly from airaproperties.in domain via uploads.php
+  RewriteRule ^uploads/(.*)$ uploads.php?file=$1 [L,QSA]
   
   # Route property details request to property.php to parse OG tags
   RewriteRule ^property/([0-9]+)/?$ property.php?id=$1 [L,QSA]
