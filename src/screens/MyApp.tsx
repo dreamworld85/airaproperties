@@ -242,7 +242,7 @@ export default function MyApp() {
               <span className="text-slate-500 font-semibold">Are you an Aira Properties Administrator?</span>
               <button
                 type="button"
-                onClick={() => handleDownloadApk("Aira Admin App", "/sparrows-admin.apk")}
+                onClick={() => handleDownloadApk("Aira Admin App", "/aira-admin.apk")}
                 className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-[#0F3D3E] font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <Download size={13} />

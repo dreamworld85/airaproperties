@@ -6,8 +6,8 @@ import path from "path";
 import fs from "fs";
 
 // Auto-configure persistent UPLOADS_DIR on Hostinger server immediately at startup
-const hostingerUploadsDir = "/home/u859202671/domains/api.greensparrows.com/uploads";
-if (!process.env.UPLOADS_DIR && (process.cwd().includes("api.greensparrows.com") || fs.existsSync(hostingerUploadsDir))) {
+const hostingerUploadsDir = "/home/u859202671/domains/api.airaproperties.in/uploads";
+if (!process.env.UPLOADS_DIR && (process.cwd().includes("api.airaproperties.in") || fs.existsSync(hostingerUploadsDir))) {
   process.env.UPLOADS_DIR = hostingerUploadsDir;
 }
 
@@ -398,7 +398,7 @@ async function checkDbMigration() {
           app_store_url,
           trust_text
         ) VALUES (
-          'Sparrow Properties',
+          'Aira Properties',
           '/brand_logo.png',
           'Your trusted property partner',
           '',
@@ -486,9 +486,9 @@ async function checkDbMigration() {
     await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('default_trial_days', '5')");
     await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('default_trial_days_broker', '5')");
     await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('default_trial_days_agency', '3')");
-    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('contact_email', 'support@greensparrows.com')");
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('contact_email', 'support@airaproperties.in')");
     await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('contact_phone', '+91 484 2901234 (10 AM - 6 PM)')");
-    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('contact_address', 'GreenSparrows Ventures Private Limited,\\nSkyline Signature Heights, Kakkanad,\\nKochi, Kerala - 682030')");
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('contact_address', 'Aira Properties Private Limited,\\nInfopark Phase II, Kakkanad,\\nKochi, Kerala - 682030')");
     await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('featured_price', '299')");
     await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('featured_text', 'Pin your listing to the top of home feed and search results to get up to 10x more leads.')");
 
@@ -1167,7 +1167,7 @@ generateSystemBlueprintFile();
 dotenv.config({ override: true });
 
 // Auto-configure persistent UPLOADS_DIR on Hostinger server
-if (process.cwd().includes("api.greensparrows.com")) {
+if (process.cwd().includes("api.airaproperties.in")) {
   const envPath = path.resolve(".env");
   let envContent = "";
   if (fs.existsSync(envPath)) {
@@ -1175,7 +1175,7 @@ if (process.cwd().includes("api.greensparrows.com")) {
   }
   if (!envContent.includes("UPLOADS_DIR")) {
     console.log("Auto-injecting persistent UPLOADS_DIR into .env");
-    envContent += "\nUPLOADS_DIR=/home/u859202671/domains/api.greensparrows.com/uploads\n";
+    envContent += "\nUPLOADS_DIR=/home/u859202671/domains/api.airaproperties.in/uploads\n";
     fs.writeFileSync(envPath, envContent, "utf8");
     // Reload environment variables
     dotenv.config({ override: true });
@@ -1183,13 +1183,13 @@ if (process.cwd().includes("api.greensparrows.com")) {
 }
 
 const app = express();
-const defaultOrigins = ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "https://property.greensparrows.com"];
+const defaultOrigins = ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "https://airaproperties.in", "https://api.airaproperties.in"];
 const envOrigins = (process.env.CLIENT_ORIGIN || "").split(",").filter(Boolean);
 const allowedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || origin.includes("localhost") || origin.endsWith(".greensparrows.com")) {
+    if (!origin || allowedOrigins.includes(origin) || origin.includes("localhost") || origin.endsWith(".airaproperties.in") || origin === "https://airaproperties.in") {
       callback(null, true);
     } else {
       callback(null, true);
@@ -1294,9 +1294,9 @@ app.get("/uploads/:filename", (req, res, next) => {
   }
 
   // Fallback: If not found on local disk and running in local dev, fetch from live production server
-  if (!filename.endsWith(".apk") && !process.cwd().includes("api.greensparrows.com")) {
+  if (!filename.endsWith(".apk") && !process.cwd().includes("api.airaproperties.in")) {
     import("https").then(({ default: https }) => {
-      const remoteUrl = `https://api.greensparrows.com/uploads/${filename}`;
+      const remoteUrl = `https://api.airaproperties.in/uploads/${filename}`;
       https.get(remoteUrl, (remoteRes) => {
         if (remoteRes.statusCode === 200) {
           const dest = path.join(uploadsDir, filename);
@@ -1331,7 +1331,7 @@ app.get(["/apk", "/apk/"], (_req, res) => {
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Download Sparrows Android APK</title>
+        <title>Download Aira Properties Android APK</title>
         <style>
           body { font-family: system-ui, -apple-system, sans-serif; background: #FAF8F3; color: #22302E; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; text-align: center; }
           .card { background: #fff; padding: 32px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); max-width: 400px; width: 100%; box-sizing: border-box; }
@@ -1344,10 +1344,10 @@ app.get(["/apk", "/apk/"], (_req, res) => {
       </head>
       <body>
         <div class="card">
-          <h1>Sparrows Mobile Apps</h1>
+          <h1>Aira Properties Mobile Apps</h1>
           <p>Download the official Android APK files below:</p>
-          <a href="/apk/sparrows.apk?v=2.0" class="btn" download>📱 Download Sparrows App (User)</a>
-          <a href="/apk/sparrows-admin.apk?v=2.0" class="btn btn-admin" download>🛠️ Download Sparrows Admin App</a>
+          <a href="/apk/airaproperties.apk" class="btn" download>📱 Download Aira Properties App</a>
+          <a href="/apk/aira-admin.apk" class="btn btn-admin" download>🛠️ Download Aira Admin App</a>
         </div>
       </body>
     </html>

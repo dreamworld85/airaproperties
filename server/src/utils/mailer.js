@@ -9,7 +9,7 @@ export async function sendOtpEmail(toEmail, otpName, otpCode) {
   const smtpSecure = process.env.SMTP_SECURE !== "false"; // true for 465, false for 587
   const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || "";
   const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || "";
-  const fromAddress = process.env.SMTP_FROM_EMAIL || smtpUser || "no-reply@greensparrows.com";
+  const fromAddress = process.env.SMTP_FROM_EMAIL || smtpUser || "no-reply@airaproperties.in";
 
   console.log(`[OTP Request] Generated OTP for ${toEmail}: ${otpCode}`);
 

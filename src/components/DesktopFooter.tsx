@@ -76,11 +76,11 @@ export default function DesktopFooter() {
             </h4>
             <div className="flex flex-col gap-2.5 text-xs text-gray-700 font-medium">
               <a 
-                href="mailto:support@greensparrows.com" 
+                href="mailto:support@airaproperties.in" 
                 className="flex items-center gap-2.5 text-gray-900 hover:text-[#60A963] transition-colors cursor-pointer w-fit"
               >
                 <Mail className="w-4 h-4 text-[#60A963] shrink-0" />
-                <span>support@greensparrows.com</span>
+                <span>support@airaproperties.in</span>
               </a>
               <a 
                 href="tel:+914842901234" 
@@ -91,7 +91,7 @@ export default function DesktopFooter() {
               </a>
               <div className="flex items-start gap-2.5 text-gray-700">
                 <MapPin className="w-4 h-4 text-[#60A963] shrink-0 mt-0.5" />
-                <span>Green Sparrows, Infopark Phase II, Kochi, Kerala</span>
+                <span>Aira Properties, Infopark Phase II, Kochi, Kerala</span>
               </div>
             </div>
           </div>
@@ -102,7 +102,7 @@ export default function DesktopFooter() {
 
         {/* Bottom Bar Section */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-gray-600 font-medium">
-          <p>© {new Date().getFullYear()} Kerala Realty. All rights reserved. Managed by Green Sparrows.</p>
+          <p>© {new Date().getFullYear()} Aira Properties. All rights reserved. Managed by Aira Properties.</p>
           <div className="flex items-center gap-6">
             <span>Standard SSL Secured checkout</span>
             <span>Certified payment processes</span>

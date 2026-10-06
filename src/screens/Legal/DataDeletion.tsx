@@ -50,7 +50,7 @@ export default function DataDeletion() {
 
               <h3 className="font-display font-bold text-sm text-ink mt-2">Option 3: Manual Data Erasure Request</h3>
               <p>
-                You can also submit a manual data deletion request by emailing our privacy team at <strong>greensparrows85@gmail.com</strong> with the subject line <em>"Data Deletion Request"</em>. We will process and confirm permanent erasure within 48 hours.
+                You can also submit a manual data deletion request by emailing our privacy team at <strong>support@airaproperties.in</strong> with the subject line <em>"Data Deletion Request"</em>. We will process and confirm permanent erasure within 48 hours.
               </p>
             </>
           )}

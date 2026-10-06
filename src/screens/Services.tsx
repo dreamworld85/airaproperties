@@ -126,9 +126,9 @@ const SERVICE_DETAILS: Record<string, { title: string; bullets: string[] }> = {
   "Featured Project": {
     title: "Featured Project",
     bullets: [
-      "Extremely high visibility on Sparrows desktop & mobile home pages",
+      "Extremely high visibility on Aira Properties desktop & mobile home pages",
       "Ability to advertise special offers to a large audience",
-      "Presence on Sparrows search with significant number of users in 'New Bookings' segment",
+      "Presence on Aira Properties search with significant number of users in 'New Bookings' segment",
       "Unlimited slots and opportunity to promote on project pages",
       "Suitable for clients with large number of units to sell in a given project"
     ]
@@ -672,7 +672,7 @@ export default function Services() {
               WHY UPGRADE MY POSTING?
             </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 font-display">
-              Benefits of upgrading your posting on Sparrows
+              Benefits of upgrading your posting on Aira Properties
             </h2>
           </div>
 

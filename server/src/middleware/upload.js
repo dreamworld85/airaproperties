@@ -7,8 +7,8 @@ export function getUploadDir() {
   if (process.env.UPLOADS_DIR) {
     return path.resolve(process.env.UPLOADS_DIR);
   }
-  if (process.cwd().includes("api.greensparrows.com") || fs.existsSync("/home/u859202671/domains/api.greensparrows.com/uploads")) {
-    return "/home/u859202671/domains/api.greensparrows.com/uploads";
+  if (process.cwd().includes("api.airaproperties.in") || fs.existsSync("/home/u859202671/domains/api.airaproperties.in/uploads")) {
+    return "/home/u859202671/domains/api.airaproperties.in/uploads";
   }
   return path.resolve("src/uploads");
 }

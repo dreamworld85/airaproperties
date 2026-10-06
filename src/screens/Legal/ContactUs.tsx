@@ -5,9 +5,9 @@ import { Mail, Phone, MapPin, ShieldCheck, Lock, CheckCircle2 } from "lucide-rea
 import { api } from "../../lib/api";
 
 export default function ContactUs() {
-  const [email, setEmail] = useState("support@greensparrows.com");
+  const [email, setEmail] = useState("support@airaproperties.in");
   const [phone, setPhone] = useState("+91 484 2901234 (10 AM - 6 PM)");
-  const [address, setAddress] = useState("GreenSparrows Ventures Private Limited,\nSkyline Signature Heights, Kakkanad,\nKochi, Kerala - 682030");
+  const [address, setAddress] = useState("Aira Properties Private Limited,\nInfopark Phase II, Kakkanad,\nKochi, Kerala - 682030");
 
   useEffect(() => {
     api.fetchSetting("contact_email")

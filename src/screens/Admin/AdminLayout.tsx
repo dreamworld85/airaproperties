@@ -110,7 +110,7 @@ export default function AdminLayout() {
             )}
           </div>
           <div className="min-w-0">
-            <h2 className="font-display font-extrabold text-sm text-black leading-tight truncate">Sparrows Admin</h2>
+            <h2 className="font-display font-extrabold text-sm text-black leading-tight truncate">Aira Admin</h2>
             <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest block mt-0.5">Admin Workspace</span>
           </div>
         </div>

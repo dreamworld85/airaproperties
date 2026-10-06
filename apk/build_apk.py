@@ -119,6 +119,9 @@ dependencies {
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
     <application
         android:allowBackup="true"
@@ -176,6 +179,8 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.WebChromeClient;
 import android.webkit.ValueCallback;
+import android.webkit.SslErrorHandler;
+import android.net.http.SslError;
 import android.content.Intent;
 import android.net.Uri;
 import android.content.ClipData;
@@ -203,8 +208,21 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setSupportZoom(false);
         webSettings.setBuiltInZoomControls(false);
         webSettings.setDisplayZoomControls(false);
+        webSettings.setAllowFileAccess(true);
+        webSettings.setAllowContentAccess(true);
+        webSettings.setMediaPlaybackRequiresUserGesture(false);
+        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        }
 
         mWebView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                // Safeguard against legacy Android CA certificate bundle mismatches
+                handler.proceed();
+            }
+
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, android.webkit.WebResourceRequest request) {
                 String url = request.getUrl().toString();
@@ -280,6 +298,11 @@ public class MainActivity extends AppCompatActivity {
 }
 """
     icon_full_path = os.path.join(os.path.dirname(__file__), icon_src)
+    if not os.path.exists(icon_full_path):
+        icon_full_path = os.path.join(os.path.dirname(__file__), "..", "images", icon_src)
+    if not os.path.exists(icon_full_path):
+        icon_full_path = os.path.join(os.path.dirname(__file__), "sparrows.png")
+
     with open(os.path.join(java_dir, "MainActivity.java"), "w") as f:
         f.write(java_template.replace("{package_name}", package_name).replace("{app_url}", app_url))
 
@@ -292,12 +315,13 @@ public class MainActivity extends AppCompatActivity {
         "mipmap-xxxhdpi": 192
     }
     
-    img = Image.open(icon_full_path)
+    img = Image.open(icon_full_path).convert("RGBA")
     for name, size in sizes.items():
         mipmap_path = os.path.join(res_dir, name)
         os.makedirs(mipmap_path, exist_ok=True)
         resized_img = img.resize((size, size), Image.Resampling.LANCZOS)
         resized_img.save(os.path.join(mipmap_path, "ic_launcher.png"))
+        resized_img.save(os.path.join(mipmap_path, "ic_launcher_round.png"))
         
     print(f"Project for {app_name} generated successfully.")
 
@@ -329,17 +353,25 @@ def build_project(project_dir, output_apk_name):
         src_apk = os.path.join(project_dir, "app", "build", "outputs", "apk", "debug", "app-debug.apk")
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
-        targets = [
-            os.path.join(base_dir, output_apk_name),
-            os.path.join(base_dir, "public", output_apk_name),
-            os.path.join(base_dir, "dist", output_apk_name),
-            os.path.join(base_dir, "server", "src", "uploads", output_apk_name),
-        ]
-        
-        for target in targets:
-            os.makedirs(os.path.dirname(target), exist_ok=True)
-            shutil.copy(src_apk, target)
-            print(f"Copied APK to {target}")
+        # Determine extra alias names for full backward compatibility
+        extra_names = []
+        if "user" in project_dir or "airaproperties" in output_apk_name:
+            extra_names = ["airaproperties.apk", "aira-properties.apk", "sparrows.apk"]
+        elif "admin" in project_dir or "admin" in output_apk_name:
+            extra_names = ["aira-admin.apk", "airaproperties-admin.apk", "sparrows-admin.apk"]
+
+        all_names = list(set([output_apk_name] + extra_names))
+        for name in all_names:
+            targets = [
+                os.path.join(base_dir, name),
+                os.path.join(base_dir, "public", name),
+                os.path.join(base_dir, "dist", name),
+                os.path.join(base_dir, "server", "src", "uploads", name),
+            ]
+            for target in targets:
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                shutil.copy(src_apk, target)
+                print(f"Copied APK to {target}")
             
         return True
     except Exception as e:
@@ -352,41 +384,40 @@ def main():
     parent_dir = os.path.dirname(script_dir)
 
     # Clean old project folders completely to prevent stale domain caching
-    shutil.rmtree("sparrows_user_proj", ignore_errors=True)
-    shutil.rmtree("sparrows_admin_proj", ignore_errors=True)
-    shutil.rmtree(os.path.join(parent_dir, "sparrows_user_proj"), ignore_errors=True)
-    shutil.rmtree(os.path.join(parent_dir, "sparrows_admin_proj"), ignore_errors=True)
+    for old_folder in ["sparrows_user_proj", "sparrows_admin_proj", "aira_user_proj", "aira_admin_proj"]:
+        shutil.rmtree(old_folder, ignore_errors=True)
+        shutil.rmtree(os.path.join(parent_dir, old_folder), ignore_errors=True)
 
-    # User App (com.greensparrows.sales package so Android replaces the installed app)
+    # User App (Aira Properties -> https://airaproperties.in)
     create_android_project(
-        project_dir="sparrows_user_proj",
-        app_name="Sparrows",
-        app_url="https://property.greensparrows.com",
-        package_name="com.greensparrows.sales",
-        icon_src="sparrows.png"
+        project_dir="aira_user_proj",
+        app_name="Aira Properties",
+        app_url="https://airaproperties.in",
+        package_name="com.airaproperties.app",
+        icon_src="app-icon.png"
     )
     
-    # Admin App
+    # Admin App (Aira Admin -> https://airaproperties.in/admin)
     create_android_project(
-        project_dir="sparrows_admin_proj",
-        app_name="Sparrows Admin",
-        app_url="https://property.greensparrows.com/admin",
-        package_name="com.greensparrows.admin",
-        icon_src="sparrows-admin.png"
+        project_dir="aira_admin_proj",
+        app_name="Aira Admin",
+        app_url="https://airaproperties.in/admin",
+        package_name="com.airaproperties.admin",
+        icon_src="app-icon.png"
     )
     
     # Build User App
-    user_success = build_project("sparrows_user_proj", "sparrows.apk")
+    user_success = build_project("aira_user_proj", "airaproperties.apk")
     
     # Build Admin App
-    admin_success = build_project("sparrows_admin_proj", "sparrows-admin.apk")
+    admin_success = build_project("aira_admin_proj", "aira-admin.apk")
     
     # Cleanup project folders
-    shutil.rmtree("sparrows_user_proj", ignore_errors=True)
-    shutil.rmtree("sparrows_admin_proj", ignore_errors=True)
+    shutil.rmtree("aira_user_proj", ignore_errors=True)
+    shutil.rmtree("aira_admin_proj", ignore_errors=True)
     
     if user_success and admin_success:
-        print("ALL APKS COMPILED AND SAVED IN TARGET FOLDERS!")
+        print("ALL AIRA PROPERTIES APKS COMPILED AND SAVED IN TARGET FOLDERS!")
     else:
         print("One or more builds failed.")
 

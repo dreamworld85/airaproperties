@@ -107,8 +107,7 @@ function toPublicUser(row) {
 
 function setAuthCookie(res, token) {
   const isProduction = process.env.NODE_ENV === "production" || 
-                       process.cwd().includes("airaproperties.in") ||
-                       process.cwd().includes("api.greensparrows.com");
+                       process.cwd().includes("airaproperties.in");
   res.cookie("token", token, {
     httpOnly: true,
     secure: isProduction,
@@ -134,8 +133,7 @@ router.get("/me", requireAuth, async (req, res) => {
 // POST /api/auth/logout
 router.post("/logout", (req, res) => {
   const isProduction = process.env.NODE_ENV === "production" || 
-                       process.cwd().includes("airaproperties.in") ||
-                       process.cwd().includes("api.greensparrows.com");
+                       process.cwd().includes("airaproperties.in");
   res.clearCookie("token", {
     httpOnly: true,
     secure: isProduction,
@@ -487,11 +485,8 @@ function getFrontendUrl(req) {
   const referer = req ? (req.headers.referer || req.headers.origin || "") : "";
   const isProduction = process.env.NODE_ENV === "production" || 
                        process.cwd().includes("airaproperties.in") ||
-                       process.cwd().includes("api.greensparrows.com") ||
                        host.includes("airaproperties.in") ||
-                       host.includes("greensparrows.com") ||
-                       referer.includes("airaproperties.in") ||
-                       referer.includes("greensparrows.com");
+                       referer.includes("airaproperties.in");
 
   const envFrontend = process.env.FRONTEND_URL;
   if (isProduction) {
@@ -513,11 +508,8 @@ function getGoogleCallbackUrl(req) {
   const referer = req ? (req.headers.referer || req.headers.origin || "") : "";
   const isProduction = process.env.NODE_ENV === "production" || 
                        process.cwd().includes("airaproperties.in") ||
-                       process.cwd().includes("api.greensparrows.com") ||
                        host.includes("airaproperties.in") ||
-                       host.includes("greensparrows.com") ||
-                       referer.includes("airaproperties.in") ||
-                       referer.includes("greensparrows.com");
+                       referer.includes("airaproperties.in");
 
   const envCallback = process.env.GOOGLE_CALLBACK_URL;
   if (isProduction) {
@@ -540,11 +532,8 @@ function getFacebookCallbackUrl(req) {
   const referer = req ? (req.headers.referer || req.headers.origin || "") : "";
   const isProduction = process.env.NODE_ENV === "production" || 
                        process.cwd().includes("airaproperties.in") ||
-                       process.cwd().includes("api.greensparrows.com") ||
                        host.includes("airaproperties.in") ||
-                       host.includes("greensparrows.com") ||
-                       referer.includes("airaproperties.in") ||
-                       referer.includes("greensparrows.com");
+                       referer.includes("airaproperties.in");
 
   const envCallback = process.env.FACEBOOK_CALLBACK_URL;
   if (isProduction) {
@@ -574,8 +563,7 @@ router.get("/google", (req, res) => {
 
   const state = crypto.randomBytes(16).toString("hex");
   const isProduction = process.env.NODE_ENV === "production" || 
-                       process.cwd().includes("airaproperties.in") ||
-                       process.cwd().includes("api.greensparrows.com");
+                       process.cwd().includes("airaproperties.in");
   res.cookie("oauth_state", state, {
     httpOnly: true,
     secure: isProduction,
@@ -603,8 +591,7 @@ router.get("/google/callback", async (req, res) => {
   const savedState = getCookie(req, "oauth_state");
 
   const isProduction = process.env.NODE_ENV === "production" || 
-                       process.cwd().includes("airaproperties.in") ||
-                       process.cwd().includes("api.greensparrows.com");
+                       process.cwd().includes("airaproperties.in");
   res.clearCookie("oauth_state", {
     httpOnly: true,
     secure: isProduction,
@@ -678,8 +665,7 @@ router.get("/facebook", (req, res) => {
 
   const state = crypto.randomBytes(16).toString("hex");
   const isProduction = process.env.NODE_ENV === "production" || 
-                       process.cwd().includes("airaproperties.in") ||
-                       process.cwd().includes("api.greensparrows.com");
+                       process.cwd().includes("airaproperties.in");
   res.cookie("oauth_state", state, {
     httpOnly: true,
     secure: isProduction,
@@ -705,8 +691,7 @@ router.get("/facebook/callback", async (req, res) => {
   const savedState = getCookie(req, "oauth_state");
 
   const isProduction = process.env.NODE_ENV === "production" || 
-                       process.cwd().includes("airaproperties.in") ||
-                       process.cwd().includes("api.greensparrows.com");
+                       process.cwd().includes("airaproperties.in");
   res.clearCookie("oauth_state", {
     httpOnly: true,
     secure: isProduction,

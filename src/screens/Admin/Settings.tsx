@@ -175,9 +175,9 @@ export default function Settings() {
         const phoneRes = await fetch(`${apiUrl}/api/settings/contact_phone`).then(r => r.json()).catch(() => ({}));
         const addressRes = await fetch(`${apiUrl}/api/settings/contact_address`).then(r => r.json()).catch(() => ({}));
         
-        setPageContactEmail(emailRes.value || "support@greensparrows.com");
+        setPageContactEmail(emailRes.value || "support@airaproperties.in");
         setPageContactPhone(phoneRes.value || "+91 484 2901234 (10 AM - 6 PM)");
-        setPageContactAddress(addressRes.value || "GreenSparrows Ventures Private Limited,\nSkyline Signature Heights, Kakkanad,\nKochi, Kerala - 682030");
+        setPageContactAddress(addressRes.value || "Aira Properties Private Limited,\nInfopark Phase II, Kakkanad,\nKochi, Kerala - 682030");
       } else {
         const titleKey = `page_${pageId}_title`;
         const contentKey = `page_${pageId}_content`;
@@ -2541,7 +2541,7 @@ export default function Settings() {
                       type="email"
                       value={pageContactEmail}
                       onChange={(e) => setPageContactEmail(e.target.value)}
-                      placeholder="e.g. support@greensparrows.com"
+                      placeholder="e.g. support@airaproperties.in"
                       className="w-full rounded-xl border border-charcoal/10 bg-white px-3.5 py-2.5 text-xs text-charcoal outline-none focus:border-purple-600 shadow-sm font-semibold"
                     />
                   </div>
