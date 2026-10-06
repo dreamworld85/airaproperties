@@ -725,6 +725,27 @@ export default function Settings() {
     }
   }
 
+  async function handleResetBanner() {
+    setSaving(true);
+    try {
+      let defaultVal = "/kerala_house_banner.jpg";
+      if (selectedSetting === "login_banner_url") defaultVal = "/kerala_house_login.jpg";
+      else if (selectedSetting === "loading_banner_url") defaultVal = "/app_background.jpg";
+
+      await adminApi.updateSetting(selectedSetting, defaultVal);
+      if (selectedSetting === "welcome_banner_url") setCurrentBanner(defaultVal);
+      else if (selectedSetting === "login_banner_url") setCurrentLoginBanner(defaultVal);
+      else setCurrentLoadingBanner(defaultVal);
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      alert("Banner reset to default asset successfully!");
+    } catch (err: any) {
+      alert(err.message || "Failed to reset banner.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleToggleScheduleVisit() {
     const newValue = !enableScheduleVisit;
     setSaving(true);
@@ -1809,6 +1830,9 @@ export default function Settings() {
                   src={mediaUrl(desktopLogoPreview || currentDesktopLogo)} 
                   alt="Desktop Logo Preview" 
                   className="max-h-20 max-w-[85%] object-contain drop-shadow-xs transition-all"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/brand_logo-web.png";
+                  }}
                 />
                 <span className="absolute bottom-1.5 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-black/60 text-white backdrop-blur-xs">
                   {desktopLogoPreview ? "Previewing New" : currentDesktopLogo.startsWith("/uploads") ? "Database File" : "Default Asset"}
@@ -1889,6 +1913,9 @@ export default function Settings() {
                   src={mediaUrl(mobileLogoPreview || currentMobileLogo)} 
                   alt="App Logo Preview" 
                   className="max-h-20 max-w-[85%] object-contain drop-shadow-xs transition-all"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/brand_logo.png";
+                  }}
                 />
                 <span className="absolute bottom-1.5 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-black/60 text-white backdrop-blur-xs">
                   {mobileLogoPreview ? "Previewing New" : currentMobileLogo.startsWith("/uploads") ? "Database File" : "Default Asset"}
@@ -1972,6 +1999,9 @@ export default function Settings() {
                   src={mediaUrl(desktopLogoPreview || currentDesktopLogo)} 
                   alt="Desktop Preview" 
                   className="h-9 w-auto object-contain"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/brand_logo-web.png";
+                  }}
                 />
                 <div className="hidden sm:flex items-center gap-2 text-[10px] text-slate font-medium">
                   <span className="bg-slate-100 px-2 py-1 rounded-md">All Properties</span>
@@ -1992,6 +2022,9 @@ export default function Settings() {
                   src={mediaUrl(mobileLogoPreview || currentMobileLogo)} 
                   alt="Mobile Preview" 
                   className="h-9 w-auto object-contain"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/brand_logo.png";
+                  }}
                 />
                 <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-xs text-ink text-[11px] font-bold">
                   🔔
@@ -2097,6 +2130,9 @@ export default function Settings() {
                   src={mediaUrl(previewUrl || currentBanner)} 
                   alt="Banner Preview" 
                   className="w-full h-full object-cover brightness-[0.75]"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/kerala_house_banner.jpg";
+                  }}
                 />
                 <div className="absolute inset-0 flex flex-col justify-end p-4 bg-gradient-to-t from-black/85 via-black/30 to-transparent">
                   <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Preview: Homepage Banner</span>
@@ -2114,6 +2150,9 @@ export default function Settings() {
                   src={mediaUrl(previewUrl || currentLoginBanner)} 
                   alt="Login Preview" 
                   className="w-full h-full object-cover brightness-[0.75]"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/kerala_house_login.jpg";
+                  }}
                 />
                 <div className="absolute inset-0 flex flex-col justify-end p-4 bg-gradient-to-t from-black/85 via-black/30 to-transparent">
                   <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Preview: Login Banner</span>
@@ -2131,6 +2170,9 @@ export default function Settings() {
                   src={mediaUrl(previewUrl || currentLoadingBanner)} 
                   alt="Loading Preview" 
                   className="w-full h-full object-cover brightness-[0.75]"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/app_background.jpg";
+                  }}
                 />
                 <div className="absolute inset-0 flex flex-col justify-end p-4 bg-gradient-to-t from-black/85 via-black/30 to-transparent">
                   <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Preview: Loading Screen BG</span>
@@ -2163,14 +2205,27 @@ export default function Settings() {
               />
             </div>
 
-            <button
-              onClick={handleUploadBanner}
-              disabled={saving || !selectedFile}
-              className="w-full mt-5 py-3.5 bg-emerald-600 text-white hover:bg-emerald-500 rounded-2xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer text-center"
-            >
-              <Upload size={14} />
-              <span>{saving ? "Saving..." : "Update Image Asset"}</span>
-            </button>
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={handleUploadBanner}
+                disabled={saving || !selectedFile}
+                className="flex-1 py-3.5 bg-emerald-600 text-white hover:bg-emerald-500 rounded-2xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer text-center"
+              >
+                <Upload size={14} />
+                <span>{saving ? "Saving..." : "Update Image Asset"}</span>
+              </button>
+
+              <button
+                onClick={handleResetBanner}
+                disabled={saving}
+                type="button"
+                title="Reset this banner to default system asset"
+                className="px-4 py-3.5 bg-slate-100 text-charcoal hover:bg-slate-200 rounded-2xl text-xs font-bold font-display transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <RotateCcw size={14} />
+                <span>Reset Default</span>
+              </button>
+            </div>
           </div>
         </div>
 

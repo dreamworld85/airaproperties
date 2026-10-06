@@ -15,7 +15,7 @@ import {
   Map, 
   Shield 
 } from "lucide-react";
-import { api, mediaUrl } from "@/lib/api";
+import { api, mediaUrl, getApiUrl } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import { useBrand } from "@/lib/BrandContext";
 import DesktopPropertyListing from "@/components/DesktopPropertyListing";
@@ -83,7 +83,7 @@ export default function Landing() {
   }, []);
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/mobile-share-settings`)
+    fetch(`${getApiUrl()}/api/admin/mobile-share-settings`)
       .then((res) => res.json())
       .then((data) => {
         if (data.google_play_url) setGooglePlayUrl(data.google_play_url);
@@ -96,7 +96,7 @@ export default function Landing() {
     if (isMobile) return;
 
     // Fetch dynamic landing page settings and feature cards
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/landing/content`)
+    fetch(`${getApiUrl()}/api/admin/landing/content`)
       .then((res) => res.json())
       .then((data) => {
         if (data.settings) {

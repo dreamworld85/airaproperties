@@ -736,15 +736,10 @@ export const api = {
 
 export function mediaUrl(path: string): string {
   if (!path) return "";
-  if (path.startsWith("http")) return path;
+  if (path.startsWith("http") || path.startsWith("blob:") || path.startsWith("data:")) return path;
   if (path.startsWith("/uploads")) {
-    if (typeof window !== "undefined") {
-      if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-        return `${API_URL}${path}`;
-      }
-      return `${window.location.origin}${path}`;
-    }
-    return `https://airaproperties.in${path}`;
+    const apiBase = getApiUrl();
+    return `${apiBase}${path}`;
   }
   return path;
 }

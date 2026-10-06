@@ -111,8 +111,8 @@ export default function Login() {
   const [loginHeading, setLoginHeading] = useState("Hello!");
   const [loginSubheading, setLoginSubheading] = useState("Welcome to Property");
 
-  const bgUrl = bannerUrl.startsWith("/uploads/") ? mediaUrl(bannerUrl) : bannerUrl;
-  const loadingBgUrl = loadingBannerUrl.startsWith("/uploads/") ? mediaUrl(loadingBannerUrl) : loadingBannerUrl;
+  const bgUrl = mediaUrl(bannerUrl) || "/app_background.jpg";
+  const loadingBgUrl = mediaUrl(loadingBannerUrl) || "/app_background.jpg";
 
   // Country Code Dropdown State with automatic geolocation / timezone identification
   const [countryCode, setCountryCode] = useState(() => detectUserCountry().code);
@@ -411,7 +411,14 @@ export default function Login() {
 
           {/* Central Logo Panel */}
           <div className="flex-1 flex flex-col items-center justify-center text-center animate-fade-in px-8 mt-12 select-none relative z-10">
-            <img src={activeLogoUrl} alt="Logo" className="w-56 h-auto object-contain select-none animate-pulse brightness-110" />
+            <img 
+              src={activeLogoUrl} 
+              alt="Logo" 
+              className="w-56 h-auto object-contain select-none animate-pulse brightness-110" 
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = "/brand_logo.png";
+              }}
+            />
           </div>
 
           {/* Bottom leaf illustration branch matching mock */}
@@ -470,6 +477,9 @@ export default function Login() {
               src={activeLogoUrl} 
               alt="Brand Logo" 
               className="w-52 h-auto object-contain filter drop-shadow-md" 
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = "/brand_logo.png";
+              }}
             />
           </div>
         </div>

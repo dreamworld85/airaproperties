@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
-import { mediaUrl } from "./api";
+import { mediaUrl, getApiUrl } from "./api";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const API_URL = getApiUrl();
 
 export const DEFAULT_DESKTOP_LOGO = "/brand_logo-web.png";
 export const DEFAULT_MOBILE_LOGO = "/brand_logo.png";
