@@ -39,7 +39,7 @@ export default function Success() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-8 text-center pb-28">
+    <div className="flex-1 min-h-[calc(100vh-60px)] flex flex-col items-center justify-center px-8 text-center pb-28">
       {isOverLimit ? (
         <>
           <div className="w-20 h-20 rounded-full bg-rose-50 border-4 border-rose-100 flex items-center justify-center mb-6 shadow-inner animate-pulse">

@@ -230,7 +230,8 @@ export default function DesktopHeader({
             <button
               type="button"
               onClick={() => navigate("/add-property")}
-              className="hidden sm:flex items-center gap-2 px-4 py-2 bg-[#60A963] hover:bg-[#529355] text-white rounded-full text-xs font-extrabold uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer"
+              style={{ fontWeight: 500 }}
+              className="hidden sm:flex items-center gap-2 px-4 py-2 bg-[#60A963] hover:bg-[#529355] text-white rounded-full text-xs font-medium uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer"
             >
               <PlusCircle className="w-4 h-4" />
               <span>Post Listing</span>

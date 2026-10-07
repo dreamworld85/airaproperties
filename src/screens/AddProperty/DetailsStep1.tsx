@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, Menu, Lock } from "lucide-react";
+import { ChevronDown, ChevronLeft, Menu, Lock } from "lucide-react";
 import { useAddProperty } from "@/lib/AddPropertyContext";
 import { useAuth } from "@/lib/AuthContext";
 import { ListingRole } from "@/lib/types";
@@ -49,14 +49,16 @@ export default function DetailsStep1() {
 
   const [attemptedNext, setAttemptedNext] = useState(false);
   const [showAllTypes, setShowAllTypes] = useState(false);
-  const [whatsappLink, setWhatsappLink] = useState("https://wa.me/917012021221");
+  const defaultPostMsg = encodeURIComponent("Hello! I want to post my property listing on Aira Properties.");
+  const [whatsappLink, setWhatsappLink] = useState(`https://wa.me/917012021221?text=${defaultPostMsg}`);
 
   useEffect(() => {
     api.fetchSetting("admin_contact_number")
       .then((data) => {
         if (data && data.value) {
           const cleanNum = data.value.replace(/\D/g, "");
-          setWhatsappLink(`https://wa.me/${cleanNum.startsWith("91") ? cleanNum : `91${cleanNum}`}`);
+          const num = cleanNum.startsWith("91") ? cleanNum : `91${cleanNum}`;
+          setWhatsappLink(`https://wa.me/${num}?text=${defaultPostMsg}`);
         }
       })
       .catch((err) => console.error("Error loading admin contact number:", err));
@@ -87,11 +89,12 @@ export default function DetailsStep1() {
       : (nextRent ? residentialTypesForRent : residentialTypesForSale);
       
     const resetType = nextTypes.includes(form.propertyType) ? form.propertyType : "";
-    update({ purpose: val, propertyType: resetType });
+    const isApplicable = resetType === "Apartment" || resetType === "Independent House / Villa";
+    update({ purpose: val, propertyType: resetType, ...(!isApplicable ? { furnishing: "", propertyAge: "" } : {}) });
   }
 
   function handleCategoryChange(cat: string) {
-    update({ propertyCategory: cat, propertyType: "" });
+    update({ propertyCategory: cat, propertyType: "", furnishing: "", propertyAge: "" });
   }
 
   const canContinue = 
@@ -126,7 +129,7 @@ export default function DetailsStep1() {
       </div>
 
       {/* Header Row */}
-      <div className="flex justify-between items-center px-6 pt-5 pb-2 shrink-0">
+      <div className="flex justify-between items-center px-6 pt-5 pb-2 shrink-0 min-[1000px]:hidden">
         <button 
           type="button"
           className="text-charcoal p-1.5 -ml-1.5 hover:bg-charcoal/5 rounded-full transition-all duration-200 cursor-pointer active:scale-95"
@@ -138,16 +141,24 @@ export default function DetailsStep1() {
           href={whatsappLink} 
           target="_blank" 
           rel="noreferrer" 
-          className="flex items-center gap-1 text-[11.5px] font-bold text-[#59AD63] hover:underline"
+          className="flex items-center gap-2 text-[12px] font-bold text-[#59AD63] hover:underline cursor-pointer"
         >
           <span>Post Via WhatsApp</span>
-          <svg className="w-4 h-4 text-[#25D366] fill-current" viewBox="0 0 24 24">
-            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.625 1.45 5.516.002 10.003-4.484 10.006-9.998.002-2.673-1.039-5.187-2.932-7.082C16.43 1.63 13.918.585 11.244.585 5.729.585 1.24 5.07 1.238 10.586c-.001 1.516.398 2.998 1.157 4.312L1.336 21.05l6.311-1.657-.001-.239zM18.06 14.86c-.329-.165-1.953-.965-2.253-1.074-.3-.109-.519-.165-.738.165-.219.329-.848 1.074-1.039 1.293-.19.219-.382.246-.71.082-1.393-.697-2.316-1.229-3.232-2.81-.242-.415.242-.385.693-1.284.076-.153.038-.287-.019-.396-.057-.109-.519-1.25-.71-1.71-.186-.447-.376-.386-.519-.393-.134-.007-.288-.008-.442-.008-.154 0-.404.058-.616.287-.211.23-.807.788-.807 1.921 0 1.134.826 2.23.94 2.385.115.155 1.625 2.483 3.937 3.48.55.237 1.03.396 1.385.508.558.177 1.066.152 1.468.092.448-.067 1.953-.799 2.228-1.573.275-.774.275-1.439.192-1.573-.082-.134-.3-.213-.629-.379z"/>
-          </svg>
+          <img src="/images/whatsapp.svg" alt="WhatsApp" className="w-[35px] h-[35px] object-contain shrink-0" />
         </a>
       </div>
 
       <div className="px-6 flex flex-col gap-6 mt-1 flex-1">
+        {/* Desktop Back link */}
+        <button
+          type="button"
+          onClick={() => navigate("/add-property/role")}
+          className="hidden min-[1000px]:inline-flex items-center gap-1 text-xs font-semibold text-[#1877F2] hover:underline -mb-2 self-start cursor-pointer"
+        >
+          <ChevronLeft size={16} />
+          <span>Back to choose role</span>
+        </button>
+
         {/* Title & Subtitle */}
         <div className="flex flex-col">
           <h1 className="font-display font-extrabold text-[18px] text-[#091F40] leading-tight">
@@ -224,7 +235,13 @@ export default function DetailsStep1() {
                 <button
                   key={type}
                   type="button"
-                  onClick={() => update({ propertyType: type })}
+                  onClick={() => {
+                    const isApplicable = type === "Apartment" || type === "Independent House / Villa";
+                    update({
+                      propertyType: type,
+                      ...(!isApplicable ? { furnishing: "", propertyAge: "" } : {})
+                    });
+                  }}
                   className={`py-2 px-5 rounded-full border text-xs font-semibold transition-all duration-150 cursor-pointer active:scale-95 select-none ${
                     active
                       ? "bg-[#59AD63]/10 border-[#59AD63] text-[#59AD63]"
@@ -247,6 +264,98 @@ export default function DetailsStep1() {
             )}
           </div>
         </div>
+
+        {/* Section 3.1: Furnishing (Enabled for Apartment or Independent House / Villa) */}
+        {(form.propertyType === "Apartment" || form.propertyType === "Independent House / Villa") && (
+          <div className="flex flex-col gap-2 pt-0.5 animate-fade-in">
+            <span className="text-sm font-bold text-[#091F40]">Furnishing</span>
+            <div className="flex items-center gap-7 pt-0.5">
+              {[
+                { label: "Full", value: "Full" },
+                { label: "Semi", value: "Semi" },
+                { label: "None", value: "None" },
+              ].map((opt) => {
+                const checked = form.furnishing === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => update({ furnishing: checked ? "" : opt.value })}
+                    className="flex items-center gap-2 cursor-pointer select-none group text-left"
+                  >
+                    <div
+                      className={`w-[18px] h-[18px] rounded-[3px] border transition-all flex items-center justify-center shrink-0 ${
+                        checked
+                          ? "bg-[#59AD63] border-[#59AD63] text-white"
+                          : "border-slate-300 bg-white group-hover:border-[#59AD63]"
+                      }`}
+                    >
+                      {checked && (
+                        <svg className="w-3 h-3 text-white fill-current" viewBox="0 0 20 20">
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <span className={`text-[13px] font-semibold transition-colors ${checked ? "text-[#091F40] font-bold" : "text-charcoal"}`}>
+                      {opt.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Section 3.2: Property Age (Enabled for Apartment or Independent House / Villa) */}
+        {(form.propertyType === "Apartment" || form.propertyType === "Independent House / Villa") && (
+          <div className="flex flex-col gap-2 pt-1 animate-fade-in">
+            <span className="text-sm font-bold text-[#091F40]">Property Age</span>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2.5 pt-0.5">
+              {[
+                { label: "0-1 Year", value: "0-1 Year" },
+                { label: "1-5 Years", value: "1-5 Years" },
+                { label: "5-10 Years", value: "5-10 Years" },
+                { label: "10+ Years", value: "10+ Years" },
+                { label: "Under Construction", value: "Under Construction" },
+              ].map((opt) => {
+                const checked = form.propertyAge === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => update({ propertyAge: checked ? "" : opt.value })}
+                    className="flex items-center gap-2 cursor-pointer select-none group text-left"
+                  >
+                    <div
+                      className={`w-[18px] h-[18px] rounded-[3px] border transition-all flex items-center justify-center shrink-0 ${
+                        checked
+                          ? "bg-[#59AD63] border-[#59AD63] text-white"
+                          : "border-slate-300 bg-white group-hover:border-[#59AD63]"
+                      }`}
+                    >
+                      {checked && (
+                        <svg className="w-3 h-3 text-white fill-current" viewBox="0 0 20 20">
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <span className={`text-[13px] font-semibold transition-colors ${checked ? "text-[#091F40] font-bold" : "text-charcoal"}`}>
+                      {opt.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Section 4: Contact Details */}
         <div className="flex flex-col gap-2.5">

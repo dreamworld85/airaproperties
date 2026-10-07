@@ -3,7 +3,121 @@ import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronDown, Crosshair, MapPin } from "lucide-react";
 import { useAddProperty } from "@/lib/AddPropertyContext";
 import BottomNav from "@/components/BottomNav";
-import { INDIAN_STATES, getDistrictsForState } from "@/lib/indiaLocationData";
+import { INDIAN_STATES, getDistrictsForState, STATE_COORDINATES, getStateForDistrict } from "@/lib/indiaLocationData";
+
+const DISTRICT_COORDINATES: Record<string, { lat: number; lng: number }> = {
+  // All 14 Kerala Districts
+  Wayanad: { lat: 11.6854, lng: 76.1320 },
+  Kozhikode: { lat: 11.2588, lng: 75.7804 },
+  Kannur: { lat: 11.8745, lng: 75.3704 },
+  Kasaragod: { lat: 12.5102, lng: 74.9852 },
+  Malappuram: { lat: 11.0735, lng: 76.0740 },
+  Palakkad: { lat: 10.7867, lng: 76.6547 },
+  Thrissur: { lat: 10.5276, lng: 76.2144 },
+  Ernakulam: { lat: 9.9816, lng: 76.2999 },
+  Kochi: { lat: 9.9312, lng: 76.2673 },
+  Idukki: { lat: 9.9189, lng: 77.1025 },
+  Kottayam: { lat: 9.5916, lng: 76.5221 },
+  Alappuzha: { lat: 9.4981, lng: 76.3388 },
+  Pathanamthitta: { lat: 9.2648, lng: 76.7870 },
+  Kollam: { lat: 8.8932, lng: 76.6141 },
+  Thiruvananthapuram: { lat: 8.5241, lng: 76.9366 },
+  Trivandrum: { lat: 8.5241, lng: 76.9366 },
+
+  // Karnataka
+  Mysuru: { lat: 12.2958, lng: 76.6394 },
+  Mandya: { lat: 12.5242, lng: 76.8958 },
+  Chamarajanagar: { lat: 11.9261, lng: 76.9437 },
+  Hassan: { lat: 13.0072, lng: 76.0964 },
+  Kodagu: { lat: 12.3375, lng: 75.8069 },
+  "Dakshina Kannada": { lat: 12.9141, lng: 74.8560 },
+  Mangaluru: { lat: 12.9141, lng: 74.8560 },
+  Udupi: { lat: 13.3409, lng: 74.7421 },
+  Chikkamagaluru: { lat: 13.3161, lng: 75.7720 },
+  Shivamogga: { lat: 13.9299, lng: 75.5681 },
+  "Bengaluru Urban": { lat: 12.9716, lng: 77.5946 },
+  "Bengaluru Rural": { lat: 13.2257, lng: 77.5750 },
+  Ramanagara: { lat: 12.7209, lng: 77.2799 },
+  Tumakuru: { lat: 13.3379, lng: 77.1173 },
+  Davanagere: { lat: 14.4644, lng: 75.9218 },
+  Belagavi: { lat: 15.8497, lng: 74.4977 },
+  Dharwad: { lat: 15.4589, lng: 75.0078 },
+  Ballari: { lat: 15.1394, lng: 76.9214 },
+  Kalaburagi: { lat: 17.3297, lng: 76.8343 },
+
+  // Goa
+  "North Goa": { lat: 15.5303, lng: 73.9142 },
+  "South Goa": { lat: 15.2832, lng: 73.9862 },
+  Goa: { lat: 15.2993, lng: 74.1240 },
+
+  // Tamil Nadu
+  Nilgiris: { lat: 11.4916, lng: 76.7337 },
+  Coimbatore: { lat: 11.0168, lng: 76.9558 },
+  Chennai: { lat: 13.0827, lng: 80.2707 },
+  Madurai: { lat: 9.9252, lng: 78.1198 },
+  Salem: { lat: 11.6643, lng: 78.1460 },
+  Tiruchirappalli: { lat: 10.7905, lng: 78.7047 },
+  Tirunelveli: { lat: 8.7139, lng: 77.7567 },
+  Kanyakumari: { lat: 8.0883, lng: 77.5385 },
+  Erode: { lat: 11.3410, lng: 77.7172 },
+  Dindigul: { lat: 10.3673, lng: 77.9803 },
+
+  // Maharashtra
+  "Mumbai City": { lat: 18.9388, lng: 72.8354 },
+  "Mumbai Suburban": { lat: 19.0760, lng: 72.8777 },
+  Pune: { lat: 18.5204, lng: 73.8567 },
+  Thane: { lat: 19.2183, lng: 72.9781 },
+  Nagpur: { lat: 21.1458, lng: 79.0882 },
+
+  // Delhi & NCR
+  Delhi: { lat: 28.7041, lng: 77.1025 },
+  "New Delhi": { lat: 28.6139, lng: 77.2090 },
+  Gurugram: { lat: 28.4595, lng: 77.0266 },
+  Noida: { lat: 28.5355, lng: 77.3910 },
+  Faridabad: { lat: 28.4089, lng: 77.3178 },
+
+  // Telangana & Andhra Pradesh
+  Hyderabad: { lat: 17.3850, lng: 78.4867 },
+  Visakhapatnam: { lat: 17.6868, lng: 83.2185 },
+  Vijayawada: { lat: 16.5062, lng: 80.6480 },
+};
+
+function getNearestDistrictAndState(lat: number, lng: number): { district: string; state: string } | null {
+  let minDistance = Infinity;
+  let nearestDistrict = "";
+
+  for (const [district, coords] of Object.entries(DISTRICT_COORDINATES)) {
+    const dLat = lat - coords.lat;
+    const dLng = lng - coords.lng;
+    const distSq = dLat * dLat + dLng * dLng;
+    if (distSq < minDistance) {
+      minDistance = distSq;
+      nearestDistrict = district;
+    }
+  }
+
+  if (nearestDistrict) {
+    const state = getStateForDistrict(nearestDistrict);
+    if (state) {
+      return { district: nearestDistrict, state };
+    }
+  }
+
+  // Fallback to nearest state from STATE_COORDINATES
+  let minStateDist = Infinity;
+  let nearestState = "Kerala";
+  for (const [state, coords] of Object.entries(STATE_COORDINATES)) {
+    const dLat = lat - coords.lat;
+    const dLng = lng - coords.lng;
+    const distSq = dLat * dLat + dLng * dLng;
+    if (distSq < minStateDist) {
+      minStateDist = distSq;
+      nearestState = state;
+    }
+  }
+  const dists = getDistrictsForState(nearestState);
+  return { district: dists[0] || "", state: nearestState };
+}
 
 declare global {
   interface Window {
@@ -38,84 +152,221 @@ export default function MapPickerStep() {
   const leafletMapRef = useRef<any>(null);
   const leafletMarkerRef = useRef<any>(null);
 
-  // Default coordinates (Kerala, India)
-  const defaultLat = form.latitude || 10.850516;
-  const defaultLng = form.longitude || 76.271080;
+  // Helper to determine initial coordinates based on district / state / form
+  const getInitialCoords = () => {
+    if (form.latitude && form.longitude) {
+      return { lat: Number(form.latitude), lng: Number(form.longitude) };
+    }
+    if (form.district && DISTRICT_COORDINATES[form.district]) {
+      return DISTRICT_COORDINATES[form.district];
+    }
+    const st = form.state || "Kerala";
+    if (st && STATE_COORDINATES[st]) {
+      return STATE_COORDINATES[st];
+    }
+    return { lat: 11.6854, lng: 76.1320 }; // Default to Wayanad/Kerala
+  };
 
+  const initialCoords = getInitialCoords();
+  const defaultLat = initialCoords.lat;
+  const defaultLng = initialCoords.lng;
+
+  // Sync initial coordinates to form if not set
   useEffect(() => {
-    // Handle Google Maps API key / auth failure (e.g. invalid key or billing issue)
-    window.gm_authFailure = () => {
-      console.warn("Google Maps Auth Failure. Automatically switching to OpenStreetMap / Leaflet map picker...");
-      if (mapContainerRef.current) {
-        mapContainerRef.current.innerHTML = "";
-      }
-      initLeafletOrFallback();
-    };
-
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-
-    if (!apiKey) {
-      initLeafletOrFallback();
-      return;
+    if (!form.latitude || !form.longitude) {
+      const init = getInitialCoords();
+      update({
+        latitude: init.lat,
+        longitude: init.lng,
+      });
     }
-
-    if (window.google && window.google.maps) {
-      setLoading(false);
-      initializeMap();
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      setLoading(false);
-      initializeMap();
-    };
-    script.onerror = () => {
-      initLeafletOrFallback();
-    };
-    document.head.appendChild(script);
-
-    return () => {
-      delete window.gm_authFailure;
-    };
   }, []);
 
-  // Automatically request device location on mount if coordinates are not set
+  const updateMapPosition = (lat: number, lng: number, zoom = 13) => {
+    // 1. Leaflet Map & Marker
+    if (leafletMapRef.current) {
+      try {
+        leafletMapRef.current.setView([lat, lng], zoom, { animate: true });
+        if (leafletMarkerRef.current) {
+          leafletMarkerRef.current.setLatLng([lat, lng]);
+        }
+        setTimeout(() => {
+          if (leafletMapRef.current) leafletMapRef.current.invalidateSize();
+        }, 100);
+      } catch (err) {
+        console.warn("Leaflet update position error:", err);
+      }
+    }
+
+    // 2. Google Maps & Marker
+    if (mapRef.current && window.google?.maps) {
+      try {
+        const maps = window.google.maps;
+        const pos = new maps.LatLng(lat, lng);
+        mapRef.current.setCenter(pos);
+        mapRef.current.setZoom(zoom);
+        if (markerRef.current) {
+          markerRef.current.setPosition(pos);
+        }
+      } catch (err) {
+        console.warn("Google Maps update position error:", err);
+      }
+    }
+  };
+
+  const moveToDistrictOrState = async (districtName: string, stateName: string) => {
+    // Check known district / state coordinates first for instant map update
+    let targetCoords: { lat: number; lng: number } | null = null;
+    if (districtName && DISTRICT_COORDINATES[districtName]) {
+      targetCoords = DISTRICT_COORDINATES[districtName];
+    } else if (stateName && STATE_COORDINATES[stateName]) {
+      targetCoords = STATE_COORDINATES[stateName];
+    } else if (districtName && STATE_COORDINATES[districtName]) {
+      targetCoords = STATE_COORDINATES[districtName];
+    }
+
+    if (targetCoords) {
+      updateMapPosition(targetCoords.lat, targetCoords.lng, districtName ? 13 : 8);
+      const displayAddr = districtName ? `${districtName}, ${stateName}, India` : `${stateName}, India`;
+      update({
+        latitude: targetCoords.lat,
+        longitude: targetCoords.lng,
+        state: stateName,
+        district: districtName,
+        mapAddress: displayAddr,
+        address: displayAddr,
+      });
+      setFetchedAddress(displayAddr);
+      setManualAddress(displayAddr);
+    }
+
+    // Dynamic geocoding fallback (Photon then Nominatim) for any district not in local list
+    if (districtName && !DISTRICT_COORDINATES[districtName]) {
+      const query = `${districtName}, ${stateName}, India`;
+      try {
+        const photonRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`);
+        const photonData = await photonRes.json();
+        if (photonData?.features?.[0]?.geometry?.coordinates) {
+          const [lon, lat] = photonData.features[0].geometry.coordinates;
+          if (!isNaN(lat) && !isNaN(lon)) {
+            updateMapPosition(lat, lon, 13);
+            const prop = photonData.features[0].properties;
+            const displayAddr = `${districtName}, ${prop?.state || stateName}, India`;
+            update({
+              latitude: lat,
+              longitude: lon,
+              state: stateName,
+              district: districtName,
+              mapAddress: displayAddr,
+              address: displayAddr,
+            });
+            setFetchedAddress(displayAddr);
+            setManualAddress(displayAddr);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("Photon geocode fallback error:", e);
+      }
+
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const lat = parseFloat(data[0].lat);
+          const lng = parseFloat(data[0].lon);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            updateMapPosition(lat, lng, 13);
+            const displayAddr = data[0].display_name || `${districtName}, ${stateName}, India`;
+            update({
+              latitude: lat,
+              longitude: lng,
+              state: stateName,
+              district: districtName,
+              mapAddress: displayAddr,
+              address: displayAddr,
+            });
+            setFetchedAddress(displayAddr);
+            setManualAddress(displayAddr);
+          }
+        }
+      } catch (err) {
+        console.warn("Geocoding district error:", err);
+      }
+    }
+  };
+
+  const userInteractedLocationRef = useRef(false);
+
+  const handleStateChange = (newState: string) => {
+    userInteractedLocationRef.current = true;
+    const dists = getDistrictsForState(newState);
+    const newDistrict = dists.includes(form.district) ? form.district : (dists[0] || "");
+    update({ state: newState, district: newDistrict });
+    if (newDistrict) {
+      moveToDistrictOrState(newDistrict, newState);
+    } else {
+      moveToDistrictOrState("", newState);
+    }
+  };
+
+  const handleDistrictChange = (newDistrict: string) => {
+    userInteractedLocationRef.current = true;
+    const currentState = form.state || "Kerala";
+    update({ district: newDistrict });
+    if (newDistrict) {
+      moveToDistrictOrState(newDistrict, currentState);
+    }
+  };
+
+  // Automatically fetch current location by default on page mount
   useEffect(() => {
-    if (!form.latitude && !form.longitude && navigator.geolocation) {
+    if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          if (userInteractedLocationRef.current) return;
           const { latitude, longitude } = position.coords;
           const coords = { lat: latitude, lng: longitude };
 
-          if (mapRef.current && markerRef.current) {
-            mapRef.current.setCenter(coords);
-            mapRef.current.setZoom(16);
-            markerRef.current.setPosition(coords);
-          }
-
-          if (leafletMapRef.current && leafletMarkerRef.current) {
-            leafletMapRef.current.setView([latitude, longitude], 16);
-            leafletMarkerRef.current.setLatLng([latitude, longitude]);
-          }
-
+          updateMapPosition(latitude, longitude, 16);
           updateCoordinates(coords);
-          if (window.google && window.google.maps) {
-            reverseGeocode(coords);
-          } else {
-            reverseGeocodeNominatim(coords);
+
+          // Instantly sync State and District dropdowns to the detected location
+          const detected = getNearestDistrictAndState(latitude, longitude);
+          if (detected) {
+            update({
+              latitude,
+              longitude,
+              state: detected.state,
+              district: detected.district,
+            });
           }
+
+          reverseGeocodeNominatim(coords);
         },
         (error) => {
-          console.warn("Auto geolocation prompt/error:", error.message);
+          console.warn("Default geolocation error:", error.message);
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
       );
     }
   }, []);
+
+  useEffect(() => {
+    initLeafletOrFallback();
+    return () => {
+      if (leafletMapRef.current) {
+        try {
+          leafletMapRef.current.remove();
+        } catch (e) {
+          console.warn("Leaflet cleanup error:", e);
+        }
+        leafletMapRef.current = null;
+      }
+    };
+  }, []);
+
+
 
   const initLeafletOrFallback = () => {
     setLoading(false);
@@ -189,6 +440,10 @@ export default function MapPickerStep() {
       marker.setLatLng(e.latlng);
       map.panTo(e.latlng);
       updateCoordinates(coords);
+      const detected = getNearestDistrictAndState(coords.lat, coords.lng);
+      if (detected) {
+        update({ state: detected.state, district: detected.district });
+      }
       reverseGeocodeNominatim(coords);
     });
 
@@ -196,6 +451,10 @@ export default function MapPickerStep() {
       const latlng = marker.getLatLng();
       const coords = { lat: latlng.lat, lng: latlng.lng };
       updateCoordinates(coords);
+      const detected = getNearestDistrictAndState(coords.lat, coords.lng);
+      if (detected) {
+        update({ state: detected.state, district: detected.district });
+      }
       reverseGeocodeNominatim(coords);
     });
   };
@@ -394,8 +653,16 @@ export default function MapPickerStep() {
     rawState?: string;
     rawDistrict?: string;
   }) => {
-    const currentState = form.state || "Kerala";
-    let matchedState: string = currentState;
+    let matchedState = form.state || "Kerala";
+    let matchedDistrict = form.district || "";
+
+    if (params.lat !== undefined && params.lng !== undefined) {
+      const nearest = getNearestDistrictAndState(params.lat, params.lng);
+      if (nearest) {
+        matchedState = nearest.state;
+        matchedDistrict = nearest.district;
+      }
+    }
 
     const fullAddressText = `${params.mapAddress || ""} ${params.cityOrAddress || ""} ${params.rawState || ""} ${params.rawDistrict || ""}`.toLowerCase();
 
@@ -406,7 +673,7 @@ export default function MapPickerStep() {
       }
     }
     
-    if (!params.rawState || matchedState === currentState) {
+    if (!params.rawState && (!matchedState || matchedState === "Kerala")) {
       const stateMatch = INDIAN_STATES.find((s) => fullAddressText.includes(s.toLowerCase()));
       if (stateMatch) {
         matchedState = stateMatch;
@@ -414,7 +681,6 @@ export default function MapPickerStep() {
     }
 
     const dists = getDistrictsForState(matchedState);
-    let matchedDistrict: string | undefined = undefined;
 
     if (params.rawDistrict) {
       const cleanRaw = params.rawDistrict.replace(/ District/i, "").trim().toLowerCase();
@@ -750,14 +1016,41 @@ export default function MapPickerStep() {
           const cityOrAddress = city || displayName;
 
           applyLocationData({
+            lat: coords.lat,
+            lng: coords.lng,
             mapAddress: displayName,
             cityOrAddress: cityOrAddress,
             rawState: state,
             rawDistrict: county || city,
           });
+          return;
+        }
+        reverseGeocodePhoton(coords);
+      })
+      .catch(() => reverseGeocodePhoton(coords));
+  };
+
+  const reverseGeocodePhoton = (coords: { lat: number; lng: number }) => {
+    fetch(`https://photon.komoot.io/reverse?lon=${coords.lng}&lat=${coords.lat}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data?.features?.[0]?.properties) {
+          const p = data.features[0].properties;
+          const county = p.county || p.district || "";
+          const city = p.city || p.name || "";
+          const state = p.state || "";
+          const display = [p.name, p.street, p.city, p.county, p.state].filter(Boolean).join(", ");
+          applyLocationData({
+            lat: coords.lat,
+            lng: coords.lng,
+            mapAddress: display,
+            cityOrAddress: city || display,
+            rawState: state,
+            rawDistrict: county || city,
+          });
         }
       })
-      .catch(err => console.error("Nominatim reverse geocoding error:", err));
+      .catch(err => console.warn("Photon reverse geocode error:", err));
   };
 
   const reverseGeocode = (coords: { lat: number; lng: number }) => {
@@ -832,11 +1125,16 @@ export default function MapPickerStep() {
         }
 
         updateCoordinates(coords);
-        if (window.google && window.google.maps) {
-          reverseGeocode(coords);
-        } else {
-          reverseGeocodeNominatim(coords);
+        const detected = getNearestDistrictAndState(latitude, longitude);
+        if (detected) {
+          update({
+            latitude,
+            longitude,
+            state: detected.state,
+            district: detected.district,
+          });
         }
+        reverseGeocodeNominatim(coords);
       },
       (error) => {
         alert("Geolocation error: " + error.message);
@@ -867,7 +1165,7 @@ export default function MapPickerStep() {
       </div>
 
       {/* Header Row */}
-      <div className="flex justify-between items-center px-6 pt-5 pb-2 shrink-0">
+      <div className="flex justify-between items-center px-6 pt-5 pb-2 shrink-0 min-[1000px]:hidden">
         <button 
           type="button"
           onClick={() => navigate("/add-property/media")}
@@ -888,6 +1186,16 @@ export default function MapPickerStep() {
       </div>
 
       <div className="px-6 flex flex-col gap-5 mt-3 flex-1">
+        {/* Desktop Back link */}
+        <button
+          type="button"
+          onClick={() => navigate("/add-property/media")}
+          className="hidden min-[1000px]:inline-flex items-center gap-1 text-xs font-semibold text-[#1877F2] hover:underline -mb-1 self-start cursor-pointer"
+        >
+          <ChevronLeft size={16} />
+          <span>Back to previous step</span>
+        </button>
+
         <div className="flex flex-col">
           <h1 className="font-display font-extrabold text-[18px] text-[#091F40] leading-none">
             Pin Property Location
@@ -895,6 +1203,44 @@ export default function MapPickerStep() {
           <p className="text-xs text-slate/60 mt-1.5 font-medium leading-relaxed">
             Drag the green marker to set the exact property location on the map.
           </p>
+        </div>
+
+        {/* State & District Selection (First before map) */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* State */}
+          <div className="flex flex-col gap-1.5 text-left">
+            <label className="text-[12px] font-bold text-[#091F40]">State</label>
+            <div className="relative">
+              <select
+                value={form.state || "Kerala"}
+                onChange={(e) => handleStateChange(e.target.value)}
+                className="w-full appearance-none rounded-[8px] border border-[#59AD63]/30 bg-white px-3 py-2.5 text-[12.5px] font-semibold text-charcoal outline-none focus:border-[#59AD63] focus:ring-1 focus:ring-[#59AD63]/30 transition-all cursor-pointer shadow-sm pr-7 truncate"
+              >
+                {INDIAN_STATES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
+            </div>
+          </div>
+
+          {/* District */}
+          <div className="flex flex-col gap-1.5 text-left">
+            <label className="text-[12px] font-bold text-[#091F40]">District</label>
+            <div className="relative">
+              <select
+                value={form.district || ""}
+                onChange={(e) => handleDistrictChange(e.target.value)}
+                className="w-full appearance-none rounded-[8px] border border-[#59AD63]/30 bg-white px-3 py-2.5 text-[12.5px] font-semibold text-charcoal outline-none focus:border-[#59AD63] focus:ring-1 focus:ring-[#59AD63]/30 transition-all cursor-pointer shadow-sm pr-7 truncate"
+              >
+                <option value="">Select District</option>
+                {getDistrictsForState(form.state || "Kerala").map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
+            </div>
+          </div>
         </div>
 
         {/* Map Container */}
@@ -939,7 +1285,7 @@ export default function MapPickerStep() {
               <span>Selected Coordinates</span>
             </div>
             <p className="text-slate/70 leading-relaxed font-semibold">
-              Lat: {form.latitude.toFixed(6)}, Lng: {form.longitude.toFixed(6)}
+              Lat: {Number(form.latitude).toFixed(6)}, Lng: {Number(form.longitude).toFixed(6)}
             </p>
           </div>
         )}
@@ -957,49 +1303,6 @@ export default function MapPickerStep() {
             rows={2}
             className="w-full text-[13px] font-semibold text-charcoal placeholder:text-slate/40 outline-none bg-transparent resize-none leading-relaxed"
           />
-        </div>
-
-        {/* State & District Selection */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* State */}
-          <div className="flex flex-col gap-1.5 text-left">
-            <label className="text-[12px] font-bold text-[#091F40]">State</label>
-            <div className="relative">
-              <select
-                value={form.state || "Kerala"}
-                onChange={(e) => {
-                  const newState = e.target.value;
-                  const dists = getDistrictsForState(newState);
-                  const newDistrict = dists.includes(form.district) ? form.district : (dists[0] || "");
-                  update({ state: newState, district: newDistrict });
-                }}
-                className="w-full appearance-none rounded-[8px] border border-[#59AD63]/30 bg-white px-3 py-2.5 text-[12.5px] font-semibold text-charcoal outline-none focus:border-[#59AD63] focus:ring-1 focus:ring-[#59AD63]/30 transition-all cursor-pointer shadow-sm pr-7 truncate"
-              >
-                {INDIAN_STATES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
-            </div>
-          </div>
-
-          {/* District */}
-          <div className="flex flex-col gap-1.5 text-left">
-            <label className="text-[12px] font-bold text-[#091F40]">District</label>
-            <div className="relative">
-              <select
-                value={form.district}
-                onChange={(e) => update({ district: e.target.value })}
-                className="w-full appearance-none rounded-[8px] border border-[#59AD63]/30 bg-white px-3 py-2.5 text-[12.5px] font-semibold text-charcoal outline-none focus:border-[#59AD63] focus:ring-1 focus:ring-[#59AD63]/30 transition-all cursor-pointer shadow-sm pr-7 truncate"
-              >
-                <option value="">Select District</option>
-                {getDistrictsForState(form.state || "Kerala").map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
-            </div>
-          </div>
         </div>
 
         {/* Actions Button */}

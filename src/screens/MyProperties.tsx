@@ -109,10 +109,10 @@ export default function MyProperties() {
 
   async function handleDelete(p: ApiProperty) {
     const confirmed = window.confirm(
-      `Are you sure you want to delete "${p.title}"?${
+      `Are you sure you want to permanently delete "${p.title}"?${
         p.status === "Active"
-          ? "\n\nThis is an Active property. Deleting it will restore 1 listing slot back into your balance."
-          : ""
+          ? "\n\nThis is an Active property. Deleting it will permanently remove all photos & videos from the server, and restore 1 listing slot back into your balance."
+          : "\n\nThis will permanently remove the property, along with all uploaded images and videos from the server."
       }`
     );
     if (!confirmed) return;
@@ -122,8 +122,10 @@ export default function MyProperties() {
       await api.deleteProperty(p.id);
       setProperties((prev) => prev.filter((x) => x.id !== p.id));
       await refreshUser();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete property");
+    } catch (err: any) {
+      const msg = err instanceof Error ? err.message : "Failed to delete property";
+      setError(msg);
+      alert(`Could not delete property: ${msg}`);
     } finally {
       setBusyId(null);
     }

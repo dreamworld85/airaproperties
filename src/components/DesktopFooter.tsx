@@ -66,6 +66,12 @@ export default function DesktopFooter() {
               >
                 Refund Policy
               </span>
+              <span 
+                onClick={() => navigate("/contact-us")} 
+                className="text-gray-900 hover:text-[#60A963] transition-colors cursor-pointer w-fit"
+              >
+                Contact Us
+              </span>
             </div>
           </div>
 
@@ -93,6 +99,12 @@ export default function DesktopFooter() {
                 <MapPin className="w-4 h-4 text-[#60A963] shrink-0 mt-0.5" />
                 <span>Aira Properties, Infopark Phase II, Kochi, Kerala</span>
               </div>
+              <span 
+                onClick={() => navigate("/contact-us")} 
+                className="text-[#60A963] font-bold hover:underline transition-colors cursor-pointer w-fit mt-1"
+              >
+                Contact Us
+              </span>
             </div>
           </div>
         </div>

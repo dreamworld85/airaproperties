@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { User, ShieldAlert, Trash2, Ban, ShieldCheck, ChevronLeft } from "lucide-react";
+import { User, ShieldAlert, Trash2, Ban, ShieldCheck, ChevronLeft, Edit3, Check, X } from "lucide-react";
 import { adminApi, AdminUser } from "@/lib/adminApi";
 import { mediaUrl } from "@/lib/api";
 
@@ -19,12 +19,22 @@ export default function UserDetails() {
   const [listingSlots, setListingSlots] = useState<number>(2);
   const [savingOverrides, setSavingOverrides] = useState(false);
 
+  // Profile fields editing
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+
   useEffect(() => {
     async function loadUser() {
       if (!id) return;
       try {
         const data = await adminApi.getUserDetails(id);
         setUser(data);
+        setEditName(data.name || "");
+        setEditEmail(data.email || "");
+        setEditPhone(data.phone || "");
         setIsFreeGranted(data.is_free_subscription_granted === 1);
         setCustomTrialExpiry(data.custom_trial_expiry ? data.custom_trial_expiry.substring(0, 10) : "");
         setEnquiryCredits(data.enquiry_credits_left !== undefined && data.enquiry_credits_left !== null ? Number(data.enquiry_credits_left) : 3);
@@ -37,6 +47,25 @@ export default function UserDetails() {
     }
     loadUser();
   }, [id, reloadKey]);
+
+  async function handleSaveProfile() {
+    if (!id) return;
+    setSavingProfile(true);
+    try {
+      await adminApi.updateUserProfile(id, {
+        name: editName.trim(),
+        email: editEmail.trim() || undefined,
+        phone: editPhone.trim() || undefined,
+      });
+      alert("User details updated successfully!");
+      setIsEditingProfile(false);
+      setReloadKey(prev => prev + 1);
+    } catch (err: any) {
+      alert(err.message || "Failed to update profile.");
+    } finally {
+      setSavingProfile(false);
+    }
+  }
 
   async function handleSaveOverrides() {
     if (!id) return;
@@ -130,14 +159,89 @@ export default function UserDetails() {
 
         {/* Contact details list */}
         <div className="w-full border-t border-charcoal/5 pt-4 mt-4 flex flex-col gap-2.5 text-left">
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-slate">Email Address</span>
-            <span className="font-semibold text-charcoal">{user.email || "Not provided"}</span>
-          </div>
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-slate">Phone Line</span>
-            <span className="font-semibold text-charcoal">{user.phone || "Not provided"}</span>
-          </div>
+          {isEditingProfile ? (
+            <div className="flex flex-col gap-3 bg-slate-50 p-3.5 rounded-2xl border border-charcoal/10 mb-1">
+              <span className="text-[11px] font-bold text-ink uppercase tracking-wider">Edit Profile Information</span>
+              
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold text-slate">Full Name</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Full Name"
+                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:border-emerald-500 font-semibold"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold text-slate">Email Address</label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  placeholder="e.g. user@example.com (optional)"
+                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:border-emerald-500 font-semibold"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold text-slate">Mobile Number</label>
+                <input
+                  type="tel"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="+91..."
+                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:border-emerald-500 font-semibold"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 mt-1">
+                <button
+                  type="button"
+                  disabled={savingProfile}
+                  onClick={handleSaveProfile}
+                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Check size={14} />
+                  <span>{savingProfile ? "Saving..." : "Save Details"}</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={savingProfile}
+                  onClick={() => {
+                    setIsEditingProfile(false);
+                    setEditName(user.name || "");
+                    setEditEmail(user.email || "");
+                    setEditPhone(user.phone || "");
+                  }}
+                  className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <X size={14} />
+                  <span>Cancel</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate">Email Address</span>
+                <span className="font-semibold text-charcoal">{user.email || "Not provided"}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate">Phone Line</span>
+                <span className="font-semibold text-charcoal">{user.phone || "Not provided"}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditingProfile(true)}
+                className="self-end text-[10px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 hover:underline cursor-pointer py-0.5"
+              >
+                <Edit3 size={11} />
+                <span>Edit Profile Details</span>
+              </button>
+            </>
+          )}
           <div className="flex justify-between items-center text-xs">
             <span className="text-slate">Enquiry Tokens</span>
             <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">

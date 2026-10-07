@@ -583,6 +583,7 @@ export default function Landing() {
             <span onClick={() => navigate("/privacy")} className="text-gray-900 hover:text-[#60A963] transition-colors cursor-pointer w-fit">Privacy Policy</span>
             <span onClick={() => navigate("/terms")} className="text-gray-900 hover:text-[#60A963] transition-colors cursor-pointer w-fit">Terms & Conditions</span>
             <span onClick={() => navigate("/refund")} className="text-gray-900 hover:text-[#60A963] transition-colors cursor-pointer w-fit">Refund Policy</span>
+            <span onClick={() => navigate("/contact-us")} className="text-gray-900 hover:text-[#60A963] transition-colors cursor-pointer w-fit">Contact Us</span>
           </div>
 
           <div className="md:col-span-4 flex flex-col gap-3">
@@ -606,6 +607,12 @@ export default function Landing() {
                 <MapPin size={14} className="text-[#60A963] shrink-0 mt-0.5" />
                 <span>Aira Properties, Infopark Phase II, Kochi, Kerala</span>
               </div>
+              <span 
+                onClick={() => navigate("/contact-us")} 
+                className="text-[#60A963] font-bold hover:underline transition-colors cursor-pointer w-fit mt-1"
+              >
+                Contact Us
+              </span>
             </div>
           </div>
         </div>

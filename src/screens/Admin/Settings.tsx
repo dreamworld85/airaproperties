@@ -2714,7 +2714,9 @@ export default function Settings() {
                     <button
                       key={item.label}
                       onClick={() => {
-                        if (item.key === "site") {
+                        if (item.key === "logos") {
+                          setActiveTab("logos");
+                        } else if (item.key === "site") {
                           setActiveTab("site");
                         } else if (item.key === "trials") {
                           setActiveTab("trials");

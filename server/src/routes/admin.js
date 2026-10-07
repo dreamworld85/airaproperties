@@ -517,6 +517,54 @@ router.get("/users/:id", async (req, res) => {
   }
 });
 
+// PUT /api/admin/users/:id/profile (Update User Profile by Admin)
+router.put("/users/:id/profile", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, phone } = req.body;
+    const trimmedEmail = email && String(email).trim() ? String(email).trim().toLowerCase() : null;
+    const trimmedPhone = phone && String(phone).trim() ? String(phone).trim() : null;
+    const trimmedName = name && String(name).trim() ? String(name).trim() : null;
+
+    if (trimmedEmail) {
+      const [dupEmail] = await pool.query(
+        "SELECT id FROM users WHERE LOWER(email) = LOWER(?) AND id != ?",
+        [trimmedEmail, id]
+      );
+      if (dupEmail.length > 0) {
+        return res.status(409).json({ error: "Email address is already in use by another user." });
+      }
+    }
+
+    if (trimmedPhone) {
+      const [dupPhone] = await pool.query(
+        "SELECT id FROM users WHERE phone = ? AND id != ?",
+        [trimmedPhone, id]
+      );
+      if (dupPhone.length > 0) {
+        return res.status(409).json({ error: "Phone number is already in use by another user." });
+      }
+    }
+
+    await pool.query(
+      `UPDATE users SET
+        name = COALESCE(?, name),
+        email = ?,
+        phone = COALESCE(?, phone)
+       WHERE id = ?`,
+      [trimmedName, trimmedEmail, trimmedPhone, id]
+    );
+
+    // Log admin activity
+    const action = `User ID #${id} profile details (Email: ${trimmedEmail || 'None'}, Phone: ${trimmedPhone || 'None'}) updated by Admin`;
+    await pool.query("INSERT INTO activity_logs (user_id, action, category) VALUES (null, ?, 'Users')", [action]);
+
+    res.json({ success: true, message: "User profile updated successfully." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PUT /api/admin/users/:id/status
 router.put("/users/:id/status", async (req, res) => {
   try {

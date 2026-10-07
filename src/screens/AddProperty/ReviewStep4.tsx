@@ -191,7 +191,7 @@ export default function ReviewStep4() {
       </div>
 
       {/* Header Row */}
-      <div className="flex justify-between items-center px-6 pt-5 pb-2 shrink-0">
+      <div className="flex justify-between items-center px-6 pt-5 pb-2 shrink-0 min-[1000px]:hidden">
         <button 
           type="button"
           onClick={() => navigate("/add-property/map-picker")}
@@ -212,6 +212,16 @@ export default function ReviewStep4() {
       </div>
 
       <div className="px-6 flex flex-col gap-4 flex-1">
+        {/* Desktop Back link */}
+        <button
+          type="button"
+          onClick={() => navigate("/add-property/map-picker")}
+          className="hidden min-[1000px]:inline-flex items-center gap-1 text-xs font-semibold text-[#1877F2] hover:underline -mb-1 self-start cursor-pointer"
+        >
+          <ChevronLeft size={16} />
+          <span>Back to previous step</span>
+        </button>
+
         <h2 className="font-display font-semibold text-[16px] text-[#091F40] leading-none mt-2">
           {isEditing ? "Review Your Changes" : "Review Your Property"}
         </h2>

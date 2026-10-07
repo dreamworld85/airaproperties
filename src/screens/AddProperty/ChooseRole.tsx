@@ -222,7 +222,7 @@ export default function ChooseRole() {
       </div>
 
       {/* Header Row */}
-      <div className="flex justify-between items-center px-6 pt-5 pb-2 shrink-0">
+      <div className="flex justify-between items-center px-6 pt-5 pb-2 shrink-0 min-[1000px]:hidden">
         <div className="flex items-center gap-2">
           {stage === "setup" && !isRoleAlreadyLocked && (
             <button 
@@ -364,6 +364,16 @@ export default function ChooseRole() {
         ) : (
           <>
             <div>
+              {stage === "setup" && !isRoleAlreadyLocked && (
+                <button
+                  type="button"
+                  onClick={() => setStage("choose")}
+                  className="hidden min-[1000px]:inline-flex items-center gap-1 text-xs font-semibold text-[#1877F2] hover:underline mb-2 cursor-pointer"
+                >
+                  <ChevronLeft size={16} />
+                  <span>Back to choose role</span>
+                </button>
+              )}
               <h2 className="font-display font-semibold text-[16px] text-ink leading-tight">
                 {isRoleAlreadyLocked ? "Profile Details" : `Complete ${form.role} Setup`}
               </h2>

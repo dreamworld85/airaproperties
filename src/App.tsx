@@ -26,6 +26,7 @@ import MoreInfoStep3 from "@/screens/AddProperty/MoreInfoStep3";
 import ReviewStep4 from "@/screens/AddProperty/ReviewStep4";
 import MapPickerStep from "@/screens/AddProperty/MapPickerStep";
 import Success from "@/screens/AddProperty/Success";
+import AddPropertyDesktopHeader from "@/components/AddPropertyDesktopHeader";
 import ComingSoon from "@/screens/ComingSoon";
 import PrivacyPolicy from "@/screens/Legal/PrivacyPolicy";
 import TermsConditions from "@/screens/Legal/TermsConditions";
@@ -94,11 +95,7 @@ export default function App() {
           path="/profile"
           element={
             <ProtectedRoute>
-              <div className="w-full min-h-screen min-[1000px]:bg-[#FAF8F3] flex justify-center">
-                <div className="w-full min-[1000px]:max-w-[500px] min-[1000px]:shadow-xl min-[1000px]:border-x min-[1000px]:border-slate-200 bg-cream min-h-screen relative flex flex-col">
-                  <Profile />
-                </div>
-              </div>
+              <Profile />
             </ProtectedRoute>
           }
         />
@@ -157,8 +154,9 @@ export default function App() {
           path="/add-property/*"
           element={
             <ProtectedRoute>
-              <div className="w-full min-h-screen min-[1000px]:bg-[#FAF8F3] flex justify-center">
-                <div className="w-full min-[1000px]:max-w-[500px] min-[1000px]:shadow-xl min-[1000px]:border-x min-[1000px]:border-slate-200 bg-white min-h-screen relative flex flex-col">
+              <div className="w-full min-h-screen flex justify-center add-property-desktop-bg relative">
+                <div className="w-full min-[1000px]:max-w-[500px] min-[1000px]:shadow-xl min-[1000px]:border-x min-[1000px]:border-slate-200 bg-white min-h-screen relative flex flex-col z-10">
+                  <AddPropertyDesktopHeader />
                   <Routes>
                     <Route index element={<Navigate to="role" replace />} />
                     <Route path="role" element={<ChooseRole />} />

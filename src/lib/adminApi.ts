@@ -114,6 +114,18 @@ export const adminApi = {
     return res.json();
   },
 
+  async updateUserProfile(id: number | string, data: { name?: string; email?: string; phone?: string }): Promise<void> {
+    const res = await fetch(`${API_URL}/api/admin/users/${id}/profile`, {
+      method: "PUT",
+      headers: getAdminHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Failed to update user profile.");
+    }
+  },
+
   async updateUserStatus(id: number | string, disabled: boolean): Promise<void> {
     const res = await fetch(`${API_URL}/api/admin/users/${id}/status`, {
       method: "PUT",

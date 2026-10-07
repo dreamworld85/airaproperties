@@ -96,19 +96,24 @@ router.get("/me/transactions", requireAuth, async (req, res) => {
 router.patch("/me", requireAuth, async (req, res) => {
   try {
     const { name, phone, email, location, avatarUrl, whatsappNumber } = req.body;
+    const cleanEmail = email !== undefined ? (email && String(email).trim() ? String(email).trim().toLowerCase() : null) : undefined;
+    const cleanPhone = phone !== undefined ? (phone && String(phone).trim() ? String(phone).trim() : null) : undefined;
+    const cleanName = name !== undefined ? (name && String(name).trim() ? String(name).trim() : null) : undefined;
+
     await pool.query(
       `UPDATE users SET
         name = COALESCE(?, name),
         phone = COALESCE(?, phone),
-        email = COALESCE(?, email),
+        email = CASE WHEN ? = 1 THEN ? ELSE email END,
         location = COALESCE(?, location),
         avatar_url = COALESCE(?, avatar_url),
         whatsapp_number = COALESCE(?, whatsapp_number)
        WHERE id = ?`,
       [
-        name !== undefined ? name : null,
-        phone !== undefined ? phone : null,
-        email !== undefined ? email : null,
+        cleanName !== undefined ? cleanName : null,
+        cleanPhone !== undefined ? cleanPhone : null,
+        cleanEmail !== undefined ? 1 : 0,
+        cleanEmail !== undefined ? cleanEmail : null,
         location !== undefined ? location : null,
         avatarUrl !== undefined ? avatarUrl : null,
         whatsappNumber !== undefined ? whatsappNumber : null,

@@ -1004,39 +1004,55 @@ router.delete("/:id", requireAuth, async (req, res) => {
   const conn = await pool.getConnection();
   try {
     // 1. Fetch property to check ownership and status
-    const [rows] = await conn.query("SELECT owner_id, status FROM properties WHERE id = ?", [req.params.id]);
+    const [rows] = await conn.query("SELECT owner_id, status, agency_logo_url FROM properties WHERE id = ?", [req.params.id]);
     if (rows.length === 0) {
       conn.release();
       return res.status(404).json({ error: "Property not found" });
     }
-    if (rows[0].owner_id !== req.userId) {
+
+    // Check if requester is owner or admin
+    const [userRows] = await conn.query("SELECT role FROM users WHERE id = ?", [req.userId]);
+    const isAdmin = userRows.length > 0 && userRows[0].role === "admin";
+    if (rows[0].owner_id !== req.userId && !isAdmin) {
       conn.release();
       return res.status(403).json({ error: "Not your property" });
     }
     const wasOccupyingSlot = rows[0].status === "Active" || rows[0].status === "Pending";
+    const propertyOwnerId = rows[0].owner_id;
+    const agencyLogoUrl = rows[0].agency_logo_url;
 
     // 2. Fetch all media file paths associated with this property BEFORE deleting DB record
-    const [mediaRows] = await conn.query("SELECT url FROM property_media WHERE property_id = ?", [req.params.id]);
+    const [mediaRows] = await conn.query("SELECT url, media_type FROM property_media WHERE property_id = ?", [req.params.id]);
 
     await conn.beginTransaction();
 
-    // 3. Delete the property record (cascades database delete to property_media and other child tables)
+    // 3. Clean up child records defensively to avoid foreign-key lockouts
+    await conn.query("DELETE FROM contact_clicks WHERE property_id = ?", [req.params.id]);
+    await conn.query("DELETE FROM enquiries WHERE property_id = ?", [req.params.id]);
+    await conn.query("DELETE FROM notifications WHERE property_id = ?", [req.params.id]);
+    await conn.query("DELETE FROM property_reviews WHERE property_id = ?", [req.params.id]);
+    await conn.query("DELETE FROM property_views WHERE property_id = ?", [req.params.id]);
+    await conn.query("DELETE FROM reported_listings WHERE property_id = ?", [req.params.id]);
+    await conn.query("DELETE FROM saved_properties WHERE property_id = ?", [req.params.id]);
+    await conn.query("DELETE FROM property_media WHERE property_id = ?", [req.params.id]);
+
+    // 4. Delete the property record
     await conn.query("DELETE FROM properties WHERE id = ?", [req.params.id]);
 
-    // 4. If property was active or pending, credit back 1 listing slot to the owner!
+    // 5. If property was active or pending, credit back 1 listing slot to the owner!
     if (wasOccupyingSlot) {
-      const accessCheck = await checkUserAccess(req.userId);
+      const accessCheck = await checkUserAccess(propertyOwnerId);
       if (!accessCheck.isFreeGranted) {
         await conn.query(
           "UPDATE users SET listing_slots_left = listing_slots_left + 1 WHERE id = ?",
-          [req.userId]
+          [propertyOwnerId]
         );
         const newSlots = accessCheck.listingSlotsLeft + 1;
         await conn.query(
           `INSERT INTO credit_transactions 
            (user_id, credit_type, transaction_type, amount_credits, balance_after, property_id, notes) 
            VALUES (?, 'listing_slot', 'refund', 1, ?, ?, ?)`,
-          [req.userId, newSlots, req.params.id, `Slot returned: active property #${req.params.id} deleted`]
+          [propertyOwnerId, newSlots, req.params.id, `Slot returned: active property #${req.params.id} deleted`]
         );
       }
     }
@@ -1044,12 +1060,28 @@ router.delete("/:id", requireAuth, async (req, res) => {
     await conn.commit();
     conn.release();
 
-    // 4. Physical file cleanup from uploads folders
-    console.log(`[DELETE PROPERTY] Found ${mediaRows.length} media items to delete.`);
+    // 6. Physical file cleanup from uploads folders (images, videos, logo)
+    console.log(`[DELETE PROPERTY] Found ${mediaRows.length} media items to delete for property #${req.params.id}.`);
 
     for (const media of mediaRows) {
       if (media.url) {
-        await deleteUploadedFile(media.url);
+        try {
+          await deleteUploadedFile(media.url);
+        } catch (fileErr) {
+          console.error(`Failed to delete media file ${media.url}:`, fileErr);
+        }
+      }
+    }
+
+    if (agencyLogoUrl) {
+      try {
+        const [usersWithLogo] = await pool.query("SELECT id FROM users WHERE agency_logo_url = ?", [agencyLogoUrl]);
+        const [otherPropsWithLogo] = await pool.query("SELECT id FROM properties WHERE agency_logo_url = ? AND id != ?", [agencyLogoUrl, req.params.id]);
+        if (usersWithLogo.length === 0 && otherPropsWithLogo.length === 0) {
+          await deleteUploadedFile(agencyLogoUrl);
+        }
+      } catch (logoErr) {
+        console.error("Failed to check/delete agency logo:", logoErr);
       }
     }
 
@@ -1057,7 +1089,7 @@ router.delete("/:id", requireAuth, async (req, res) => {
   } catch (err) {
     await conn.rollback();
     conn.release();
-    console.error(err);
+    console.error("Failed to delete property:", err);
     res.status(500).json({ error: "Failed to delete property" });
   }
 });

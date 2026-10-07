@@ -1497,6 +1497,30 @@ app.post("/api/service-enquiries", async (req, res) => {
   }
 });
 
+// Public Settings API (Used by BrandContext, App, and Landing)
+app.get("/api/settings", async (_req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT `key`, `value` FROM settings");
+    const settingsMap = {};
+    for (const r of rows) {
+      settingsMap[r.key] = r.value;
+    }
+    res.json(settingsMap);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/settings/:key", async (req, res) => {
+  try {
+    const { key } = req.params;
+    const [[row]] = await pool.query("SELECT `value` FROM settings WHERE `key` = ?", [key]);
+    res.json({ key, value: row ? row.value : null });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/properties", propertyRoutes);
 app.use("/api/admin", adminRoutes);

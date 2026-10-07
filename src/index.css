@@ -222,3 +222,15 @@ textarea:focus-visible {
   }
 }
 
+/* Desktop background for /add-property on screens >= 1000px */
+@media (min-width: 1000px) {
+  .add-property-desktop-bg {
+    background-color: #ffffff !important;
+    background-image: url('/images/footer-image.png'), linear-gradient(180deg, #e3f6ff 30%, #ffffff 70%) !important;
+    background-repeat: repeat-x, no-repeat !important;
+    background-position: bottom center, top center !important;
+    background-size: auto 166px, 100% 100% !important;
+    background-attachment: fixed, fixed !important;
+  }
+}
+

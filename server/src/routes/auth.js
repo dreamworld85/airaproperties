@@ -146,18 +146,30 @@ router.post("/logout", (req, res) => {
 router.post("/register", async (req, res) => {
   try {
     const { name, email, phone, password, role } = req.body;
-    if (!name || !password || (!email && !phone)) {
-      return res.status(400).json({ error: "Name, password, and email or phone are required" });
+    const trimmedName = name ? String(name).trim() : "";
+    const trimmedPhone = phone ? String(phone).trim() : "";
+    const trimmedEmail = email && String(email).trim() ? String(email).trim().toLowerCase() : null;
+
+    if (!trimmedName || !password || !trimmedPhone) {
+      return res.status(400).json({ error: "Full Name, mobile number, and password are required" });
     }
 
     const userRole = "user";
 
-    const [existing] = await pool.query(
-      "SELECT id FROM users WHERE email = ? OR phone = ?",
-      [email || null, phone || null]
-    );
+    let existingQuery = "SELECT id, phone, email FROM users WHERE phone = ?";
+    let queryParams = [trimmedPhone];
+    if (trimmedEmail) {
+      existingQuery = "SELECT id, phone, email FROM users WHERE phone = ? OR (email IS NOT NULL AND email != '' AND LOWER(email) = LOWER(?))";
+      queryParams = [trimmedPhone, trimmedEmail];
+    }
+
+    const [existing] = await pool.query(existingQuery, queryParams);
     if (existing.length > 0) {
-      return res.status(409).json({ error: "An account with this email or phone already exists" });
+      const isPhoneMatch = existing.some(u => u.phone === trimmedPhone);
+      if (isPhoneMatch) {
+        return res.status(409).json({ error: "An account with this mobile number already exists" });
+      }
+      return res.status(409).json({ error: "An account with this email address already exists" });
     }
 
     let trialEnds = null;
@@ -174,7 +186,7 @@ router.post("/register", async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
       "INSERT INTO users (name, email, phone, password_hash, role, enquiry_credits_left, listing_slots_left) VALUES (?, ?, ?, ?, ?, 3, 2)",
-      [name, email || null, phone || null, passwordHash, userRole]
+      [trimmedName, trimmedEmail, trimmedPhone, passwordHash, userRole]
     );
 
     const newUserId = result.insertId;

@@ -355,10 +355,15 @@ export default function Login() {
         const { token, user } = await api.login(loginIdentifier, password);
         login(token, user);
       } else if (mode === "register") {
-        const fullPhone = phone.trim() ? (countryCode + phone.trim()) : undefined;
+        if (!phone.trim()) {
+          setError("Please enter your mobile number");
+          setLoading(false);
+          return;
+        }
+        const fullPhone = countryCode + phone.trim();
         const { token, user } = await api.register({
-          name,
-          email: email.trim() || undefined,
+          name: name.trim(),
+          email: undefined,
           phone: fullPhone,
           password,
           role,
@@ -599,7 +604,7 @@ export default function Login() {
                   <Phone size={16} className="text-slate/40 shrink-0" />
                   <input
                     type="tel"
-                    required={mode === "login" && loginMethod === "phone"}
+                    required={mode === "register" || (mode === "login" && loginMethod === "phone")}
                     placeholder="Mobile Number"
                     value={phone}
                     onChange={(e) => handlePhoneChange(e.target.value)}
@@ -651,8 +656,8 @@ export default function Login() {
               </div>
             )}
 
-            {/* Email Address field (Login with Email, Register, Forgot, Reset) */}
-            {((mode === "login" && loginMethod === "email") || mode === "register" || mode === "forgot_email" || mode === "reset_password") && (
+            {/* Email Address field (Login with Email, Forgot, Reset) */}
+            {((mode === "login" && loginMethod === "email") || mode === "forgot_email" || mode === "reset_password") && (
               <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
                 <Mail size={16} className="text-slate/40 shrink-0" />
                 <input

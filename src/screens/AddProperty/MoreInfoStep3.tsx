@@ -109,7 +109,7 @@ export default function MoreInfoStep3() {
       </div>
 
       {/* Header Row */}
-      <div className="flex justify-between items-center px-6 pt-5 pb-2 shrink-0">
+      <div className="flex justify-between items-center px-6 pt-5 pb-2 shrink-0 min-[1000px]:hidden">
         <button 
           type="button"
           onClick={() => navigate("/add-property/details")}
@@ -130,16 +130,24 @@ export default function MoreInfoStep3() {
           href={whatsappLink} 
           target="_blank" 
           rel="noreferrer" 
-          className="flex items-center gap-1 text-[11.5px] font-bold text-[#59AD63] hover:underline"
+          className="flex items-center gap-2 text-[12px] font-bold text-[#59AD63] hover:underline cursor-pointer"
         >
           <span>Need Help?</span>
-          <svg className="w-4 h-4 text-[#25D366] fill-current" viewBox="0 0 24 24">
-            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.625 1.45 5.516.002 10.003-4.484 10.006-9.998.002-2.673-1.039-5.187-2.932-7.082C16.43 1.63 13.918.585 11.244.585 5.729.585 1.24 5.07 1.238 10.586c-.001 1.516.398 2.998 1.157 4.312L1.336 21.05l6.311-1.657-.001-.239zM18.06 14.86c-.329-.165-1.953-.965-2.253-1.074-.3-.109-.519-.165-.738.165-.219.329-.848 1.074-1.039 1.293-.19.219-.382.246-.71.082-1.393-.697-2.316-1.229-3.232-2.81-.242-.415.242-.385.693-1.284.076-.153.038-.287-.019-.396-.057-.109-.519-1.25-.71-1.71-.186-.447-.376-.386-.519-.393-.134-.007-.288-.008-.442-.008-.154 0-.404.058-.616.287-.211.23-.807.788-.807 1.921 0 1.134.826 2.23.94 2.385.115.155 1.625 2.483 3.937 3.48.55.237 1.03.396 1.385.508.558.177 1.066.152 1.468.092.448-.067 1.953-.799 2.228-1.573.275-.774.275-1.439.192-1.573-.082-.134-.3-.213-.629-.379z"/>
-          </svg>
+          <img src="/images/whatsapp.svg" alt="WhatsApp" className="w-[35px] h-[35px] object-contain shrink-0" />
         </a>
       </div>
 
       <div className="px-6 flex flex-col gap-6 mt-3 flex-1">
+        {/* Desktop Back link */}
+        <button
+          type="button"
+          onClick={() => navigate("/add-property/details")}
+          className="hidden min-[1000px]:inline-flex items-center gap-1 text-xs font-semibold text-[#1877F2] hover:underline -mb-2 self-start cursor-pointer"
+        >
+          <ChevronLeft size={16} />
+          <span>Back to previous step</span>
+        </button>
+
         {/* Title */}
         <h1 className="font-display font-extrabold text-[18px] text-[#091F40] leading-none">
           Add Property Details
@@ -355,7 +363,9 @@ export default function MoreInfoStep3() {
               />
               <span className="text-[13px] font-semibold text-slate-700">Price Negotiable</span>
             </label>
-          </div>          {/* Maintenance Price (Monthly) - Only shown for Rent / Lease or Paying Guest */}
+          </div>
+
+          {/* Maintenance Price (Monthly) - Only shown for Rent / Lease or Paying Guest */}
           {isRentOrPG && (
             <div className="relative border border-[#59AD63]/30 rounded-[8px] px-4 pt-5 pb-2.5 bg-white flex items-center shadow-sm focus-within:border-[#59AD63] transition-all mt-2">
               <span className="absolute top-1.5 left-4 text-[10px] font-semibold text-slate/60 select-none">
@@ -370,6 +380,28 @@ export default function MoreInfoStep3() {
               />
             </div>
           )}
+        </div>
+
+        {/* Section 7: Description */}
+        <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 mt-2">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-bold text-[#091F40]">Description</span>
+            <span className={`text-[11px] font-bold ${
+              (form.description?.length || 0) >= 300 ? "text-amber-600" : "text-slate/50"
+            }`}>
+              {(form.description || "").length}/300
+            </span>
+          </div>
+          <div className="relative border border-[#59AD63]/30 rounded-[8px] p-3.5 bg-white shadow-sm focus-within:border-[#59AD63] focus-within:ring-1 focus-within:ring-[#59AD63]/30 transition-all duration-150">
+            <textarea
+              rows={4}
+              maxLength={300}
+              placeholder="Write a brief description about the property, nearby landmarks, features, etc. (max 300 characters)..."
+              value={form.description || ""}
+              onChange={(e) => update({ description: e.target.value.slice(0, 300) })}
+              className="w-full text-[13px] font-medium text-charcoal placeholder:text-slate/40 outline-none bg-transparent resize-none leading-relaxed"
+            />
+          </div>
         </div>
 
         {/* Post and Continue Submit Button */}

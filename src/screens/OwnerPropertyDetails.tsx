@@ -252,11 +252,13 @@ export default function OwnerPropertyDetails() {
 
   async function handleDelete() {
     if (!property) return;
-    if (!window.confirm("Are you sure you want to permanently delete this listing?")) return;
+    if (!window.confirm("Are you sure you want to permanently delete this listing? All images and videos will be completely removed from the server.")) return;
     setBusy(true);
     try {
       await api.deleteProperty(property.id);
       navigate("/my-properties");
+    } catch (err: any) {
+      alert(`Could not delete property: ${err instanceof Error ? err.message : "Server error"}`);
     } finally {
       setBusy(false);
     }
