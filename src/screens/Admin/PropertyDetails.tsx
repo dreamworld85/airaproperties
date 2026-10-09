@@ -41,30 +41,25 @@ export default function PropertyDetails() {
     loadProperty();
   }, [id]);
 
-  async function handleApprove() {
+  async function handleSetStatus(newStatus: string) {
     if (!property || !id) return;
     setBusy(true);
     try {
-      await adminApi.updatePropertyStatus(id, "Active");
-      setProperty({ ...property, status: "Active" });
+      await adminApi.updatePropertyStatus(id, newStatus);
+      setProperty({ ...property, status: newStatus as any });
     } catch (err) {
-      alert("Failed to approve property.");
+      alert(`Failed to set status to ${newStatus}.`);
     } finally {
       setBusy(false);
     }
   }
 
+  async function handleApprove() {
+    return handleSetStatus("Active");
+  }
+
   async function handleReject() {
-    if (!property || !id) return;
-    setBusy(true);
-    try {
-      await adminApi.updatePropertyStatus(id, "Rejected");
-      setProperty({ ...property, status: "Rejected" });
-    } catch (err) {
-      alert("Failed to reject property.");
-    } finally {
-      setBusy(false);
-    }
+    return handleSetStatus("Rejected");
   }
 
   async function handleDelete() {
@@ -157,6 +152,41 @@ export default function PropertyDetails() {
             </div>
           </div>
 
+          {/* YouTube Video Preview if present */}
+          {property.youtubeUrl && (
+            <div className="flex flex-col gap-2 bg-white border border-charcoal/5 p-5 rounded-3xl shadow-sm">
+              <span className="text-[10px] font-bold text-slate uppercase tracking-wider flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-red-600"></span>
+                YouTube Video
+              </span>
+              <div className="relative aspect-video rounded-2xl overflow-hidden bg-black/90">
+                {(() => {
+                  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                  const match = property.youtubeUrl.match(regExp);
+                  const embedId = (match && match[2].length === 11) ? match[2] : null;
+                  if (embedId) {
+                    return (
+                      <iframe
+                        src={`https://www.youtube.com/embed/${embedId}`}
+                        title={property.title}
+                        className="w-full h-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    );
+                  }
+                  return (
+                    <div className="flex items-center justify-center h-full text-xs text-white">
+                      <a href={property.youtubeUrl} target="_blank" rel="noreferrer" className="underline hover:text-red-400">
+                        View YouTube Video
+                      </a>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
           {/* Descriptions */}
           {property.description && (
             <div className="flex flex-col gap-2 bg-white border border-charcoal/5 p-5 rounded-3xl shadow-sm">
@@ -223,33 +253,41 @@ export default function PropertyDetails() {
           </div>
 
           {/* Controls Actions Footer */}
-          <div className="flex flex-col gap-3 mt-1">
-            {property.status === "Pending" ? (
-              <div className="flex gap-3">
+          <div className="flex flex-col gap-3 bg-white border border-charcoal/5 p-5 rounded-3xl shadow-sm">
+            <span className="text-[10px] font-bold text-slate uppercase tracking-wider block">Set Status</span>
+            <div className="grid grid-cols-2 gap-2">
+              {(["Active", "Pending", "Sold", "Rejected"] as const).map((st) => (
                 <button
+                  key={st}
                   disabled={busy}
-                  onClick={handleReject}
-                  className="flex-1 py-3.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-2xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all active:scale-[0.99] cursor-pointer"
+                  onClick={() => handleSetStatus(st)}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    property.status === st
+                      ? st === "Active"
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                        : st === "Pending"
+                        ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                        : st === "Sold"
+                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                        : "bg-rose-600 text-white border-rose-600 shadow-sm"
+                      : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                  }`}
                 >
-                  <X size={15} /> Reject Listing
+                  {property.status === st && "✓ "}
+                  {st}
                 </button>
-                <button
-                  disabled={busy}
-                  onClick={handleApprove}
-                  className="flex-[2] py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all active:scale-[0.99] shadow-md shadow-emerald-100/50 cursor-pointer"
-                >
-                  <Check size={15} /> Approve & Publish
-                </button>
-              </div>
-            ) : (
+              ))}
+            </div>
+
+            <div className="border-t border-slate-100 pt-3 mt-1">
               <button
                 disabled={busy}
                 onClick={handleDelete}
-                className="w-full py-3.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold transition-all active:scale-[0.99] cursor-pointer"
+                className="w-full py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all active:scale-[0.99] cursor-pointer"
               >
-                <Trash2 size={16} /> Delete Listing Permanently
+                <Trash2 size={15} /> Delete Listing Permanently
               </button>
-            )}
+            </div>
           </div>
         </div>
       </div>

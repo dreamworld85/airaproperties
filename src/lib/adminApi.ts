@@ -43,18 +43,30 @@ export interface AdminUser {
 
 export interface AdminProperty {
   id: number;
-  ownerId: number;
+  ownerId?: number;
+  owner_id?: number;
   uploader_name: string;
+  user_role?: string;
+  uploader_avatar?: string | null;
+  uploader_phone?: string | null;
+  uploader_email?: string | null;
   title: string;
-  propertyType: string;
+  propertyType?: string;
+  property_type?: string;
   purpose: string;
-  price: number;
-  areaSqft: number;
+  price: number | string;
+  areaSqft?: number;
+  area_sqft?: number;
+  bedrooms?: number;
+  bathrooms?: number;
   address: string;
   state?: string;
   district: string;
-  status: "Draft" | "Pending" | "Active" | "Inactive" | "Rejected";
+  listing_role?: string;
+  status: "Draft" | "Pending" | "Active" | "Inactive" | "Rejected" | "Sold";
   images: string[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface AdminReport {
@@ -148,6 +160,42 @@ export const adminApi = {
     const res = await fetch(`${API_URL}/api/admin/properties?${params}`, { headers: getAdminHeaders() });
     if (!res.ok) throw new Error("Failed to load properties list.");
     return res.json();
+  },
+
+  async getProperty(id: number | string): Promise<any> {
+    const res = await fetch(`${API_URL}/api/admin/properties/${id}`, { headers: getAdminHeaders() });
+    if (!res.ok) throw new Error("Failed to load property details.");
+    return res.json();
+  },
+
+  async updateProperty(id: number | string, data: FormData | object): Promise<void> {
+    let headers: Record<string, string> = {
+      "x-admin-auth": localStorage.getItem("kerala_realty_admin_token") || "",
+    };
+    let body: any;
+    if (data instanceof FormData) {
+      body = data;
+    } else {
+      headers["Content-Type"] = "application/json";
+      body = JSON.stringify(data);
+    }
+    const res = await fetch(`${API_URL}/api/admin/properties/${id}`, {
+      method: "PUT",
+      headers,
+      body,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Failed to update property.");
+    }
+  },
+
+  async deletePropertyMedia(id: number | string, mediaId: number | string): Promise<void> {
+    const res = await fetch(`${API_URL}/api/admin/properties/${id}/media/${mediaId}`, {
+      method: "DELETE",
+      headers: getAdminHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to delete media.");
   },
 
   async updatePropertyStatus(id: number | string, status: string): Promise<void> {

@@ -13,6 +13,8 @@ import {
   Settings, 
   X,
   ChevronLeft,
+  ChevronDown,
+  List,
   ShieldCheck,
   CreditCard,
   User,
@@ -65,10 +67,20 @@ export default function AdminLayout() {
 
   const currentPath = location.pathname;
 
+  const [propertiesExpanded, setPropertiesExpanded] = useState(true);
+
   const navItems = [
     { label: "Dashboard", path: "/admin", icon: LayoutDashboard },
     { label: "Users", path: "/admin/users", icon: Users },
-    { label: "Properties", path: "/admin/properties", icon: Building2 },
+    { 
+      label: "Properties", 
+      path: "/admin/properties", 
+      icon: Building2,
+      subItems: [
+        { label: "Property Directory", path: "/admin/properties" },
+        { label: "Properties list", path: "/admin/property-list" },
+      ]
+    },
     { label: "Builder Partners", path: "/admin/builder-inquiries", icon: Briefcase },
     { label: "Reports", path: "/admin/reports", icon: Flag },
     { label: "User Enquiry", path: "/admin/enquiries", icon: PhoneCall },
@@ -85,6 +97,7 @@ export default function AdminLayout() {
   else if (currentPath === "/admin/users") pageTitle = "Users";
   else if (currentPath.startsWith("/admin/users/")) pageTitle = "User Details";
   else if (currentPath === "/admin/properties") pageTitle = "Properties";
+  else if (currentPath === "/admin/property-list" || currentPath === "/admin/properties-list") pageTitle = "Property List";
   else if (currentPath.startsWith("/admin/properties/")) pageTitle = "Property Details";
   else if (currentPath === "/admin/builder-inquiries") pageTitle = "Builder Partner Inquiries";
   else if (currentPath === "/admin/reports") pageTitle = "Reported Listings";
@@ -116,11 +129,66 @@ export default function AdminLayout() {
         </div>
 
         {/* Sidebar Nav Items */}
-        <nav className="flex-1 px-4 py-6 flex flex-col gap-1.5">
+        <nav className="flex-1 px-4 py-6 flex flex-col gap-1.5 overflow-y-auto no-scrollbar">
           <span className="text-[9px] font-bold text-slate/50 uppercase tracking-wider px-3 mb-2 block">Menu Options</span>
           {navItems.map((item) => {
-            const isActive = currentPath === item.path;
+            const hasSub = !!item.subItems;
+            const isSubActive = hasSub && item.subItems!.some((s) => currentPath === s.path);
+            const isActive = currentPath === item.path || isSubActive;
             const Icon = item.icon;
+
+            if (hasSub) {
+              return (
+                <div key={item.path} className="flex flex-col gap-1">
+                  <div
+                    onClick={() => setPropertiesExpanded(!propertiesExpanded)}
+                    className={`flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      isActive 
+                        ? "bg-emerald-50 text-emerald-800 shadow-xs" 
+                        : "text-slate hover:bg-slate-50 hover:text-black"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon size={16} />
+                      <span>{item.label}</span>
+                    </div>
+                    <ChevronDown
+                      size={14}
+                      className={`text-slate-400 transition-transform duration-200 ${
+                        propertiesExpanded ? "rotate-180" : "rotate-0"
+                      }`}
+                    />
+                  </div>
+
+                  {propertiesExpanded && (
+                    <div className="flex flex-col gap-1 pl-4 pr-1 py-1 border-l-2 border-emerald-100 ml-5 my-0.5 animate-in fade-in duration-150">
+                      {item.subItems!.map((sub) => {
+                        const isThisSubActive = currentPath === sub.path;
+                        return (
+                          <Link
+                            key={sub.path}
+                            to={sub.path}
+                            className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                              isThisSubActive
+                                ? "bg-emerald-600 text-white font-bold shadow-xs"
+                                : "text-slate-600 hover:bg-slate-100/80 hover:text-black"
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                isThisSubActive ? "bg-white" : "bg-slate-400"
+                              }`}
+                            />
+                            <span>{sub.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             return (
               <Link
                 key={item.path}
@@ -362,12 +430,20 @@ export default function AdminLayout() {
 
             <div className="grid grid-cols-3 gap-3 py-2">
               <Link
-                to="/admin/builder-inquiries"
+                to="/admin/property-list"
                 onClick={() => setShowMoreMenu(false)}
                 className="flex flex-col items-center justify-center p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/50 hover:border-emerald-600/30 transition-all gap-1.5"
               >
+                <List size={20} className="text-emerald-700" />
+                <span className="text-[10px] font-bold text-emerald-900">Prop List</span>
+              </Link>
+              <Link
+                to="/admin/builder-inquiries"
+                onClick={() => setShowMoreMenu(false)}
+                className="flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 border border-charcoal/5 hover:border-emerald-600/30 transition-all gap-1.5"
+              >
                 <Briefcase size={20} className="text-emerald-700" />
-                <span className="text-[10px] font-bold text-emerald-900">Builders</span>
+                <span className="text-[10px] font-bold text-ink">Builders</span>
               </Link>
               <Link
                 to="/admin/analytics"

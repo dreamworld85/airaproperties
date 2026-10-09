@@ -48,6 +48,7 @@ import AdminDashboard from "@/screens/Admin/Dashboard";
 import AdminUsers from "@/screens/Admin/Users";
 import AdminUserDetails from "@/screens/Admin/UserDetails";
 import AdminProperties from "@/screens/Admin/Properties";
+import AdminPropertyList from "@/screens/Admin/PropertyList";
 import AdminPropertyDetails from "@/screens/Admin/PropertyDetails";
 import AdminReportedListings from "@/screens/Admin/ReportedListings";
 import AdminAnalytics from "@/screens/Admin/Analytics";
@@ -181,6 +182,8 @@ export default function App() {
           <Route path="users/:id" element={<AdminUserDetails />} />
           <Route path="users/:id/reviews" element={<AdminUserReviews />} />
           <Route path="properties" element={<AdminProperties />} />
+          <Route path="property-list" element={<AdminPropertyList />} />
+          <Route path="properties-list" element={<AdminPropertyList />} />
           <Route path="properties/:id" element={<AdminPropertyDetails />} />
           <Route path="reports" element={<AdminReportedListings />} />
           <Route path="enquiries" element={<ServiceEnquiries />} />

@@ -204,7 +204,26 @@ export default function MyProperties() {
     }
   }
 
-  const filtered = properties.filter((p) => tab === "All" || p.status === tab);
+  async function handlePublishAgain(p: ApiProperty) {
+    setBusyId(p.id);
+    try {
+      await api.updatePropertyStatus(p.id, "Pending");
+      setProperties((prev) =>
+        prev.map((x) => (x.id === p.id ? { ...x, status: "Pending" } : x))
+      );
+      alert(`"${p.title}" has been re-submitted for review! Once approved by Admin, it will be published live on the frontend.`);
+    } catch (err: any) {
+      setError(err instanceof Error ? err.message : "Failed to re-publish property");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const filtered = properties.filter((p) => {
+    if (tab === "All") return true;
+    if (tab === "Pending") return p.status === "Pending" || p.status === "Rejected";
+    return p.status === tab;
+  });
 
   return (
     <div className="min-h-screen pb-28">
@@ -244,7 +263,11 @@ export default function MyProperties() {
 
       <div className="px-4 mb-4 flex gap-2 overflow-x-auto no-scrollbar">
         {tabs.map((t) => {
-          const count = t === "All" ? properties.length : properties.filter((p) => p.status === t).length;
+          const count = t === "All"
+            ? properties.length
+            : t === "Pending"
+            ? properties.filter((p) => p.status === "Pending" || p.status === "Rejected").length
+            : properties.filter((p) => p.status === t).length;
           const active = t === tab;
           return (
             <button
@@ -297,6 +320,23 @@ export default function MyProperties() {
                 </div>
               </div>
             </button>
+            {p.status === "Rejected" && (
+              <div className="bg-rose-50 border-t border-rose-100 p-2.5 px-3.5 flex items-center justify-between gap-2">
+                <span className="text-[11px] font-bold text-rose-700">
+                  ⚠️ Rejected by Admin. Please re-submit to publish again.
+                </span>
+                <button
+                  disabled={busyId === p.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePublishAgain(p);
+                  }}
+                  className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer disabled:opacity-50"
+                >
+                  Publish Again
+                </button>
+              </div>
+            )}
             <div className="flex border-t border-charcoal/6 flex-wrap">
               <button
                 onClick={() => navigate(`/my-properties/${p.id}`)}

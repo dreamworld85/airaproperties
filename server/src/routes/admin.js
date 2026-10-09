@@ -742,7 +742,12 @@ router.get("/properties", async (req, res) => {
   try {
     const { search = "", status = "All" } = req.query;
     let query = `
-      SELECT p.*, u.name as uploader_name 
+      SELECT p.*, 
+             u.name as uploader_name,
+             u.role as user_role,
+             u.avatar_url as uploader_avatar,
+             u.phone as uploader_phone,
+             u.email as uploader_email
       FROM properties p 
       JOIN users u ON p.owner_id = u.id 
       WHERE 1=1
@@ -750,14 +755,19 @@ router.get("/properties", async (req, res) => {
     const params = [];
 
     if (search) {
-      query += " AND (p.title LIKE ? OR p.address LIKE ? OR p.district LIKE ? OR p.state LIKE ?)";
+      query += " AND (p.title LIKE ? OR p.address LIKE ? OR p.district LIKE ? OR p.state LIKE ? OR u.name LIKE ?)";
       const wild = `%${search}%`;
-      params.push(wild, wild, wild, wild);
+      params.push(wild, wild, wild, wild, wild);
     }
 
     if (status !== "All") {
-      query += " AND p.status = ?";
-      params.push(status);
+      if (status === "For Sale" || status === "For Rent") {
+        query += " AND p.purpose = ?";
+        params.push(status);
+      } else {
+        query += " AND p.status = ?";
+        params.push(status);
+      }
     }
 
     const [rows] = await pool.query(query, params);
@@ -777,6 +787,159 @@ router.get("/properties", async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error("ADMIN PROPERTIES ERROR:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/properties/:id - Fetch full property details for Admin editing
+router.get("/properties/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [[property]] = await pool.query(
+      `SELECT p.*, u.name as uploader_name, u.email as uploader_email, u.phone as uploader_phone, u.role as user_role
+       FROM properties p
+       JOIN users u ON p.owner_id = u.id
+       WHERE p.id = ?`,
+      [id]
+    );
+    if (!property) return res.status(404).json({ error: "Property not found" });
+
+    const [mediaRows] = await pool.query(
+      "SELECT id, property_id, media_type, url, sort_order FROM property_media WHERE property_id = ? ORDER BY sort_order ASC",
+      [id]
+    );
+
+    property.media = mediaRows;
+    property.images = mediaRows.filter((m) => m.media_type === "image").map((m) => m.url);
+    property.videos = mediaRows.filter((m) => m.media_type === "video").map((m) => m.url);
+
+    res.json(property);
+  } catch (err) {
+    console.error("ADMIN GET PROPERTY ERROR:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/properties/:id - Update property details, YouTube URL, status, and images by Admin
+router.put("/properties/:id", upload.any(), async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const { id } = req.params;
+    const {
+      title,
+      price,
+      property_type,
+      purpose,
+      area_sqft,
+      address,
+      district,
+      state,
+      description,
+      status,
+      youtube_url,
+      deleted_media_ids,
+    } = req.body;
+
+    await conn.beginTransaction();
+
+    const [[existing]] = await conn.query("SELECT * FROM properties WHERE id = ?", [id]);
+    if (!existing) {
+      await conn.rollback();
+      return res.status(404).json({ error: "Property not found" });
+    }
+
+    // 1. Update property table fields
+    const updates = [];
+    const params = [];
+
+    if (title !== undefined) { updates.push("title = ?"); params.push(title); }
+    if (price !== undefined) { updates.push("price = ?"); params.push(price); }
+    if (property_type !== undefined) { updates.push("property_type = ?"); params.push(property_type); }
+    if (purpose !== undefined) { updates.push("purpose = ?"); params.push(purpose); }
+    if (area_sqft !== undefined) { updates.push("area_sqft = ?"); params.push(area_sqft); }
+    if (address !== undefined) { updates.push("address = ?"); params.push(address); }
+    if (district !== undefined) { updates.push("district = ?"); params.push(district); }
+    if (state !== undefined) { updates.push("state = ?"); params.push(state); }
+    if (description !== undefined) { updates.push("description = ?"); params.push(description); }
+    if (status !== undefined) { updates.push("status = ?"); params.push(status); }
+    if (youtube_url !== undefined) { updates.push("youtube_url = ?"); params.push(youtube_url || null); }
+
+    if (updates.length > 0) {
+      params.push(id);
+      await conn.query(`UPDATE properties SET ${updates.join(", ")} WHERE id = ?`, params);
+    }
+
+    // 2. Handle deleted media IDs
+    let deletedIds = [];
+    if (deleted_media_ids) {
+      try {
+        deletedIds = typeof deleted_media_ids === "string" ? JSON.parse(deleted_media_ids) : deleted_media_ids;
+      } catch (e) {
+        deletedIds = Array.isArray(deleted_media_ids) ? deleted_media_ids : [deleted_media_ids];
+      }
+    }
+
+    if (Array.isArray(deletedIds) && deletedIds.length > 0) {
+      const [mediaToDelete] = await conn.query(
+        "SELECT id, url FROM property_media WHERE id IN (?) AND property_id = ?",
+        [deletedIds, id]
+      );
+      for (const m of mediaToDelete) {
+        if (m.url) await deleteUploadedFile(m.url);
+      }
+      await conn.query("DELETE FROM property_media WHERE id IN (?) AND property_id = ?", [deletedIds, id]);
+    }
+
+    // 3. Handle newly uploaded files
+    const files = req.files || [];
+    if (files.length > 0) {
+      const [[maxSortRow]] = await conn.query(
+        "SELECT COALESCE(MAX(sort_order), -1) AS maxSort FROM property_media WHERE property_id = ?",
+        [id]
+      );
+      let sort = maxSortRow.maxSort + 1;
+      for (const file of files) {
+        const mediaType = file.mimetype && file.mimetype.startsWith("video") ? "video" : "image";
+        await conn.query(
+          "INSERT INTO property_media (property_id, media_type, url, sort_order) VALUES (?, ?, ?, ?)",
+          [id, mediaType, `/uploads/${file.filename}`, sort++]
+        );
+      }
+    }
+
+    // 4. Log admin activity
+    const newStatus = status || existing.status;
+    const action = `Property ID #${id} updated by Admin (status: '${newStatus}')`;
+    await conn.query("INSERT INTO activity_logs (user_id, action, category) VALUES (null, ?, 'Properties')", [action]);
+
+    await conn.commit();
+    res.json({ success: true, message: "Property updated successfully by admin" });
+  } catch (err) {
+    await conn.rollback();
+    console.error("ADMIN UPDATE PROPERTY ERROR:", err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// DELETE /api/admin/properties/:id/media/:mediaId - Delete a single media item by Admin
+router.delete("/properties/:id/media/:mediaId", async (req, res) => {
+  try {
+    const { id, mediaId } = req.params;
+    const [[media]] = await pool.query(
+      "SELECT id, url FROM property_media WHERE id = ? AND property_id = ?",
+      [mediaId, id]
+    );
+    if (!media) return res.status(404).json({ error: "Media item not found" });
+
+    if (media.url) {
+      await deleteUploadedFile(media.url);
+    }
+    await pool.query("DELETE FROM property_media WHERE id = ?", [mediaId]);
+
+    res.json({ success: true });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

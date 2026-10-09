@@ -459,7 +459,7 @@ export const api = {
     return handle<{ success: boolean; message: string }>(res);
   },
 
-  async updatePropertyStatus(id: number, status: "Active" | "Inactive" | "Draft" | "Sold", useAdminContact?: boolean) {
+  async updatePropertyStatus(id: number, status: "Active" | "Inactive" | "Draft" | "Sold" | "Pending" | "Rejected", useAdminContact?: boolean) {
     const res = await fetch(`${API_URL}/api/properties/${id}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -820,6 +820,28 @@ export function formatArea(areaSqft: number, propertyType?: string): string {
     return details.primary;
   }
   return `${(Number(areaSqft) || 0).toLocaleString("en-IN")} sq.ft`;
+}
+
+export function parseYouTubeVideo(url?: string | null): {
+  videoId: string;
+  embedUrl: string;
+  thumbnailUrl: string;
+} | null {
+  if (!url || typeof url !== "string") return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  const regex = /(?:youtube\.com\/(?:watch\?.*v=|embed\/|v\/|shorts\/)|youtu\.be\/)([\w-]{11})/;
+  const match = trimmed.match(regex);
+  if (match && match[1]) {
+    const videoId = match[1];
+    return {
+      videoId,
+      embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`,
+      thumbnailUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+    };
+  }
+  return null;
 }
 
 export interface ApiNotification {

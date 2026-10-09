@@ -296,9 +296,15 @@ router.get("/:id", optionalAuth, async (req, res) => {
     );
     if (rows.length === 0) return res.status(404).json({ error: "Property not found" });
 
-    // Safe View tracking (IP + User-Agent cooldown of 24h per property, skip owner views)
+    const isAdmin = req.headers["x-admin-auth"] === "KeralaRealtyAdminSecretToken2026";
     const visitorId = req.userId || null;
     const isOwnerViewing = visitorId && visitorId === rows[0].owner_id;
+
+    // "rejected then not show to frontent that property any user"
+    // Hide non-active (Rejected, Pending, Inactive) listings from any user who is not the uploader or admin
+    if (rows[0].status !== "Active" && !isOwnerViewing && !isAdmin) {
+      return res.status(404).json({ error: "Property is currently not available or under review." });
+    }
 
     if (!isOwnerViewing) {
       const ipAddress = req.ip || req.headers["x-forwarded-for"] || "";
@@ -352,7 +358,6 @@ router.get("/:id", optionalAuth, async (req, res) => {
       isSaved = savedRows.length > 0;
     }
 
-    const isAdmin = req.headers["x-admin-auth"] === "KeralaRealtyAdminSecretToken2026";
     let contactAccess = isAdmin;
     if (!contactAccess && req.userId) {
       if (req.userId === rows[0].owner_id) {
@@ -802,7 +807,7 @@ router.post("/", requireAuth, upload.any(), optimizeImages, async (req, res) => 
 router.patch("/:id/status", requireAuth, async (req, res) => {
   try {
     const { status, useAdminContact } = req.body;
-    const allowed = ["Active", "Inactive", "Draft", "Sold"];
+    const allowed = ["Active", "Inactive", "Draft", "Sold", "Pending"];
     if (!allowed.includes(status)) {
       return res.status(400).json({ error: `Status must be one of ${allowed.join(", ")}` });
     }

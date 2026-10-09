@@ -33,7 +33,7 @@ import {
   Layers,
   CheckCircle2
 } from "lucide-react";
-import { ApiPropertyDetail, mediaUrl, api, isLandProperty, getLandAreaDetails, formatArea } from "@/lib/api";
+import { ApiPropertyDetail, mediaUrl, api, isLandProperty, getLandAreaDetails, formatArea, parseYouTubeVideo } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import DesktopHeader from "./DesktopHeader";
 import DesktopFooter from "./DesktopFooter";
@@ -46,6 +46,15 @@ function formatPrice(price: number): string {
   if (price >= 100000) return `₹${(price / 100000).toFixed(1)} L`;
   return `₹${price.toLocaleString("en-IN")}`;
 }
+
+export type MediaItem = {
+  type: "image" | "video" | "youtube";
+  url: string;
+  thumbnailUrl?: string;
+  embedUrl?: string;
+  videoId?: string;
+  title?: string;
+};
 
 interface DesktopPropertyDetailsViewProps {
   property: ApiPropertyDetail;
@@ -88,8 +97,8 @@ export default function DesktopPropertyDetailsView({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
 
-  // Build unified media items array (images + videos) with deduplication
-  const allMedia: Array<{ type: "image" | "video"; url: string }> = [];
+  // Build unified media items array (images + uploaded videos + YouTube) with deduplication
+  const imageItems: MediaItem[] = [];
   const seenUrls = new Set<string>();
 
   if (property.images && property.images.length > 0) {
@@ -98,28 +107,58 @@ export default function DesktopPropertyDetailsView({
         const resolved = img.startsWith("/uploads/") ? mediaUrl(img) : img;
         if (!seenUrls.has(resolved)) {
           seenUrls.add(resolved);
-          allMedia.push({
+          imageItems.push({
             type: "image",
-            url: resolved
+            url: resolved,
           });
         }
       }
     });
   }
 
+  const rawYt = property.youtubeUrl || (property as any).youtube_url;
+  const ytParsed = parseYouTubeVideo(rawYt);
+  const ytItem: MediaItem | null = ytParsed
+    ? {
+        type: "youtube",
+        url: rawYt,
+        thumbnailUrl: ytParsed.thumbnailUrl,
+        embedUrl: ytParsed.embedUrl,
+        videoId: ytParsed.videoId,
+        title: "YouTube Video Tour",
+      }
+    : null;
+
+  const videoItems: MediaItem[] = [];
   if (property.videos && property.videos.length > 0) {
     property.videos.forEach((vid: string) => {
       if (vid) {
         const resolved = vid.startsWith("/uploads/") ? mediaUrl(vid) : vid;
         if (!seenUrls.has(resolved)) {
           seenUrls.add(resolved);
-          allMedia.push({
+          videoItems.push({
             type: "video",
-            url: resolved
+            url: resolved,
+            title: "Video Tour",
           });
         }
       }
     });
+  }
+
+  // Unified allMedia:
+  // If images exist: slot 0 is the hero image.
+  // Then YouTube video and uploaded videos are placed prominently at slots 1, 2...
+  // followed by remaining images!
+  const allMedia: MediaItem[] = [];
+  if (imageItems.length > 0) {
+    allMedia.push(imageItems[0]);
+    if (ytItem) allMedia.push(ytItem);
+    videoItems.forEach((v) => allMedia.push(v));
+    imageItems.slice(1).forEach((img) => allMedia.push(img));
+  } else {
+    if (ytItem) allMedia.push(ytItem);
+    videoItems.forEach((v) => allMedia.push(v));
   }
 
   if (allMedia.length === 0) {
@@ -127,7 +166,17 @@ export default function DesktopPropertyDetailsView({
   }
 
   const totalMedia = allMedia.length;
-  const mainMedia = allMedia[0];
+  const hasVideoOrYt = allMedia.some((m) => m.type === "video" || m.type === "youtube");
+
+  // Construct 5 display items to match the 5-card layout in the screenshot
+  const displaySlots: { item: MediaItem; targetIdx: number }[] = [];
+  for (let i = 0; i < 5; i++) {
+    const targetIdx = i < totalMedia ? i : i % totalMedia;
+    displaySlots.push({
+      item: allMedia[targetIdx],
+      targetIdx,
+    });
+  }
 
   // Keyboard navigation for Lightbox
   useEffect(() => {
@@ -288,6 +337,109 @@ export default function DesktopPropertyDetailsView({
     }
   };
 
+  const renderMediaCard = (
+    item: MediaItem,
+    targetIdx: number,
+    isMain: boolean,
+    keySuffix: string
+  ) => {
+    return (
+      <div
+        key={`gallery-card-${keySuffix}`}
+        onClick={() => {
+          setActivePhotoIdx(targetIdx);
+          setShowGalleryModal(true);
+        }}
+        className={`relative h-full w-full min-h-0 min-w-0 group cursor-pointer overflow-hidden ${
+          isMain ? "rounded-3xl" : "rounded-2xl"
+        } bg-slate-900 border border-slate-200/50 shadow-xs select-none`}
+      >
+        {/* 1. YouTube Video Card */}
+        {item.type === "youtube" ? (
+          <div className="relative w-full h-full overflow-hidden">
+            <img
+              src={item.thumbnailUrl || FALLBACK_IMAGE}
+              alt="YouTube Video Tour"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 brightness-95"
+            />
+            {/* Dark gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/30 group-hover:from-black/85 transition-colors" />
+
+            {/* Centered Red YouTube Play Button */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-red-600 group-hover:bg-red-700 text-white flex items-center justify-center shadow-2xl transition-all duration-300 group-hover:scale-110 group-active:scale-95">
+                <svg className="w-6 h-6 sm:w-7 sm:h-7 fill-white ml-0.5" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Top YouTube Badge */}
+            <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-600 text-white text-[10px] font-bold shadow-md z-10">
+              <svg className="w-3.5 h-3.5 fill-white" viewBox="0 0 24 24">
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              </svg>
+              <span>YouTube Video</span>
+            </div>
+          </div>
+        ) : item.type === "video" ? (
+          /* 2. Uploaded Video Card */
+          <div className="relative w-full h-full overflow-hidden bg-black">
+            <video
+              src={item.url}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 brightness-95"
+              muted
+              playsInline
+              preload="metadata"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/30 group-hover:from-black/85 transition-colors" />
+
+            {/* Centered Play Button */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/95 group-hover:bg-white text-gray-900 flex items-center justify-center shadow-2xl transition-all duration-300 group-hover:scale-110 group-active:scale-95">
+                <Play className="w-6 h-6 fill-gray-900 text-gray-900 ml-0.5" />
+              </div>
+            </div>
+
+            {/* Video Tour Badge */}
+            <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-xs text-white text-[10px] font-bold shadow-md z-10">
+              <Play className="w-3 h-3 fill-white" />
+              <span>Video Tour</span>
+            </div>
+          </div>
+        ) : (
+          /* 3. Image Card */
+          <div className="relative w-full h-full overflow-hidden">
+            <img
+              src={item.url}
+              alt={`${property.title} - photo`}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+          </div>
+        )}
+
+        {/* View All Photos Button (Bottom-left of Main Card, exactly like attached screen) */}
+        {isMain && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setActivePhotoIdx(0);
+              setShowGalleryModal(true);
+            }}
+            className="absolute bottom-4 left-4 flex items-center gap-2 px-4 py-2.5 bg-[#1877F2] hover:bg-[#1565c0] text-white font-bold text-xs rounded-xl shadow-lg transition-all cursor-pointer z-20 hover:scale-105 active:scale-95"
+          >
+            <ImageIcon className="w-4 h-4" />
+            <span>
+              {hasVideoOrYt ? `View All Photos & Videos (${totalMedia})` : `View All Photos (${totalMedia})`}
+            </span>
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-[#FAF8F3] w-full flex flex-col font-sans">
       {/* Top Header */}
@@ -395,312 +547,25 @@ export default function DesktopPropertyDetailsView({
           </div>
         </div>
 
-        {/* Photo Gallery Hero Grid (Zero Repetition) */}
-        <div className="relative rounded-3xl overflow-hidden shadow-sm bg-gray-100">
-          {totalMedia === 1 ? (
-            /* 1 Media: Full-width hero */
-            <div 
-              onClick={() => {
-                setActivePhotoIdx(0);
-                setShowGalleryModal(true);
-              }}
-              className="relative w-full h-[440px] group bg-gray-900 cursor-pointer overflow-hidden flex items-center justify-center"
-            >
-              {mainMedia.type === "video" ? (
-                <div className="relative w-full h-full">
-                  <video src={mainMedia.url} className="w-full h-full object-cover" muted playsInline />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/35 transition-colors">
-                    <div className="w-16 h-16 rounded-full bg-white/90 group-hover:bg-white flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
-                      <Play className="w-7 h-7 fill-gray-900 text-gray-900 ml-1" />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <img
-                  src={mainMedia.url}
-                  alt={property.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
+        {/* Photo Gallery Hero Grid (matching attached layout: 1 Main on left + 4 in 2x2 grid on right) */}
+        <div className="relative w-full mb-6 sm:mb-8 lg:mb-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 h-[460px] min-h-[460px] max-h-[460px] select-none">
+            {/* Left: 1 Large Hero Card (7 columns, full height) */}
+            <div className="lg:col-span-7 h-full min-h-0">
+              {renderMediaCard(displaySlots[0].item, displaySlots[0].targetIdx, true, "main-0")}
+            </div>
+
+            {/* Right: 4 Cards in 2x2 Grid (5 columns) */}
+            <div className="lg:col-span-5 grid grid-cols-2 grid-rows-[repeat(2,minmax(0,1fr))] gap-3.5 h-full min-h-0">
+              {displaySlots.slice(1, 5).map((slot, i) =>
+                renderMediaCard(slot.item, slot.targetIdx, false, `grid-${i + 1}`)
               )}
             </div>
-          ) : totalMedia === 2 ? (
-            /* 2 Media: Clean 2-column side-by-side split (Main on left, Second on right) */
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[440px]">
-              <div 
-                onClick={() => {
-                  setActivePhotoIdx(0);
-                  setShowGalleryModal(true);
-                }}
-                className="lg:col-span-7 relative h-full group bg-gray-900 cursor-pointer overflow-hidden"
-              >
-                {mainMedia.type === "video" ? (
-                  <div className="relative w-full h-full">
-                    <video src={mainMedia.url} className="w-full h-full object-cover" muted playsInline />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/35 transition-colors">
-                      <div className="w-14 h-14 rounded-full bg-white/90 group-hover:bg-white flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
-                        <Play className="w-6 h-6 fill-gray-900 text-gray-900 ml-1" />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <img
-                    src={mainMedia.url}
-                    alt={property.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                )}
-              </div>
-
-              <div 
-                onClick={() => {
-                  setActivePhotoIdx(1);
-                  setShowGalleryModal(true);
-                }}
-                className="lg:col-span-5 relative h-full group bg-gray-900 cursor-pointer overflow-hidden rounded-2xl"
-              >
-                {allMedia[1].type === "video" ? (
-                  <div className="relative w-full h-full">
-                    <video src={allMedia[1].url} className="w-full h-full object-cover" muted playsInline />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/35 transition-colors">
-                      <div className="w-14 h-14 rounded-full bg-white/90 group-hover:bg-white flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
-                        <Play className="w-6 h-6 fill-gray-900 text-gray-900 ml-1" />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <img
-                    src={allMedia[1].url}
-                    alt={`${property.title} - photo 2`}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                )}
-              </div>
-            </div>
-          ) : totalMedia === 3 ? (
-            /* 3 Media: 1 Main on left (7 cols), 2 Stacked on right (5 cols) */
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[440px]">
-              <div 
-                onClick={() => {
-                  setActivePhotoIdx(0);
-                  setShowGalleryModal(true);
-                }}
-                className="lg:col-span-7 relative h-full group bg-gray-900 cursor-pointer overflow-hidden"
-              >
-                {mainMedia.type === "video" ? (
-                  <div className="relative w-full h-full">
-                    <video src={mainMedia.url} className="w-full h-full object-cover" muted playsInline />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/35 transition-colors">
-                      <div className="w-14 h-14 rounded-full bg-white/90 group-hover:bg-white flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
-                        <Play className="w-6 h-6 fill-gray-900 text-gray-900 ml-1" />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <img
-                    src={mainMedia.url}
-                    alt={property.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                )}
-              </div>
-
-              <div className="lg:col-span-5 grid grid-rows-2 gap-4 h-full">
-                {[1, 2].map((idx) => {
-                  const item = allMedia[idx];
-                  return (
-                    <div
-                      key={`media-3-${idx}`}
-                      onClick={() => {
-                        setActivePhotoIdx(idx);
-                        setShowGalleryModal(true);
-                      }}
-                      className="relative h-full bg-gray-900 rounded-2xl overflow-hidden group cursor-pointer"
-                    >
-                      {item.type === "video" ? (
-                        <div className="relative w-full h-full">
-                          <video src={item.url} className="w-full h-full object-cover" muted playsInline />
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/35 transition-colors">
-                            <div className="w-10 h-10 rounded-full bg-white/90 group-hover:bg-white flex items-center justify-center shadow-md transition-transform group-hover:scale-110">
-                              <Play className="w-4 h-4 fill-gray-900 text-gray-900 ml-0.5" />
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <img
-                          src={item.url}
-                          alt={`${property.title} - photo ${idx + 1}`}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : totalMedia === 4 ? (
-            /* 4 Media: 1 Main on left (7 cols), 3 on right (2 top, 1 bottom spanning both) */
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[440px]">
-              <div 
-                onClick={() => {
-                  setActivePhotoIdx(0);
-                  setShowGalleryModal(true);
-                }}
-                className="lg:col-span-7 relative h-full group bg-gray-900 cursor-pointer overflow-hidden"
-              >
-                {mainMedia.type === "video" ? (
-                  <div className="relative w-full h-full">
-                    <video src={mainMedia.url} className="w-full h-full object-cover" muted playsInline />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/35 transition-colors">
-                      <div className="w-14 h-14 rounded-full bg-white/90 group-hover:bg-white flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
-                        <Play className="w-6 h-6 fill-gray-900 text-gray-900 ml-1" />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <img
-                    src={mainMedia.url}
-                    alt={property.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                )}
-              </div>
-
-              <div className="lg:col-span-5 grid grid-cols-2 grid-rows-2 gap-4 h-full">
-                {[1, 2].map((idx) => {
-                  const item = allMedia[idx];
-                  return (
-                    <div
-                      key={`media-4-${idx}`}
-                      onClick={() => {
-                        setActivePhotoIdx(idx);
-                        setShowGalleryModal(true);
-                      }}
-                      className="relative h-full bg-gray-900 rounded-2xl overflow-hidden group cursor-pointer"
-                    >
-                      {item.type === "video" ? (
-                        <div className="relative w-full h-full">
-                          <video src={item.url} className="w-full h-full object-cover" muted playsInline />
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/35 transition-colors">
-                            <div className="w-10 h-10 rounded-full bg-white/90 group-hover:bg-white flex items-center justify-center shadow-md transition-transform group-hover:scale-110">
-                              <Play className="w-4 h-4 fill-gray-900 text-gray-900 ml-0.5" />
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <img
-                          src={item.url}
-                          alt={`${property.title} - photo ${idx + 1}`}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-                <div
-                  onClick={() => {
-                    setActivePhotoIdx(3);
-                    setShowGalleryModal(true);
-                  }}
-                  className="col-span-2 relative h-full bg-gray-900 rounded-2xl overflow-hidden group cursor-pointer"
-                >
-                  {allMedia[3].type === "video" ? (
-                    <div className="relative w-full h-full">
-                      <video src={allMedia[3].url} className="w-full h-full object-cover" muted playsInline />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/35 transition-colors">
-                        <div className="w-10 h-10 rounded-full bg-white/90 group-hover:bg-white flex items-center justify-center shadow-md transition-transform group-hover:scale-110">
-                          <Play className="w-4 h-4 fill-gray-900 text-gray-900 ml-0.5" />
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <img
-                      src={allMedia[3].url}
-                      alt={`${property.title} - photo 4`}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* 5+ Media: 1 Main on left (7 cols), 4 (2x2) on right (5 cols) */
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[440px]">
-              <div 
-                onClick={() => {
-                  setActivePhotoIdx(0);
-                  setShowGalleryModal(true);
-                }}
-                className="lg:col-span-7 relative h-full group bg-gray-900 cursor-pointer overflow-hidden"
-              >
-                {mainMedia.type === "video" ? (
-                  <div className="relative w-full h-full">
-                    <video src={mainMedia.url} className="w-full h-full object-cover" muted playsInline />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/35 transition-colors">
-                      <div className="w-14 h-14 rounded-full bg-white/90 group-hover:bg-white flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
-                        <Play className="w-6 h-6 fill-gray-900 text-gray-900 ml-1" />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <img
-                    src={mainMedia.url}
-                    alt={property.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                )}
-              </div>
-
-              <div className="lg:col-span-5 grid grid-cols-2 grid-rows-2 gap-4 h-full">
-                {[1, 2, 3, 4].map((idx) => {
-                  const item = allMedia[idx];
-                  return (
-                    <div
-                      key={`media-5-${idx}`}
-                      onClick={() => {
-                        setActivePhotoIdx(idx);
-                        setShowGalleryModal(true);
-                      }}
-                      className="relative h-full bg-gray-900 rounded-2xl overflow-hidden group cursor-pointer"
-                    >
-                      {item.type === "video" ? (
-                        <div className="relative w-full h-full">
-                          <video src={item.url} className="w-full h-full object-cover" muted playsInline />
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/35 transition-colors">
-                            <div className="w-10 h-10 rounded-full bg-white/90 group-hover:bg-white flex items-center justify-center shadow-md transition-transform group-hover:scale-110">
-                              <Play className="w-4 h-4 fill-gray-900 text-gray-900 ml-0.5" />
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <img
-                          src={item.url}
-                          alt={`${property.title} - photo ${idx + 1}`}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Floating View All Photos Button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setActivePhotoIdx(0);
-              setShowGalleryModal(true);
-            }}
-            className="absolute bottom-4 right-4 flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-full shadow-xl transition-all cursor-pointer z-20 hover:scale-105 active:scale-95"
-          >
-            <ImageIcon className="w-4 h-4" />
-            <span>View All Photos ({totalMedia})</span>
-          </button>
+          </div>
         </div>
 
         {/* Main Body Split Section matching Image 2 */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mt-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mt-8 sm:mt-10 lg:mt-12">
           {/* Left Main Content Column (8 Columns wide) */}
           <div className="lg:col-span-8 flex flex-col gap-8">
             {/* Description Card */}
@@ -1207,10 +1072,22 @@ export default function DesktopPropertyDetailsView({
             )}
 
             {/* Media Content */}
-            <div className="w-full h-full flex items-center justify-center">
+            <div className="w-full h-full flex items-center justify-center p-2 sm:p-4">
               {(() => {
                 const current = allMedia[activePhotoIdx] || allMedia[0];
-                if (current.type === "video") {
+                if (current.type === "youtube") {
+                  return (
+                    <div className="w-full max-w-4xl aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black border border-white/10">
+                      <iframe
+                        src={current.embedUrl || `https://www.youtube.com/embed/${current.videoId}?autoplay=1&rel=0`}
+                        title="Property YouTube Video"
+                        className="w-full h-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  );
+                } else if (current.type === "video") {
                   return (
                     <video
                       src={current.url}
@@ -1261,9 +1138,29 @@ export default function DesktopPropertyDetailsView({
                     : "border-transparent opacity-50 hover:opacity-100"
                 }`}
               >
-                {item.type === "video" ? (
+                {item.type === "youtube" ? (
                   <>
-                    <video src={item.url} className="w-full h-full object-cover brightness-[0.6]" muted playsInline />
+                    <img
+                      src={item.thumbnailUrl || FALLBACK_IMAGE}
+                      alt={`thumb ${idx}`}
+                      className="w-full h-full object-cover brightness-[0.7]"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-5 h-5 rounded-full bg-red-600 flex items-center justify-center">
+                        <svg className="w-2.5 h-2.5 fill-white ml-0.5" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </>
+                ) : item.type === "video" ? (
+                  <>
+                    <video
+                      src={item.url}
+                      className="w-full h-full object-cover brightness-[0.6]"
+                      muted
+                      playsInline
+                    />
                     <div className="absolute inset-0 flex items-center justify-center">
                       <Play className="w-4 h-4 fill-white text-white" />
                     </div>

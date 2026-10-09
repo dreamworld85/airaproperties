@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Heart, Share2, Flag, Phone, MessageCircle, ChevronLeft, ChevronRight, MapPin, X, Star, Maximize, BedDouble, Bath, Compass, Eye, Download, Play, Shield, Award, Calendar, Check, Building, Users, CheckCircle2, Tag, Image as ImageIcon, Coins, Zap } from "lucide-react";
-import { api, ApiPropertyDetail, mediaUrl, formatArea } from "@/lib/api";
+import { api, ApiPropertyDetail, mediaUrl, formatArea, parseYouTubeVideo } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import RoleBadge from "@/components/RoleBadge";
 import BottomNav from "@/components/BottomNav";
@@ -403,6 +403,37 @@ View Details: ${window.location.origin}/property/${property.id}`;
     );
   }
 
+  const rawYt = property.youtubeUrl || (property as any).youtube_url;
+  const ytParsed = parseYouTubeVideo(rawYt);
+
+  type MobileMedia = {
+    type: "image" | "video" | "youtube";
+    url: string;
+    thumbnailUrl?: string;
+    embedUrl?: string;
+    videoId?: string;
+  };
+
+  const mobileMedia: MobileMedia[] = [];
+  (property.images || []).forEach((img) => {
+    if (img) mobileMedia.push({ type: "image", url: mediaUrl(img) });
+  });
+  if (ytParsed && rawYt) {
+    mobileMedia.push({
+      type: "youtube",
+      url: rawYt,
+      thumbnailUrl: ytParsed.thumbnailUrl,
+      embedUrl: ytParsed.embedUrl,
+      videoId: ytParsed.videoId,
+    });
+  }
+  (property.videos || []).forEach((vid) => {
+    if (vid) mobileMedia.push({ type: "video", url: mediaUrl(vid) });
+  });
+  if (mobileMedia.length === 0) {
+    mobileMedia.push({ type: "image", url: FALLBACK_IMAGE });
+  }
+
   return (
     <div className="w-full min-h-screen bg-[#FAF8F3] py-4">
       <div className="app-container w-full max-w-[420px] mx-auto bg-cream min-h-screen relative shadow-md overflow-x-hidden pb-28 text-left">
@@ -421,43 +452,61 @@ View Details: ${window.location.origin}/property/${property.id}`;
               }}
               className="flex w-full h-full overflow-x-auto snap-x snap-mandatory no-scrollbar"
             >
-              {property.images && property.images.length > 0 ? (
-                <>
-                  {property.images.map((img, idx) => (
+              {mobileMedia.map((m, idx) => {
+                if (m.type === "youtube") {
+                  return (
                     <div 
-                      key={`img-${idx}`} 
+                      key={`media-${idx}`} 
+                      className="w-full h-full flex-shrink-0 snap-start bg-black flex items-center justify-center cursor-pointer relative"
+                      onClick={() => setLightboxIdx(idx)}
+                    >
+                      <img
+                        src={m.thumbnailUrl || FALLBACK_IMAGE}
+                        alt="YouTube Tour"
+                        className="w-full h-full object-cover brightness-90"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-2xl bg-red-600 flex items-center justify-center shadow-lg">
+                          <svg className="w-6 h-6 fill-white ml-0.5" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="absolute top-3 left-3 px-2 py-0.5 rounded-md bg-red-600 text-white text-[9px] font-bold shadow">
+                        YouTube
+                      </div>
+                    </div>
+                  );
+                } else if (m.type === "video") {
+                  return (
+                    <div 
+                      key={`media-${idx}`} 
+                      className="w-full h-full flex-shrink-0 snap-start bg-black flex items-center justify-center cursor-pointer relative"
+                      onClick={() => setLightboxIdx(idx)}
+                    >
+                      <video
+                        src={m.url}
+                        controls
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div 
+                      key={`media-${idx}`} 
                       className="w-full h-full flex-shrink-0 snap-start cursor-pointer"
                       onClick={() => setLightboxIdx(idx)}
                     >
                       <img
-                        src={mediaUrl(img)}
+                        src={m.url}
                         alt={`${property.title} - ${idx + 1}`}
                         className="w-full h-full object-cover"
                       />
                     </div>
-                  ))}
-                  {property.videos && property.videos.map((vid, idx) => {
-                    const videoIdx = (property.images?.length || 0) + idx;
-                    return (
-                      <div 
-                        key={`vid-${idx}`} 
-                        className="w-full h-full flex-shrink-0 snap-start bg-black flex items-center justify-center cursor-pointer relative"
-                        onClick={() => setLightboxIdx(videoIdx)}
-                      >
-                        <video
-                          src={mediaUrl(vid)}
-                          controls
-                          className="w-full h-full object-contain"
-                        />
-                      </div>
-                    );
-                  })}
-                </>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate">
-                  No images available
-                </div>
-              )}
+                  );
+                }
+              })}
             </div>
 
             {/* Floating Top Control Actions */}
@@ -490,7 +539,7 @@ View Details: ${window.location.origin}/property/${property.id}`;
 
             {/* Bottom Left indicator image count */}
             {(() => {
-              const total = (property.images?.length || 0) + (property.videos?.length || 0);
+              const total = mobileMedia.length;
               if (total <= 1) return null;
               return (
                 <div 
@@ -503,81 +552,54 @@ View Details: ${window.location.origin}/property/${property.id}`;
               );
             })()}
 
-            {/* Thumbnails Row (Old Style absolute overlay) */}
-            {property.images && property.images.length > 1 && (
+            {/* Thumbnails Row */}
+            {mobileMedia.length > 1 && (
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-transparent px-2 py-1.5 flex items-center gap-1.5 max-w-[90%] overflow-x-auto no-scrollbar z-20">
-                {property.images.length <= 5 ? (
-                  property.images.map((img, idx) => {
-                    const isActive = activeIdx === idx;
-                    return (
-                      <button
-                        key={`thumb-${idx}`}
-                        onClick={() => {
-                          handleThumbnailClick(idx);
-                          setLightboxIdx(idx);
-                        }}
-                        className={`w-[3.25rem] h-[3.25rem] rounded-[0.4rem] overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
-                          isActive ? "border-white scale-105 shadow-md" : "border-white/50 opacity-80 hover:opacity-100"
-                        }`}
-                      >
+                {mobileMedia.slice(0, 5).map((m, idx) => {
+                  const isActive = activeIdx === idx;
+                  return (
+                    <button
+                      key={`thumb-${idx}`}
+                      onClick={() => {
+                        handleThumbnailClick(idx);
+                        setLightboxIdx(idx);
+                      }}
+                      className={`w-[3.25rem] h-[3.25rem] rounded-[0.4rem] overflow-hidden border-2 transition-all flex-shrink-0 relative cursor-pointer ${
+                        isActive ? "border-white scale-105 shadow-md" : "border-white/50 opacity-80 hover:opacity-100"
+                      }`}
+                    >
+                      {m.type === "youtube" ? (
+                        <>
+                          <img
+                            src={m.thumbnailUrl || FALLBACK_IMAGE}
+                            alt="YouTube"
+                            className="w-full h-full object-cover brightness-90"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-4 h-4 rounded-full bg-red-600 flex items-center justify-center">
+                              <svg className="w-2 h-2 fill-white ml-0.5" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z" />
+                              </svg>
+                            </div>
+                          </div>
+                        </>
+                      ) : m.type === "video" ? (
+                        <>
+                          <video src={m.url} className="w-full h-full object-cover brightness-75" />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Play size={12} className="fill-white text-white" />
+                          </div>
+                        </>
+                      ) : (
                         <img
-                          src={mediaUrl(img)}
+                          src={m.url}
                           alt={`Thumbnail ${idx + 1}`}
                           className="w-full h-full object-cover"
                         />
-                      </button>
-                    );
-                  })
-                ) : (
-                  <>
-                    {property.images.slice(0, 4).map((img, idx) => {
-                      const isActive = activeIdx === idx;
-                      return (
-                        <button
-                          key={`thumb-${idx}`}
-                          onClick={() => {
-                            handleThumbnailClick(idx);
-                            setLightboxIdx(idx);
-                          }}
-                          className={`w-[3.25rem] h-[3.25rem] rounded-[0.4rem] overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
-                            isActive ? "border-white scale-105 shadow-md" : "border-white/50 opacity-80 hover:opacity-100"
-                          }`}
-                        >
-                          <img
-                            src={mediaUrl(img)}
-                            alt={`Thumbnail ${idx + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                        </button>
-                      );
-                    })}
-                    {(() => {
-                      const remainingCount = property.images.length - 4;
-                      const idx = 4;
-                      const isActive = activeIdx >= idx;
-                      return (
-                        <button
-                          onClick={() => {
-                            handleThumbnailClick(idx);
-                            setLightboxIdx(idx);
-                          }}
-                          className={`w-[3.25rem] h-[3.25rem] rounded-[0.4rem] overflow-hidden relative flex-shrink-0 transition-all border-2 cursor-pointer ${
-                            isActive ? "border-white scale-105 shadow-md" : "border-white/50 opacity-85 hover:opacity-100"
-                          }`}
-                        >
-                          <img
-                            src={mediaUrl(property.images[4])}
-                            alt="More images"
-                            className="w-full h-full object-cover brightness-[0.4]"
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white font-display select-none">
-                            +{remainingCount}
-                          </div>
-                        </button>
-                      );
-                    })()}
-                  </>
-                )}
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1173,7 +1195,7 @@ View Details: ${window.location.origin}/property/${property.id}`;
           {/* Top Actions: Title & Close */}
           <div className="w-full max-w-[420px] sm:max-w-2xl px-6 flex justify-between items-center select-none text-white/90">
             <span className="font-display font-extrabold text-xs tracking-wider uppercase bg-white/10 px-3 py-1 rounded-full">
-              {lightboxIdx + 1} / {((property.images?.length || 0) + (property.videos?.length || 0))}
+              {lightboxIdx + 1} / {mobileMedia.length}
             </span>
             <button 
               onClick={() => setLightboxIdx(null)}
@@ -1187,11 +1209,11 @@ View Details: ${window.location.origin}/property/${property.id}`;
           {/* Main Media Swiper Box with Left & Right Arrow buttons */}
           <div className="relative w-full max-w-[420px] sm:max-w-2xl flex-1 flex items-center justify-center p-2 my-2">
             {/* Left Navigation Arrow */}
-            {((property.images?.length || 0) + (property.videos?.length || 0)) > 1 && (
+            {mobileMedia.length > 1 && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  const total = (property.images?.length || 0) + (property.videos?.length || 0);
+                  const total = mobileMedia.length;
                   setLightboxIdx((prev) => (prev !== null ? (prev > 0 ? prev - 1 : total - 1) : 0));
                 }}
                 className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 backdrop-blur-sm transition-all active:scale-95 cursor-pointer shadow-xl"
@@ -1201,32 +1223,38 @@ View Details: ${window.location.origin}/property/${property.id}`;
               </button>
             )}
 
-            {/* Media Image or Video */}
+            {/* Media Image, Video or YouTube */}
             <div 
               className="w-full h-full flex items-center justify-center"
               onClick={(e) => e.stopPropagation()}
             >
               {(() => {
-                const images = property.images || [];
-                const videos = property.videos || [];
-                const totalImg = images.length;
-                const isVid = lightboxIdx >= totalImg;
-                
-                if (isVid) {
-                  const vidSrc = videos[lightboxIdx - totalImg];
+                const current = mobileMedia[lightboxIdx] || mobileMedia[0];
+                if (current.type === "youtube") {
+                  return (
+                    <div className="w-full max-w-xl aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black border border-white/10">
+                      <iframe
+                        src={current.embedUrl || `https://www.youtube.com/embed/${current.videoId}?autoplay=1`}
+                        title="YouTube Video"
+                        className="w-full h-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  );
+                } else if (current.type === "video") {
                   return (
                     <video 
-                      src={mediaUrl(vidSrc)} 
+                      src={current.url} 
                       controls 
                       autoPlay 
                       className="max-h-[70vh] max-w-full rounded-2xl shadow-2xl" 
                     />
                   );
                 } else {
-                  const imgSrc = images[lightboxIdx] || FALLBACK_IMAGE;
                   return (
                     <img 
-                      src={mediaUrl(imgSrc)} 
+                      src={current.url} 
                       alt={`Gallery Preview ${lightboxIdx + 1}`} 
                       className="max-h-[70vh] max-w-full object-contain rounded-2xl shadow-2xl" 
                     />
@@ -1236,11 +1264,11 @@ View Details: ${window.location.origin}/property/${property.id}`;
             </div>
 
             {/* Right Navigation Arrow */}
-            {((property.images?.length || 0) + (property.videos?.length || 0)) > 1 && (
+            {mobileMedia.length > 1 && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  const total = (property.images?.length || 0) + (property.videos?.length || 0);
+                  const total = mobileMedia.length;
                   setLightboxIdx((prev) => (prev !== null ? (prev < total - 1 ? prev + 1 : 0) : 0));
                 }}
                 className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 backdrop-blur-sm transition-all active:scale-95 cursor-pointer shadow-xl"
@@ -1253,40 +1281,40 @@ View Details: ${window.location.origin}/property/${property.id}`;
 
           {/* Bottom Thumbnails Navigation Strip */}
           <div className="w-full max-w-[420px] sm:max-w-2xl px-4 overflow-x-auto no-scrollbar flex gap-2 justify-center py-2 select-none">
-            {property.images?.map((img, idx) => (
+            {mobileMedia.map((m, idx) => (
               <button
                 key={`lightbox-nav-${idx}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   setLightboxIdx(idx);
                 }}
-                className={`w-11 h-11 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${
+                className={`w-11 h-11 rounded-lg overflow-hidden shrink-0 border-2 relative transition-all ${
                   lightboxIdx === idx ? "border-[#52b775] scale-105" : "border-transparent opacity-50 hover:opacity-100"
                 }`}
               >
-                <img src={mediaUrl(img)} alt="thumb" className="w-full h-full object-cover" />
+                {m.type === "youtube" ? (
+                  <>
+                    <img src={m.thumbnailUrl || FALLBACK_IMAGE} alt="thumb" className="w-full h-full object-cover brightness-90" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-4 h-4 rounded-full bg-red-600 flex items-center justify-center">
+                        <svg className="w-2 h-2 fill-white ml-0.5" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </>
+                ) : m.type === "video" ? (
+                  <>
+                    <video src={m.url} className="w-full h-full object-cover brightness-75" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Play size={10} className="fill-white text-white" />
+                    </div>
+                  </>
+                ) : (
+                  <img src={m.url} alt="thumb" className="w-full h-full object-cover" />
+                )}
               </button>
             ))}
-            {property.videos?.map((vid, idx) => {
-              const videoIdx = (property.images?.length || 0) + idx;
-              return (
-                <button
-                  key={`lightbox-nav-vid-${idx}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setLightboxIdx(videoIdx);
-                  }}
-                  className={`w-11 h-11 rounded-lg overflow-hidden shrink-0 border-2 relative transition-all ${
-                    lightboxIdx === videoIdx ? "border-[#52b775] scale-105" : "border-transparent opacity-50 hover:opacity-100"
-                  }`}
-                >
-                  <video src={mediaUrl(vid)} className="w-full h-full object-cover brightness-[0.6]" muted playsInline />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Play size={12} className="fill-white text-white stroke-none" />
-                  </div>
-                </button>
-              );
-            })}
           </div>
         </div>
       )}
