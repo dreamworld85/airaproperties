@@ -22,6 +22,24 @@ export default function Footer() {
         <p className="text-xs text-gray-600 max-w-[280px] leading-relaxed">
           Find your dream home, villa, land, or commercial space across Kerala's finest locations.
         </p>
+        <a
+          href="https://greensparrows.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2.5 pt-0.5 group cursor-pointer transition-opacity hover:opacity-85"
+        >
+          <img 
+            src="https://greensparrows.com/wp-content/uploads/2026/03/greensparrows-logo.svg" 
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "/images/greensparrows-logo.svg";
+            }}
+            alt="Green Sparrows" 
+            className="h-5 w-auto object-contain"
+          />
+          <span className="text-xs font-semibold text-gray-800 group-hover:text-emerald-700 transition-colors">
+            Green Sparrows – Products
+          </span>
+        </a>
         <div className="flex items-center gap-4 text-xs font-semibold text-gray-900">
           <Link to="/terms" className="text-gray-900 hover:text-[#60A963] transition-colors">Terms</Link>
           <span className="text-gray-300">&bull;</span>

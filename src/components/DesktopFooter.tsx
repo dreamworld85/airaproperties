@@ -34,6 +34,24 @@ export default function DesktopFooter() {
             <p className="text-xs text-gray-600 leading-relaxed max-w-md font-medium">
               Discover, buy, and lease properties across Kerala. GreenReal is the premier real estate platform connecting buyers and verified listing promoters.
             </p>
+            <a
+              href="https://greensparrows.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-3 pt-1 w-fit group cursor-pointer transition-opacity hover:opacity-85"
+            >
+              <img 
+                src="https://greensparrows.com/wp-content/uploads/2026/03/greensparrows-logo.svg" 
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "/images/greensparrows-logo.svg";
+                }}
+                alt="Green Sparrows" 
+                className="h-6 sm:h-7 w-auto object-contain"
+              />
+              <span className="text-xs sm:text-[13px] font-semibold text-gray-800 group-hover:text-emerald-700 transition-colors">
+                Green Sparrows – Products
+              </span>
+            </a>
           </div>
 
           {/* Column 2: Legal Policies (3 Columns) */}
