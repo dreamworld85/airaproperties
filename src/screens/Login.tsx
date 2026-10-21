@@ -118,13 +118,10 @@ function FourDigitOtpInput({
         inputRefs.current[index + 1]?.focus();
       }
     } else {
+      // Multiple digits entered (SMS auto-fetch or paste)
       const pasted = raw.slice(0, 4);
-      const next = [...digits];
-      for (let i = 0; i < pasted.length; i++) {
-        next[i] = pasted[i];
-      }
-      onChange(next.join(""));
-      const nextIdx = Math.min(pasted.length, 3);
+      onChange(pasted);
+      const nextIdx = Math.min(pasted.length - 1, 3);
       inputRefs.current[nextIdx]?.focus();
     }
   };
@@ -139,17 +136,13 @@ function FourDigitOtpInput({
     e.preventDefault();
     const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
     if (!pasted) return;
-    const next = ["", "", "", ""];
-    for (let i = 0; i < pasted.length; i++) {
-      next[i] = pasted[i];
-    }
-    onChange(next.join(""));
-    const nextIdx = Math.min(pasted.length, 3);
+    onChange(pasted);
+    const nextIdx = Math.min(pasted.length - 1, 3);
     inputRefs.current[nextIdx]?.focus();
   };
 
   return (
-    <div className="flex items-center justify-between gap-3 w-full my-3">
+    <div className="flex items-center justify-between gap-2.5 w-full my-3">
       {digits.map((digit, idx) => (
         <input
           key={idx}
@@ -157,13 +150,14 @@ function FourDigitOtpInput({
           type="tel"
           inputMode="numeric"
           pattern="[0-9]*"
-          maxLength={1}
+          maxLength={idx === 0 ? 4 : 1}
+          autoComplete={idx === 0 ? "one-time-code" : "off"}
           disabled={disabled}
           value={digit}
           onChange={(e) => handleChange(idx, e)}
           onKeyDown={(e) => handleKeyDown(idx, e)}
           onPaste={handlePaste}
-          className="w-14 h-16 sm:w-16 sm:h-18 bg-white text-center font-bold text-2xl text-[#0F5B5C] rounded-none border-2 border-gray-300 focus:border-[#0F5B5C] focus:ring-2 focus:ring-[#0F5B5C]/20 shadow-sm outline-none transition-all disabled:opacity-50"
+          className="flex-1 min-w-0 h-14 sm:h-16 bg-white text-center font-bold text-2xl text-[#0F5B5C] rounded-none border-2 border-gray-300 focus:border-[#0F5B5C] focus:ring-2 focus:ring-[#0F5B5C]/20 shadow-sm outline-none transition-all disabled:opacity-50"
           autoFocus={idx === 0}
         />
       ))}
@@ -453,24 +447,28 @@ export default function Login() {
     }
   }
 
-  // Trigger Verify OTP for Sign Up -> then redirect to Profile
-  async function handleVerifySignupOtp(e?: React.FormEvent) {
-    if (e) e.preventDefault();
-    setError(null);
-    setSuccessMsg(null);
+  const isSubmittingOtpRef = useRef(false);
 
-    if (otp.length < 4) {
+  // Trigger Verify OTP for Sign Up or Mobile OTP Login (with auto-submit support)
+  async function handleVerifySignupOtp(e?: React.FormEvent, codeOverride?: string) {
+    if (e) e.preventDefault();
+    const codeToVerify = (codeOverride || otp).trim();
+    if (isSubmittingOtpRef.current || loading) return;
+    if (codeToVerify.length < 4) {
       setError("Please enter the complete 4-digit OTP code");
       return;
     }
 
+    isSubmittingOtpRef.current = true;
+    setError(null);
+    setSuccessMsg(null);
     setLoading(true);
     try {
       const rawPhone = phone.trim();
       const fullPhone = rawPhone.startsWith("+") ? rawPhone : `${countryCode}${rawPhone}`;
       const res = await api.verifySignupOtp({
         phone: fullPhone,
-        otp: otp.trim(),
+        otp: codeToVerify,
         name: name.trim() || undefined,
       });
 
@@ -491,10 +489,56 @@ export default function Login() {
       }
     } catch (err: any) {
       setError(err?.message || "Invalid OTP code. Please check and try again.");
+      isSubmittingOtpRef.current = false;
     } finally {
       setLoading(false);
     }
   }
+
+  // Auto-submit OTP as soon as 4 digits are entered or fetched
+  useEffect(() => {
+    if (mode === "register_otp" && otp.length === 4 && !loading && !isSubmittingOtpRef.current) {
+      handleVerifySignupOtp(undefined, otp);
+    }
+  }, [otp, mode]);
+
+  // WebOTP API: Automatically fetch OTP from incoming SMS message on mobile devices
+  useEffect(() => {
+    if (mode !== "register_otp") {
+      isSubmittingOtpRef.current = false;
+      return;
+    }
+
+    let ac: AbortController | null = null;
+    if (typeof window !== "undefined" && "OTPCredential" in window) {
+      try {
+        ac = new AbortController();
+        (navigator as any).credentials
+          ?.get({
+            otp: { transport: ["sms"] },
+            signal: ac.signal,
+          })
+          .then((credential: any) => {
+            if (credential && credential.code) {
+              const digits = credential.code.replace(/\D/g, "").slice(0, 4);
+              if (digits.length === 4) {
+                setOtp(digits);
+                handleVerifySignupOtp(undefined, digits);
+              }
+            }
+          })
+          .catch(() => {
+            // Silently ignore abort or dismissed
+          });
+      } catch (e) {
+        // Silently ignore
+      }
+    }
+
+    return () => {
+      if (ac) ac.abort();
+    };
+  }, [mode]);
 
   // Handle Standard Login with Password
   async function handleLogin(e?: React.FormEvent) {
@@ -699,7 +743,7 @@ export default function Login() {
         </div>
 
         {/* Form Container (rounded-none, equal fields, fit on screen) */}
-        <div className="bg-[#F5F4F8] rounded-none px-5 pt-4 pb-5 sm:px-8 sm:pt-6 sm:pb-8 flex-1 flex flex-col -mt-3 z-10 shadow-lg relative">
+        <div className="bg-[#F5F4F8] rounded-none px-5 pt-4 pb-5 sm:px-8 sm:pt-6 sm:pb-8 flex-1 flex flex-col -mt-3 z-10 shadow-lg relative w-full max-w-full overflow-hidden">
           
           {/* Back button for secondary modes */}
           {mode !== "login" && (
@@ -767,19 +811,19 @@ export default function Login() {
 
               {/* Mobile Number with Country Code */}
               <div>
-                <div className="flex gap-2 relative">
+                <div className="flex gap-2 relative w-full">
                   <button
                     type="button"
                     onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                    className="bg-white rounded-none px-3.5 py-3.5 text-xs text-charcoal flex items-center gap-1.5 hover:bg-slate-50 shadow-sm border border-[#59AD63]/30 select-none whitespace-nowrap min-w-[76px] justify-center cursor-pointer font-bold transition-all shrink-0"
+                    className="w-24 shrink-0 h-11 bg-white rounded-none px-2 text-xs text-charcoal flex items-center justify-center gap-1 hover:bg-slate-50 border border-gray-300 select-none whitespace-nowrap cursor-pointer font-bold transition-all shadow-2xs"
                     title="Select Country Code"
                   >
                     <span className="text-sm leading-none">{countryFlag}</span>
                     <span className="font-semibold text-charcoal">{countryCode}</span>
                   </button>
 
-                  <div className="flex-1 flex items-center bg-white rounded-none px-4 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
-                    <Phone size={16} className="text-slate-400 shrink-0" />
+                  <div className="flex-1 min-w-0 h-11 flex items-center bg-white rounded-none px-3 border border-gray-300 gap-2 shadow-2xs focus-within:border-[#0F5B5C] transition-all">
+                    <Phone size={14} className="text-slate-400 shrink-0" />
                     <input
                       type="tel"
                       required
@@ -787,7 +831,7 @@ export default function Login() {
                       value={phone}
                       onChange={(e) => handlePhoneChange(e.target.value)}
                       autoComplete="tel"
-                      className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-400"
+                      className="w-full min-w-0 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-400"
                     />
                   </div>
 
@@ -910,18 +954,18 @@ export default function Login() {
                 Enter your mobile number to receive an instant 4-digit OTP. Works for both registered users and new users.
               </p>
 
-              {/* Mobile Number with Country Code */}
+              {/* Mobile Number with Country Code (aligned with send OTP button) */}
               <div className="flex gap-2 relative w-full">
                 <button
                   type="button"
                   onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                  className="h-11 bg-white rounded-none px-3 text-xs text-charcoal flex items-center gap-1.5 hover:bg-slate-50 border border-gray-300 select-none whitespace-nowrap min-w-[76px] justify-center cursor-pointer font-bold transition-all shrink-0 shadow-2xs"
+                  className="w-24 shrink-0 h-11 bg-white rounded-none px-2 text-xs text-charcoal flex items-center justify-center gap-1 hover:bg-slate-50 border border-gray-300 select-none whitespace-nowrap cursor-pointer font-bold transition-all shadow-2xs"
                   title="Select Country Code"
                 >
                   <span className="font-bold text-gray-800">IN {countryCode}</span>
                 </button>
 
-                <div className="flex-1 h-11 flex items-center bg-white rounded-none px-3.5 border border-gray-300 gap-2.5 shadow-2xs focus-within:border-[#0F5B5C] transition-all">
+                <div className="flex-1 min-w-0 h-11 flex items-center bg-white rounded-none px-3 border border-gray-300 gap-2 shadow-2xs focus-within:border-[#0F5B5C] transition-all">
                   <Phone size={14} className="text-slate-400 shrink-0" />
                   <input
                     type="tel"
@@ -931,7 +975,7 @@ export default function Login() {
                     onChange={(e) => handlePhoneChange(e.target.value)}
                     autoComplete="tel"
                     autoFocus
-                    className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-400"
+                    className="w-full min-w-0 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-400"
                   />
                 </div>
 
@@ -1030,13 +1074,13 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                    className="h-11 bg-white rounded-none px-3 text-xs text-charcoal flex items-center gap-1.5 hover:bg-slate-50 border border-gray-300 select-none whitespace-nowrap min-w-[76px] justify-center cursor-pointer font-bold transition-all shrink-0 shadow-2xs"
+                    className="w-24 shrink-0 h-11 bg-white rounded-none px-2 text-xs text-charcoal flex items-center justify-center gap-1 hover:bg-slate-50 border border-gray-300 select-none whitespace-nowrap cursor-pointer font-bold transition-all shadow-2xs"
                     title="Select Country Code"
                   >
                     <span className="font-bold text-gray-800">IN {countryCode}</span>
                   </button>
 
-                  <div className="flex-1 h-11 flex items-center bg-white rounded-none px-3.5 border border-gray-300 gap-2.5 shadow-2xs focus-within:border-[#0F5B5C] transition-all">
+                  <div className="flex-1 min-w-0 h-11 flex items-center bg-white rounded-none px-3 border border-gray-300 gap-2 shadow-2xs focus-within:border-[#0F5B5C] transition-all">
                     <Phone size={14} className="text-slate-400 shrink-0" />
                     <input
                       type="tel"
@@ -1045,7 +1089,7 @@ export default function Login() {
                       value={phone}
                       onChange={(e) => handlePhoneChange(e.target.value)}
                       autoComplete="tel"
-                      className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-400"
+                      className="w-full min-w-0 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-400"
                     />
                   </div>
 
@@ -1191,18 +1235,18 @@ export default function Login() {
 
               {forgotMethod === "phone" ? (
                 <div>
-                  <div className="flex gap-2 relative">
+                  <div className="flex gap-2 relative w-full">
                     <button
                       type="button"
                       onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                      className="bg-white rounded-none px-3.5 py-3.5 text-xs text-charcoal flex items-center gap-1.5 hover:bg-slate-50 shadow-sm border border-[#59AD63]/30 select-none whitespace-nowrap min-w-[76px] justify-center cursor-pointer font-bold transition-all shrink-0"
+                      className="w-24 shrink-0 h-11 bg-white rounded-none px-2 text-xs text-charcoal flex items-center justify-center gap-1 hover:bg-slate-50 border border-gray-300 select-none whitespace-nowrap cursor-pointer font-bold transition-all shadow-2xs"
                     >
                       <span className="text-sm leading-none">{countryFlag}</span>
                       <span className="font-semibold text-charcoal">{countryCode}</span>
                     </button>
 
-                    <div className="flex-1 flex items-center bg-white rounded-none px-4 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
-                      <Phone size={16} className="text-slate-400 shrink-0" />
+                    <div className="flex-1 min-w-0 h-11 flex items-center bg-white rounded-none px-3 border border-gray-300 gap-2 shadow-2xs focus-within:border-[#0F5B5C] transition-all">
+                      <Phone size={14} className="text-slate-400 shrink-0" />
                       <input
                         type="tel"
                         required
@@ -1210,7 +1254,7 @@ export default function Login() {
                         value={phone}
                         onChange={(e) => handlePhoneChange(e.target.value)}
                         autoComplete="tel"
-                        className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-400"
+                        className="w-full min-w-0 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-400"
                       />
                     </div>
                   </div>
