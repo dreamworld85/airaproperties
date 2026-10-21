@@ -123,16 +123,24 @@ export default function MyApp() {
               )}
             </div>
 
-            <p className="text-xs sm:text-sm font-bold text-[#59AD63] tracking-widest uppercase">
-              FIND YOUR PERFECT PROPERTY
+            <p className="text-xs sm:text-sm font-bold text-[#0F5B5C] tracking-wider uppercase">
+              Discover, buy, and lease properties across Kerala.
             </p>
 
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0F3D3E] tracking-tight leading-tight mt-1">
-              Aira Properties<br className="hidden sm:inline" /> Mobile App
-            </h1>
+            <div className="flex items-center gap-3.5 my-2">
+              <img 
+                src="/app-icon.png" 
+                alt="Aira Properties App Icon" 
+                className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl shadow-md border-2 border-emerald-500/20 object-contain shrink-0" 
+                onError={(e) => { (e.target as HTMLImageElement).src = "/app-icon.svg"; }}
+              />
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#0F3D3E] tracking-tight leading-tight">
+                Aira Properties for Android
+              </h1>
+            </div>
 
-            <p className="text-xs sm:text-sm text-slate-600 mt-3 sm:mt-4 leading-relaxed font-medium max-w-xl">
-              Discover, buy, rent, and invest in properties anytime, anywhere. Explore verified listings, get instant updates and connect directly with trusted agents & owners — all in one super-fast app.
+            <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed font-medium max-w-xl">
+              Find homes, rooms, and commercial spaces with Aira Properties. Connect with buyers, sellers, tenants, and verified property listing promoters—all in one place.
             </p>
 
             {/* Feature Icons Category Strip (as in user mock) */}
@@ -181,21 +189,21 @@ export default function MyApp() {
             {/* DOWNLOAD BUTTONS SECTION */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-1">
               
-              {/* PRIMARY: Download Android App button (Replaces standard play store badge) */}
+              {/* PRIMARY: Download Android App button */}
               <button
                 type="button"
                 onClick={() => handleDownloadApk("Aira Properties Android App", "/airaproperties.apk")}
-                className="py-3.5 px-6 sm:px-7 bg-black hover:bg-neutral-900 active:bg-neutral-800 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-150 active:scale-[0.98] flex items-center justify-center sm:justify-start gap-4 cursor-pointer group border border-neutral-700"
+                className="py-3.5 px-6 sm:px-7 bg-[#0F5B5C] hover:bg-[#0c4a4b] active:bg-[#09393a] text-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-150 active:scale-[0.98] flex items-center justify-center sm:justify-start gap-4 cursor-pointer group border border-emerald-700"
               >
-                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-[#3DDC84] group-hover:scale-105 transition-transform shrink-0">
-                  <AndroidLogoIcon className="w-7 h-7" />
+                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-white group-hover:scale-105 transition-transform shrink-0">
+                  <Download className="w-6 h-6 text-white" />
                 </div>
                 <div className="text-left flex flex-col">
-                  <span className="text-[10px] font-semibold text-neutral-300 uppercase tracking-wider leading-none">
-                    Fast Direct Download
+                  <span className="text-[10px] font-semibold text-emerald-200 uppercase tracking-wider leading-none">
+                    Fast Direct APK (v1.0)
                   </span>
-                  <span className="text-[17px] sm:text-[18px] font-black text-white tracking-tight mt-1 leading-tight">
-                    Download Android App
+                  <span className="text-[16px] sm:text-[17px] font-black text-white tracking-tight mt-1 leading-tight">
+                    Download Android App (APK)
                   </span>
                 </div>
               </button>

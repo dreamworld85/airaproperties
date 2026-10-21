@@ -149,6 +149,8 @@ export default function App() {
         <Route path="/builders" element={<BuildersDirectory />} />
 
         {/* App Download Page with Android APK & iOS Web App */}
+        <Route path="/app" element={<MyApp />} />
+        <Route path="/app/*" element={<MyApp />} />
         <Route path="/myapp" element={<MyApp />} />
         <Route path="/myapp/*" element={<MyApp />} />
         <Route path="/download" element={<MyApp />} />
