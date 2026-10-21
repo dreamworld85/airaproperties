@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import DesktopHeader from "./DesktopHeader";
 import DesktopFooter from "./DesktopFooter";
 import PropertyCard from "./PropertyCard";
+import PropertyListCard from "./PropertyListCard";
 import { STATE_COORDINATES } from "@/lib/indiaLocationData";
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80";
@@ -541,9 +542,13 @@ export default function DesktopPropertyListing({
 
           {/* Cards Grid */}
           {loading ? (
-            <div className="property-responsive-grid animate-pulse">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map((i) => (
-                <div key={i} className="h-60 bg-gray-200 rounded-2xl"></div>
+            <div className={
+              viewMode === "grid"
+                ? "property-responsive-grid animate-pulse"
+                : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse"
+            }>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
+                <div key={i} className={viewMode === "grid" ? "h-60 bg-gray-200 rounded-2xl" : "h-32 bg-gray-200"}></div>
               ))}
             </div>
           ) : sortedProperties.length === 0 ? (
@@ -554,26 +559,40 @@ export default function DesktopPropertyListing({
             <div className={
               viewMode === "grid" 
                 ? "property-responsive-grid"
-                : "flex flex-col gap-4"
+                : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 xl:gap-5"
             }>
               {sortedProperties.map((prop) => (
                 <div
                   key={prop.id}
                   id={`property-card-${prop.id}`}
                   onMouseEnter={() => setSelectedProperty(prop)}
-                  className="rounded-2xl transition-all duration-200"
+                  className={viewMode === "grid" ? "rounded-2xl transition-all duration-200" : ""}
                 >
-                  <PropertyCard
-                    property={prop}
-                    onToggleSave={(id, isSaved) => {
-                      setProperties((prev) =>
-                        prev.map((p) => (p.id === id ? { ...p, isSaved } : p))
-                      );
-                      setAllProperties((prev) =>
-                        prev.map((p) => (p.id === id ? { ...p, isSaved } : p))
-                      );
-                    }}
-                  />
+                  {viewMode === "grid" ? (
+                    <PropertyCard
+                      property={prop}
+                      onToggleSave={(id, isSaved) => {
+                        setProperties((prev) =>
+                          prev.map((p) => (p.id === id ? { ...p, isSaved } : p))
+                        );
+                        setAllProperties((prev) =>
+                          prev.map((p) => (p.id === id ? { ...p, isSaved } : p))
+                        );
+                      }}
+                    />
+                  ) : (
+                    <PropertyListCard
+                      property={prop}
+                      onToggleSave={(id, isSaved) => {
+                        setProperties((prev) =>
+                          prev.map((p) => (p.id === id ? { ...p, isSaved } : p))
+                        );
+                        setAllProperties((prev) =>
+                          prev.map((p) => (p.id === id ? { ...p, isSaved } : p))
+                        );
+                      }}
+                    />
+                  )}
                 </div>
               ))}
             </div>
