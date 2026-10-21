@@ -266,8 +266,10 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// POST /api/auth/send-signup-otp { phone }
-router.post("/send-signup-otp", async (req, res) => {
+// Unified Mobile OTP Handler for both Login & Sign Up
+// If user already exists -> send OTP and login on verify
+// If user not registered -> send OTP and create account on verify
+async function handleSendMobileOtp(req, res) {
   try {
     const { phone } = req.body;
     if (!phone || !String(phone).trim()) {
@@ -282,24 +284,22 @@ router.post("/send-signup-otp", async (req, res) => {
 
     // Check if account already exists with this phone number
     const [existing] = await pool.query(
-      "SELECT id FROM users WHERE phone LIKE ? OR phone = ?",
+      "SELECT id, name, phone FROM users WHERE phone LIKE ? OR phone = ?",
       [`%${last10}`, phone]
     );
-    if (existing.length > 0) {
-      return res.status(409).json({ error: "An account with this mobile number already exists. Please login." });
-    }
+    const isExisting = existing.length > 0;
 
     // Generate 4-digit numeric OTP
     const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes validity
 
-    // Store in phone_otps table
+    // Clean previous unverified OTPs and store new OTP
     await pool.query(
-      "DELETE FROM phone_otps WHERE phone = ? AND purpose = 'signup' AND is_verified = 0",
+      "DELETE FROM phone_otps WHERE phone = ? AND is_verified = 0",
       [last10]
     );
     await pool.query(
-      "INSERT INTO phone_otps (phone, otp, purpose, expires_at) VALUES (?, ?, 'signup', ?)",
+      "INSERT INTO phone_otps (phone, otp, purpose, expires_at) VALUES (?, ?, 'login', ?)",
       [last10, otpCode, expiresAt]
     );
 
@@ -308,17 +308,20 @@ router.post("/send-signup-otp", async (req, res) => {
 
     res.json({
       success: true,
-      message: `OTP sent successfully to mobile number ending in ${last10.slice(-4)}.`,
+      isExistingUser: isExisting,
       phone: last10,
+      message: isExisting
+        ? `OTP sent to your registered mobile ending in ${last10.slice(-4)}.`
+        : `OTP sent successfully to mobile number ending in ${last10.slice(-4)}.`,
     });
   } catch (err) {
-    console.error("send-signup-otp error:", err);
+    console.error("send-mobile-otp error:", err);
     res.status(500).json({ error: err.message || "Failed to send OTP. Please try again." });
   }
-});
+}
 
-// POST /api/auth/verify-signup-otp { phone, otp, name }
-router.post("/verify-signup-otp", async (req, res) => {
+// Unified Verify Mobile OTP Handler
+async function handleVerifyMobileOtp(req, res) {
   try {
     const { phone, otp, name } = req.body;
     if (!phone || !otp) {
@@ -326,12 +329,15 @@ router.post("/verify-signup-otp", async (req, res) => {
     }
 
     const cleanedDigits = String(phone).replace(/\D/g, "");
+    if (cleanedDigits.length < 10) {
+      return res.status(400).json({ error: "Please enter a valid 10-digit mobile number" });
+    }
     const last10 = cleanedDigits.slice(-10);
     const trimmedOtp = String(otp).trim();
 
-    // Check phone_otps
+    // Check phone_otps for valid unverified OTP
     const [otpRows] = await pool.query(
-      "SELECT * FROM phone_otps WHERE phone = ? AND purpose = 'signup' AND is_verified = 0 AND expires_at > NOW() ORDER BY id DESC LIMIT 1",
+      "SELECT * FROM phone_otps WHERE phone = ? AND is_verified = 0 AND expires_at > NOW() ORDER BY id DESC LIMIT 1",
       [last10]
     );
 
@@ -342,20 +348,23 @@ router.post("/verify-signup-otp", async (req, res) => {
     // Mark verified
     await pool.query("UPDATE phone_otps SET is_verified = 1 WHERE id = ?", [otpRows[0].id]);
 
-    // Check if user was somehow already created
+    // Check if user already exists
     const [existingUsers] = await pool.query(
       "SELECT * FROM users WHERE phone LIKE ? OR phone = ?",
       [`%${last10}`, phone]
     );
 
     let user;
+    let isNewUser = false;
+
     if (existingUsers.length > 0) {
+      // Existing user: direct login
       user = existingUsers[0];
+      isNewUser = false;
     } else {
-      // Create new user with verified phone
+      // New user: auto-create account
       const fullPhone = "+91" + last10;
       const userName = (name && String(name).trim()) ? String(name).trim() : `User ${last10.slice(-4)}`;
-      // Generate temporary random password hash
       const randomPassword = await bcrypt.hash(crypto.randomBytes(16).toString("hex"), 10);
 
       const [insertRes] = await pool.query(
@@ -377,17 +386,32 @@ router.post("/verify-signup-otp", async (req, res) => {
 
       const [userRows] = await pool.query("SELECT * FROM users WHERE id = ?", [newUserId]);
       user = userRows[0];
+      isNewUser = true;
     }
 
     await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [user.id]);
     const token = signToken(user.id);
     setAuthCookie(res, token);
-    res.status(201).json({ token, user: toPublicUser(user), isNewUser: true });
+
+    res.status(isNewUser ? 201 : 200).json({
+      token,
+      user: toPublicUser(user),
+      isNewUser,
+      message: isNewUser ? "Account created successfully" : "Logged in successfully",
+    });
   } catch (err) {
-    console.error("verify-signup-otp error:", err);
+    console.error("verify-mobile-otp error:", err);
     res.status(500).json({ error: "Failed to verify OTP" });
   }
-});
+}
+
+// POST /api/auth/send-mobile-otp & /api/auth/send-signup-otp
+router.post("/send-mobile-otp", handleSendMobileOtp);
+router.post("/send-signup-otp", handleSendMobileOtp);
+
+// POST /api/auth/verify-mobile-otp & /api/auth/verify-signup-otp
+router.post("/verify-mobile-otp", handleVerifyMobileOtp);
+router.post("/verify-signup-otp", handleVerifyMobileOtp);
 
 // POST /api/auth/forgot-password { identifier, email, phone }
 router.post("/forgot-password", async (req, res) => {

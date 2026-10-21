@@ -177,7 +177,7 @@ export default function Login() {
   const { login, token, user } = useAuth();
   const { activeLogoUrl, loadingBannerUrl: brandLoadingBanner, loginBannerUrl: brandLoginBanner } = useBrand();
 
-  const [mode, setMode] = useState<"loading" | "login" | "register" | "register_otp" | "forgot_password" | "reset_password">(() => {
+  const [mode, setMode] = useState<"loading" | "login" | "login_otp" | "register" | "register_otp" | "forgot_password" | "reset_password">(() => {
     if (typeof window !== "undefined" && (localStorage.getItem("pending_deep_link") || (location.state as any)?.from)) {
       return "login";
     }
@@ -476,8 +476,19 @@ export default function Login() {
 
       login(res.token, res.user);
 
-      // Successfully verified phone via OTP -> navigate to Profile page to set name, email, and password
-      navigate("/profile/edit", { state: { isNewUser: true } });
+      if (res.isNewUser) {
+        // New user: navigate to Profile page to set name, email, and password
+        navigate("/profile/edit", { state: { isNewUser: true } });
+      } else {
+        // Existing registered user: login directly and redirect
+        const pendingLink = localStorage.getItem("pending_deep_link") || (location.state as any)?.from;
+        if (pendingLink) {
+          localStorage.removeItem("pending_deep_link");
+          navigate(pendingLink, { replace: true });
+        } else {
+          navigate("/home");
+        }
+      }
     } catch (err: any) {
       setError(err?.message || "Invalid OTP code. Please check and try again.");
     } finally {
@@ -698,7 +709,7 @@ export default function Login() {
                 setError(null);
                 setSuccessMsg(null);
                 if (mode === "register_otp") {
-                  setMode("register");
+                  setMode(loginMethod === "phone" ? "login" : "register");
                 } else {
                   setMode("login");
                 }
@@ -716,6 +727,8 @@ export default function Login() {
             <h2 className="text-base sm:text-lg font-bold text-gray-900 tracking-wider uppercase leading-tight">
               {mode === "login" ? (
                 "LOGIN"
+              ) : mode === "login_otp" ? (
+                "LOGIN WITH MOBILE OTP"
               ) : mode === "register" ? (
                 "SIGN UP"
               ) : mode === "register_otp" ? (
@@ -883,7 +896,97 @@ export default function Login() {
                 disabled={loading || otp.length < 4}
                 className="w-full py-4 bg-[#0F5B5C] hover:bg-[#0F5B5C]/90 text-white rounded-none text-xs font-bold tracking-wider uppercase shadow-md shadow-[#0F5B5C]/20 transition-all active:scale-[0.98] disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
-                <span>{loading ? "Verifying..." : "SIGN UP"}</span>
+                <span>{loading ? "Verifying..." : "VERIFY & CONTINUE"}</span>
+              </button>
+            </form>
+          )}
+
+          {/* ============================================================== */}
+          {/* MODE: LOGIN WITH MOBILE OTP (Send OTP)                         */}
+          {/* ============================================================== */}
+          {mode === "login_otp" && (
+            <form onSubmit={handleSendSignupOtp} className="flex flex-col gap-3">
+              <p className="text-[12px] text-slate-600 font-medium text-left leading-relaxed">
+                Enter your mobile number to receive an instant 4-digit OTP. Works for both registered users and new users.
+              </p>
+
+              {/* Mobile Number with Country Code */}
+              <div className="flex gap-2 relative w-full">
+                <button
+                  type="button"
+                  onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                  className="h-11 bg-white rounded-none px-3 text-xs text-charcoal flex items-center gap-1.5 hover:bg-slate-50 border border-gray-300 select-none whitespace-nowrap min-w-[76px] justify-center cursor-pointer font-bold transition-all shrink-0 shadow-2xs"
+                  title="Select Country Code"
+                >
+                  <span className="font-bold text-gray-800">IN {countryCode}</span>
+                </button>
+
+                <div className="flex-1 h-11 flex items-center bg-white rounded-none px-3.5 border border-gray-300 gap-2.5 shadow-2xs focus-within:border-[#0F5B5C] transition-all">
+                  <Phone size={14} className="text-slate-400 shrink-0" />
+                  <input
+                    type="tel"
+                    required
+                    placeholder="Mobile Number"
+                    value={phone}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    autoComplete="tel"
+                    autoFocus
+                    className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-400"
+                  />
+                </div>
+
+                {showCountryDropdown && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowCountryDropdown(false)} 
+                    />
+                    <div className="absolute left-0 top-[48px] w-64 bg-white border border-gray-300 rounded-none p-2 z-50 shadow-2xl flex flex-col gap-2">
+                      <input
+                        type="text"
+                        placeholder="Search country name or code..."
+                        value={countrySearch}
+                        onChange={(e) => setCountrySearch(e.target.value)}
+                        className="w-full bg-slate-50 border border-gray-300 rounded-none px-2.5 py-1.5 text-[11px] text-charcoal placeholder-charcoal/30 focus:outline-none focus:border-[#0F5B5C]"
+                        autoFocus
+                      />
+                      <div className="flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar">
+                        {countries
+                          .filter(
+                            (c) =>
+                              c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+                              c.code.includes(countrySearch)
+                          )
+                          .map((c) => (
+                            <button
+                              key={c.code}
+                              type="button"
+                              onClick={() => selectCountry(c.code, c.flag)}
+                              className="w-full text-left flex items-center justify-between px-2.5 py-2 rounded-none hover:bg-slate-50 text-charcoal text-[11px] font-semibold transition-colors cursor-pointer"
+                            >
+                              <span className="flex items-center gap-2">
+                                <span className="text-sm">{c.flag}</span>
+                                <span>{c.name}</span>
+                              </span>
+                              <span className="text-slate-500 font-mono text-[10px]">{c.code}</span>
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Error Message */}
+              {error && <p className="text-[11px] text-rose-600 font-semibold bg-rose-50 p-2 rounded-none border border-rose-200 text-left">{error}</p>}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full h-11 bg-[#0F5B5C] hover:bg-[#0c4a4b] text-white rounded-none text-xs font-bold tracking-wider uppercase shadow-xs transition-all active:scale-[0.99] disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-1"
+              >
+                <span>{loading ? "Sending OTP..." : "SEND OTP"}</span>
               </button>
             </form>
           )}
@@ -1265,8 +1368,13 @@ export default function Login() {
                   onClick={() => {
                     setError(null);
                     setSuccessMsg(null);
-                    setMode("forgot_password");
-                    setForgotMethod("phone");
+                    const rawPhone = phone.trim();
+                    const digitsOnly = rawPhone.replace(/\D/g, "");
+                    if (digitsOnly.length >= 10) {
+                      handleSendSignupOtp();
+                    } else {
+                      setMode("login_otp");
+                    }
                   }}
                   className="w-full h-11 bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-800 rounded-none border border-gray-300 shadow-2xs flex items-center justify-center gap-2 font-semibold text-xs transition-all active:scale-[0.99] cursor-pointer"
                 >
@@ -1322,13 +1430,24 @@ export default function Login() {
           <p className="text-center text-slate-500 text-xs font-semibold select-none mt-auto">
             {mode === "login" ? (
               <>
-                Already have an account?{" "}
+                Don't have an account?{" "}
                 <button 
                   type="button" 
                   onClick={() => { setError(null); setSuccessMsg(null); setMode("register"); }} 
                   className="font-bold text-[#0F5B5C] hover:underline cursor-pointer"
                 >
                   Sign Up
+                </button>
+              </>
+            ) : mode === "login_otp" ? (
+              <>
+                Prefer password?{" "}
+                <button 
+                  type="button" 
+                  onClick={() => { setError(null); setSuccessMsg(null); setMode("login"); }} 
+                  className="font-bold text-[#0F5B5C] hover:underline cursor-pointer"
+                >
+                  Login with Password
                 </button>
               </>
             ) : (

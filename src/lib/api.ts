@@ -163,22 +163,30 @@ async function handle<T>(res: Response): Promise<T> {
 }
 
 export const api = {
-  async sendSignupOtp(phone: string) {
-    const res = await fetch(`${API_URL}/api/auth/send-signup-otp`, {
+  async sendMobileOtp(phone: string) {
+    const res = await fetch(`${API_URL}/api/auth/send-mobile-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone }),
     });
-    return handle<{ success: boolean; message: string; phone: string }>(res);
+    return handle<{ success: boolean; message: string; phone: string; isExistingUser?: boolean }>(res);
   },
 
-  async verifySignupOtp(input: { phone: string; otp: string; name?: string }) {
-    const res = await fetch(`${API_URL}/api/auth/verify-signup-otp`, {
+  async verifyMobileOtp(input: { phone: string; otp: string; name?: string }) {
+    const res = await fetch(`${API_URL}/api/auth/verify-mobile-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     });
-    return handle<{ token: string; user: ApiUser; isNewUser?: boolean }>(res);
+    return handle<{ token: string; user: ApiUser; isNewUser?: boolean; message?: string }>(res);
+  },
+
+  async sendSignupOtp(phone: string) {
+    return this.sendMobileOtp(phone);
+  },
+
+  async verifySignupOtp(input: { phone: string; otp: string; name?: string }) {
+    return this.verifyMobileOtp(input);
   },
 
   async register(input: { name: string; email?: string; phone?: string; password: string; role?: string }) {
