@@ -86,7 +86,12 @@ export default function PropertyListCard({
           navigate(isOwner ? `/my-properties/${property.id}` : `/property/${property.id}`);
         }
       }}
-      className="group bg-white rounded-none border border-[#0F5B5C] p-2.5 flex flex-row items-center gap-3 transition-shadow hover:shadow-md cursor-pointer select-none w-full text-left"
+      className="group bg-white p-2.5 flex flex-row items-center gap-3 transition-shadow hover:shadow-md cursor-pointer select-none w-full text-left border"
+      style={{
+        borderRadius: "10px",
+        boxShadow: "rgba(0, 0, 0, 0.04) 0px 3px 5px",
+        borderColor: "rgb(215 234 221)",
+      }}
     >
       {/* Left side: Image */}
       <div className="relative w-36 h-28 sm:w-40 sm:h-28 shrink-0 overflow-hidden rounded-md bg-gray-100">

@@ -31,6 +31,7 @@ import adminRoutes from "./routes/admin.js";
 import userRoutes from "./routes/users.js";
 import paymentRoutes from "./routes/payments.js";
 import builderRoutes from "./routes/builders.js";
+import propertyRequestRoutes from "./routes/propertyRequests.js";
 
 // Auto-migrate database table columns for subscription offers
 async function checkDbMigration() {
@@ -690,6 +691,35 @@ async function checkDbMigration() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
     console.log("Database top_locations table verified.");
+
+    // Create property_requests table if it does not exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS property_requests (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NULL,
+        full_name VARCHAR(150) NOT NULL,
+        phone VARCHAR(50) NOT NULL,
+        email VARCHAR(150) NULL,
+        request_type VARCHAR(50) NOT NULL,
+        property_type VARCHAR(50) NOT NULL,
+        preferred_location VARCHAR(200) NOT NULL,
+        bedrooms VARCHAR(50) NULL,
+        budget_range VARCHAR(100) NOT NULL,
+        move_in_date VARCHAR(100) NULL,
+        furnished VARCHAR(50) NULL,
+        description TEXT NOT NULL,
+        special_requirements TEXT NULL,
+        contact_preference VARCHAR(100) NULL,
+        best_time_to_contact VARCHAR(100) NULL,
+        status VARCHAR(50) DEFAULT 'New',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_request_type (request_type),
+        INDEX idx_location (preferred_location),
+        INDEX idx_status (status),
+        INDEX idx_created (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    console.log("Database property_requests table verified.");
 
     // Create service_enquiries table if it does not exist
     await pool.query(`
@@ -1541,6 +1571,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/builders", builderRoutes);
+app.use("/api/property-requests", propertyRequestRoutes);
 
 // Serve frontend static build assets from dist if present
 const rootDistDir = path.resolve(process.cwd(), "..", "dist");

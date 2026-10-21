@@ -61,6 +61,7 @@ import ServiceEnquiries from "@/screens/Admin/ServiceEnquiries";
 import BuilderInquiries from "@/screens/Admin/BuilderInquiries";
 import AdminLaunch from "@/screens/Admin/Launch";
 import LaunchPopup from "@/components/LaunchPopup";
+import RequestPropertyButton from "@/components/RequestPropertyButton";
 
 export default function App() {
   const location = useLocation();
@@ -204,6 +205,9 @@ export default function App() {
 
       {/* Main page promotional Launch popup */}
       {(location.pathname === "/" || location.pathname === "/home") && <LaunchPopup />}
+
+      {/* Request a Property sticky button common for all pages */}
+      {!isAdminRoute && <RequestPropertyButton />}
     </div>
   );
 }

@@ -392,6 +392,36 @@ export const adminApi = {
     });
     if (!res.ok) throw new Error("Failed to delete builder inquiry.");
   },
+
+  async getPropertyRequests(params?: { requestType?: string; location?: string; status?: string; search?: string }): Promise<PropertyRequestItem[]> {
+    const q = new URLSearchParams();
+    if (params?.requestType && params.requestType !== "All") q.append("requestType", params.requestType);
+    if (params?.location && params.location !== "All") q.append("location", params.location);
+    if (params?.status && params.status !== "All") q.append("status", params.status);
+    if (params?.search) q.append("search", params.search);
+    const res = await fetch(`${API_URL}/api/property-requests/admin?${q.toString()}`, {
+      headers: getAdminHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load property requests.");
+    return res.json();
+  },
+
+  async updatePropertyRequestStatus(id: number, status: string): Promise<void> {
+    const res = await fetch(`${API_URL}/api/property-requests/admin/${id}/status`, {
+      method: "PATCH",
+      headers: getAdminHeaders(),
+      body: JSON.stringify({ status }),
+    });
+    if (!res.ok) throw new Error("Failed to update status.");
+  },
+
+  async deletePropertyRequest(id: number): Promise<void> {
+    const res = await fetch(`${API_URL}/api/property-requests/admin/${id}`, {
+      method: "DELETE",
+      headers: getAdminHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to delete property request.");
+  },
 };
 
 export interface ServiceEnquiry {
@@ -425,3 +455,23 @@ export interface AdminBuilderInquiry {
   updated_at: string;
 }
 
+export interface PropertyRequestItem {
+  id: number;
+  user_id: number | null;
+  full_name: string;
+  phone: string;
+  email: string | null;
+  request_type: string;
+  property_type: string;
+  preferred_location: string;
+  bedrooms: string | null;
+  budget_range: string;
+  move_in_date: string | null;
+  furnished: string | null;
+  description: string;
+  special_requirements: string | null;
+  contact_preference: string | null;
+  best_time_to_contact: string | null;
+  status: string;
+  created_at: string;
+}

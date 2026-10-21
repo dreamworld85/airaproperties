@@ -1067,4 +1067,33 @@ export async function fetchAllSubscriptionPlans(): Promise<ApiSubscriptionPlan[]
   return res.json();
 }
 
+export interface PropertyRequestPayload {
+  full_name: string;
+  phone: string;
+  email?: string;
+  request_type: string;
+  property_type: string;
+  preferred_location: string;
+  bedrooms?: string;
+  budget_range: string;
+  move_in_date?: string;
+  furnished?: string;
+  description: string;
+  special_requirements?: string;
+  contact_preference?: string;
+  best_time_to_contact?: string;
+  user_id?: number;
+}
 
+export async function submitPropertyRequest(payload: PropertyRequestPayload): Promise<{ success: boolean; id: number; message: string }> {
+  const res = await fetch(`${API_URL}/api/property-requests`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to submit property request");
+  }
+  return res.json();
+}

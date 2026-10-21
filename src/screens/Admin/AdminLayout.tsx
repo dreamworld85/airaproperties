@@ -74,6 +74,7 @@ export default function AdminLayout() {
     { label: "Dashboard", path: "/admin", icon: LayoutDashboard },
     { label: "Launch", path: "/admin/launch", icon: Rocket },
     { label: "Users", path: "/admin/users", icon: Users },
+    { label: "User Enquiry", path: "/admin/enquiries", icon: PhoneCall },
     { 
       label: "Properties", 
       path: "/admin/properties", 
@@ -85,7 +86,6 @@ export default function AdminLayout() {
     },
     { label: "Builder Partners", path: "/admin/builder-inquiries", icon: Briefcase },
     { label: "Reports", path: "/admin/reports", icon: Flag },
-    { label: "User Enquiry", path: "/admin/enquiries", icon: PhoneCall },
   ];
 
   function handleLogout() {
