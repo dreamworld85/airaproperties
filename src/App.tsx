@@ -77,6 +77,7 @@ export default function App() {
   }, []);
 
   const isAdminRoute = location.pathname.startsWith("/admin");
+  const isAuthRoute = location.pathname === "/login" || location.pathname === "/signup";
   const isLandingPage = location.pathname === "/" || location.pathname === "/home";
   const isPropertyGuestRoute = location.pathname.startsWith("/property/") && !token;
   const isFullWidth = isAdminRoute || isLandingPage || isPropertyGuestRoute || isDesktop;
@@ -207,7 +208,7 @@ export default function App() {
       {(location.pathname === "/" || location.pathname === "/home") && <LaunchPopup />}
 
       {/* Request a Property sticky button common for all pages */}
-      {!isAdminRoute && <RequestPropertyButton />}
+      {!isAdminRoute && !isAuthRoute && <RequestPropertyButton />}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft, RotateCw } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft, RotateCw, ShieldCheck } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { api, mediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
@@ -163,7 +163,7 @@ function FourDigitOtpInput({
           onChange={(e) => handleChange(idx, e)}
           onKeyDown={(e) => handleKeyDown(idx, e)}
           onPaste={handlePaste}
-          className="w-14 h-16 sm:w-16 sm:h-18 bg-white text-center font-bold text-2xl text-[#0F5B5C] rounded-2xl border-2 border-[#59AD63]/40 focus:border-[#0F5B5C] focus:ring-2 focus:ring-[#0F5B5C]/20 shadow-sm outline-none transition-all disabled:opacity-50"
+          className="w-14 h-16 sm:w-16 sm:h-18 bg-white text-center font-bold text-2xl text-[#0F5B5C] rounded-none border-2 border-gray-300 focus:border-[#0F5B5C] focus:ring-2 focus:ring-[#0F5B5C]/20 shadow-sm outline-none transition-all disabled:opacity-50"
           autoFocus={idx === 0}
         />
       ))}
@@ -671,14 +671,15 @@ export default function Login() {
         {/* Header container */}
         <div 
           style={{ backgroundImage: `url(${bgUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
-          className="text-white p-8 relative flex flex-col justify-center items-center overflow-hidden shrink-0 h-[220px]"
+          className="text-white px-4 py-3 relative flex flex-col justify-center items-center overflow-hidden shrink-0 h-[140px] sm:h-[160px]"
         >
           {/* Brand Logo centered */}
-          <div className="relative z-20 w-full flex items-center justify-center select-none pt-2">
+          <div className="relative z-20 w-full flex items-center justify-center select-none pt-1">
             <img 
               src={activeLogoUrl} 
               alt="Brand Logo" 
-              className="w-52 h-auto object-contain filter drop-shadow-md" 
+              className="h-auto object-contain filter drop-shadow-md select-none" 
+              style={{ width: "8rem" }}
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).src = "/brand_logo.png";
               }}
@@ -686,8 +687,8 @@ export default function Login() {
           </div>
         </div>
 
-        {/* White Rounded Form Container */}
-        <div className="bg-[#F5F4F8] rounded-t-[40px] px-8 pt-10 pb-10 flex-1 flex flex-col -mt-8 z-10 shadow-2xl relative">
+        {/* Form Container (rounded-none, equal fields, fit on screen) */}
+        <div className="bg-[#F5F4F8] rounded-none px-5 pt-4 pb-5 sm:px-8 sm:pt-6 sm:pb-8 flex-1 flex flex-col -mt-3 z-10 shadow-lg relative">
           
           {/* Back button for secondary modes */}
           {mode !== "login" && (
@@ -710,20 +711,25 @@ export default function Login() {
           )}
 
           {/* Form Title */}
-          <h2 className="text-xl font-bold text-[#0F5B5C] mb-5 leading-tight select-none">
-            {mode === "login" ? (
-              "Login"
-            ) : mode === "register" || mode === "register_otp" ? (
-              <span><span className="font-bold">Sign Up</span> with your phone number.</span>
-            ) : mode === "forgot_password" ? (
-              "Forgot Password"
-            ) : (
-              "Reset Password"
-            )}
-          </h2>
+          <div className="flex items-center gap-2 mb-3.5 select-none">
+            <ShieldCheck className="w-5 h-5 text-[#0F5B5C] shrink-0" />
+            <h2 className="text-base sm:text-lg font-bold text-gray-900 tracking-wider uppercase leading-tight">
+              {mode === "login" ? (
+                "LOGIN"
+              ) : mode === "register" ? (
+                "SIGN UP"
+              ) : mode === "register_otp" ? (
+                "VERIFY OTP"
+              ) : mode === "forgot_password" ? (
+                "FORGOT PASSWORD"
+              ) : (
+                "RESET PASSWORD"
+              )}
+            </h2>
+          </div>
 
           {((location.state as any)?.from || (typeof window !== "undefined" && localStorage.getItem("pending_deep_link"))) && (
-            <div className="bg-emerald-50 border border-emerald-500/20 text-emerald-800 text-xs font-semibold px-4 py-2.5 rounded-xl mb-4 flex items-center gap-2">
+            <div className="bg-emerald-50 border border-emerald-500/20 text-emerald-800 text-xs font-semibold px-4 py-2.5 rounded-none mb-4 flex items-center gap-2">
               <span>Please sign in to view property details.</span>
             </div>
           )}
@@ -734,7 +740,7 @@ export default function Login() {
           {mode === "register" && (
             <form onSubmit={handleSendSignupOtp} className="flex flex-col gap-4">
               {/* Full Name field */}
-              <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
+              <div className="flex items-center bg-white rounded-none px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
                 <User size={16} className="text-slate-400 shrink-0" />
                 <input
                   type="text"
@@ -752,14 +758,14 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                    className="bg-white rounded-[8px] px-3.5 py-3.5 text-xs text-charcoal flex items-center gap-1.5 hover:bg-slate-50 shadow-sm border border-[#59AD63]/30 select-none whitespace-nowrap min-w-[76px] justify-center cursor-pointer font-bold transition-all shrink-0"
+                    className="bg-white rounded-none px-3.5 py-3.5 text-xs text-charcoal flex items-center gap-1.5 hover:bg-slate-50 shadow-sm border border-[#59AD63]/30 select-none whitespace-nowrap min-w-[76px] justify-center cursor-pointer font-bold transition-all shrink-0"
                     title="Select Country Code"
                   >
                     <span className="text-sm leading-none">{countryFlag}</span>
                     <span className="font-semibold text-charcoal">{countryCode}</span>
                   </button>
 
-                  <div className="flex-1 flex items-center bg-white rounded-[8px] px-4 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
+                  <div className="flex-1 flex items-center bg-white rounded-none px-4 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
                     <Phone size={16} className="text-slate-400 shrink-0" />
                     <input
                       type="tel"
@@ -778,13 +784,13 @@ export default function Login() {
                         className="fixed inset-0 z-40" 
                         onClick={() => setShowCountryDropdown(false)} 
                       />
-                      <div className="absolute left-0 top-[48px] w-64 bg-white border border-[#59AD63]/30 rounded-[8px] p-2.5 z-50 shadow-2xl flex flex-col gap-2">
+                      <div className="absolute left-0 top-[48px] w-64 bg-white border border-[#59AD63]/30 rounded-none p-2.5 z-50 shadow-2xl flex flex-col gap-2">
                         <input
                           type="text"
                           placeholder="Search country name or code..."
                           value={countrySearch}
                           onChange={(e) => setCountrySearch(e.target.value)}
-                          className="w-full bg-slate-50 border border-[#59AD63]/30 rounded-lg px-2.5 py-1.5 text-[11px] text-charcoal placeholder-charcoal/30 focus:outline-none focus:border-[#0F5B5C]"
+                          className="w-full bg-slate-50 border border-[#59AD63]/30 rounded-none px-2.5 py-1.5 text-[11px] text-charcoal placeholder-charcoal/30 focus:outline-none focus:border-[#0F5B5C]"
                           autoFocus
                         />
                         <div className="flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar">
@@ -799,7 +805,7 @@ export default function Login() {
                                 key={c.code}
                                 type="button"
                                 onClick={() => selectCountry(c.code, c.flag)}
-                                className="w-full text-left flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-slate-50 text-charcoal text-[11px] font-semibold transition-colors cursor-pointer"
+                                className="w-full text-left flex items-center justify-between px-2.5 py-2 rounded-none hover:bg-slate-50 text-charcoal text-[11px] font-semibold transition-colors cursor-pointer"
                               >
                                 <span className="flex items-center gap-2">
                                   <span className="text-sm">{c.flag}</span>
@@ -819,13 +825,13 @@ export default function Login() {
               </div>
 
               {/* Error Message */}
-              {error && <p className="text-[11.5px] text-rose-600 font-semibold bg-rose-50 p-2.5 rounded-lg border border-rose-200 text-left">{error}</p>}
+              {error && <p className="text-[11.5px] text-rose-600 font-semibold bg-rose-50 p-2.5 rounded-none border border-rose-200 text-left">{error}</p>}
 
               {/* Submit Button */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 bg-[#0F5B5C] hover:bg-[#0F5B5C]/90 text-white rounded-[2px] text-xs font-bold tracking-wider uppercase shadow-md shadow-[#0F5B5C]/20 transition-all active:scale-[0.98] disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-1"
+                className="w-full py-4 bg-[#0F5B5C] hover:bg-[#0F5B5C]/90 text-white rounded-none text-xs font-bold tracking-wider uppercase shadow-md shadow-[#0F5B5C]/20 transition-all active:scale-[0.98] disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-1"
               >
                 <span>{loading ? "Sending OTP..." : "SIGN UP"}</span>
               </button>
@@ -868,14 +874,14 @@ export default function Login() {
               </div>
 
               {/* Error & Success Messages */}
-              {successMsg && <p className="text-[11.5px] text-emerald-700 font-semibold bg-emerald-50 p-2.5 rounded-lg border border-emerald-200 text-left">{successMsg}</p>}
-              {error && <p className="text-[11.5px] text-rose-600 font-semibold bg-rose-50 p-2.5 rounded-lg border border-rose-200 text-left">{error}</p>}
+              {successMsg && <p className="text-[11.5px] text-emerald-700 font-semibold bg-emerald-50 p-2.5 rounded-none border border-emerald-200 text-left">{successMsg}</p>}
+              {error && <p className="text-[11.5px] text-rose-600 font-semibold bg-rose-50 p-2.5 rounded-none border border-rose-200 text-left">{error}</p>}
 
               {/* Submit Button */}
               <button
                 type="submit"
                 disabled={loading || otp.length < 4}
-                className="w-full py-4 bg-[#0F5B5C] hover:bg-[#0F5B5C]/90 text-white rounded-[2px] text-xs font-bold tracking-wider uppercase shadow-md shadow-[#0F5B5C]/20 transition-all active:scale-[0.98] disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-2"
+                className="w-full py-4 bg-[#0F5B5C] hover:bg-[#0F5B5C]/90 text-white rounded-none text-xs font-bold tracking-wider uppercase shadow-md shadow-[#0F5B5C]/20 transition-all active:scale-[0.98] disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
                 <span>{loading ? "Verifying..." : "SIGN UP"}</span>
               </button>
@@ -886,50 +892,49 @@ export default function Login() {
           {/* MODE: LOGIN (Phone / Email with Password)                      */}
           {/* ============================================================== */}
           {mode === "login" && (
-            <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            <form onSubmit={handleLogin} className="flex flex-col gap-3">
               {/* Method Toggle: Mobile Number vs Email */}
-              <div className="flex bg-[#EAE8F2] p-1 rounded-[10px] gap-1 mb-1">
+              <div className="flex bg-[#EAE8F2] p-1 rounded-none gap-1 mb-1 w-full">
                 <button
                   type="button"
                   onClick={() => { setLoginMethod("phone"); setError(null); }}
-                  className={`flex-1 py-2 text-xs font-bold rounded-[8px] transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  className={`flex-1 h-9 text-[11px] font-bold rounded-none uppercase transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     loginMethod === "phone"
-                      ? "bg-white text-[#0F5B5C] shadow-sm"
+                      ? "bg-white text-[#0F5B5C] border border-gray-200 shadow-2xs"
                       : "text-slate-500 hover:text-charcoal"
                   }`}
                 >
-                  <Phone size={13} />
-                  <span>Mobile Number</span>
+                  <Phone size={12} className={loginMethod === "phone" ? "text-[#0F5B5C]" : ""} />
+                  <span>MOBILE NUMBER</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => { setLoginMethod("email"); setError(null); }}
-                  className={`flex-1 py-2 text-xs font-bold rounded-[8px] transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  className={`flex-1 h-9 text-[11px] font-bold rounded-none uppercase transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     loginMethod === "email"
-                      ? "bg-white text-[#0F5B5C] shadow-sm"
+                      ? "bg-white text-[#0F5B5C] border border-gray-200 shadow-2xs"
                       : "text-slate-500 hover:text-charcoal"
                   }`}
                 >
-                  <Mail size={13} />
-                  <span>Email Address</span>
+                  <Mail size={12} className={loginMethod === "email" ? "text-[#0F5B5C]" : ""} />
+                  <span>EMAIL ADDRESS</span>
                 </button>
               </div>
 
               {/* Mobile Number with Country Code */}
               {loginMethod === "phone" && (
-                <div className="flex gap-2 relative">
+                <div className="flex gap-2 relative w-full">
                   <button
                     type="button"
                     onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                    className="bg-white rounded-[8px] px-3.5 py-3.5 text-xs text-charcoal flex items-center gap-1.5 hover:bg-slate-50 shadow-sm border border-[#59AD63]/30 select-none whitespace-nowrap min-w-[76px] justify-center cursor-pointer font-bold transition-all shrink-0"
+                    className="h-11 bg-white rounded-none px-3 text-xs text-charcoal flex items-center gap-1.5 hover:bg-slate-50 border border-gray-300 select-none whitespace-nowrap min-w-[76px] justify-center cursor-pointer font-bold transition-all shrink-0 shadow-2xs"
                     title="Select Country Code"
                   >
-                    <span className="text-sm leading-none">{countryFlag}</span>
-                    <span className="font-semibold text-charcoal">{countryCode}</span>
+                    <span className="font-bold text-gray-800">IN {countryCode}</span>
                   </button>
 
-                  <div className="flex-1 flex items-center bg-white rounded-[8px] px-4 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
-                    <Phone size={16} className="text-slate-400 shrink-0" />
+                  <div className="flex-1 h-11 flex items-center bg-white rounded-none px-3.5 border border-gray-300 gap-2.5 shadow-2xs focus-within:border-[#0F5B5C] transition-all">
+                    <Phone size={14} className="text-slate-400 shrink-0" />
                     <input
                       type="tel"
                       required
@@ -947,13 +952,13 @@ export default function Login() {
                         className="fixed inset-0 z-40" 
                         onClick={() => setShowCountryDropdown(false)} 
                       />
-                      <div className="absolute left-0 top-[48px] w-64 bg-white border border-[#59AD63]/30 rounded-[8px] p-2.5 z-50 shadow-2xl flex flex-col gap-2">
+                      <div className="absolute left-0 top-[48px] w-64 bg-white border border-gray-300 rounded-none p-2 z-50 shadow-2xl flex flex-col gap-2">
                         <input
                           type="text"
                           placeholder="Search country name or code..."
                           value={countrySearch}
                           onChange={(e) => setCountrySearch(e.target.value)}
-                          className="w-full bg-slate-50 border border-[#59AD63]/30 rounded-lg px-2.5 py-1.5 text-[11px] text-charcoal placeholder-charcoal/30 focus:outline-none focus:border-[#0F5B5C]"
+                          className="w-full bg-slate-50 border border-gray-300 rounded-none px-2.5 py-1.5 text-[11px] text-charcoal placeholder-charcoal/30 focus:outline-none focus:border-[#0F5B5C]"
                           autoFocus
                         />
                         <div className="flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar">
@@ -968,7 +973,7 @@ export default function Login() {
                                 key={c.code}
                                 type="button"
                                 onClick={() => selectCountry(c.code, c.flag)}
-                                className="w-full text-left flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-slate-50 text-charcoal text-[11px] font-semibold transition-colors cursor-pointer"
+                                className="w-full text-left flex items-center justify-between px-2.5 py-2 rounded-none hover:bg-slate-50 text-charcoal text-[11px] font-semibold transition-colors cursor-pointer"
                               >
                                 <span className="flex items-center gap-2">
                                   <span className="text-sm">{c.flag}</span>
@@ -986,8 +991,8 @@ export default function Login() {
 
               {/* Email Address */}
               {loginMethod === "email" && (
-                <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
-                  <Mail size={16} className="text-slate-400 shrink-0" />
+                <div className="w-full h-11 flex items-center bg-white rounded-none px-3.5 border border-gray-300 gap-2.5 shadow-2xs focus-within:border-[#0F5B5C] transition-all">
+                  <Mail size={14} className="text-slate-400 shrink-0" />
                   <input
                     type="email"
                     required
@@ -1001,8 +1006,8 @@ export default function Login() {
               )}
 
               {/* Password */}
-              <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
-                <Lock size={16} className="text-slate-400 shrink-0" />
+              <div className="w-full h-11 flex items-center bg-white rounded-none px-3.5 border border-gray-300 gap-2.5 shadow-2xs focus-within:border-[#0F5B5C] transition-all">
+                <Lock size={14} className="text-slate-400 shrink-0" />
                 <input
                   type={showPassword ? "text" : "password"}
                   required
@@ -1017,7 +1022,7 @@ export default function Login() {
                   onClick={() => setShowPassword((s) => !s)}
                   className="text-slate-400 hover:text-charcoal transition-colors shrink-0 cursor-pointer"
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
 
@@ -1029,19 +1034,19 @@ export default function Login() {
                   setSuccessMsg(null);
                   setMode("forgot_password");
                 }}
-                className="text-[10.5px] font-bold text-slate-500 hover:text-[#0F5B5C] block text-right uppercase tracking-wider self-end cursor-pointer"
+                className="text-[10.5px] font-bold text-slate-700 hover:text-[#0F5B5C] block text-right uppercase tracking-wider self-end -mt-1 cursor-pointer"
               >
-                Forgot Password?
+                FORGOT PASSWORD?
               </button>
 
               {/* Error Message */}
-              {error && <p className="text-[11.5px] text-rose-600 font-semibold bg-rose-50 p-2.5 rounded-lg border border-rose-200 text-left">{error}</p>}
+              {error && <p className="text-[11px] text-rose-600 font-semibold bg-rose-50 p-2 rounded-none border border-rose-200 text-left">{error}</p>}
 
               {/* Submit Button */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 bg-[#0F5B5C] hover:bg-[#0F5B5C]/90 text-white rounded-[2px] text-xs font-bold tracking-wider uppercase shadow-md shadow-[#0F5B5C]/20 transition-all active:scale-[0.98] disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-1"
+                className="w-full h-11 bg-[#0F5B5C] hover:bg-[#0c4a4b] text-white rounded-none text-xs font-bold tracking-wider uppercase shadow-xs transition-all active:scale-[0.99] disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-0.5"
               >
                 <span>{loading ? "Signing In..." : "LOGIN"}</span>
               </button>
@@ -1054,11 +1059,11 @@ export default function Login() {
           {mode === "forgot_password" && (
             <form onSubmit={handleSendForgotOtp} className="flex flex-col gap-4">
               {/* Method Toggle */}
-              <div className="flex bg-[#EAE8F2] p-1 rounded-[10px] gap-1 mb-1">
+              <div className="flex bg-[#EAE8F2] p-1 rounded-none gap-1 mb-1">
                 <button
                   type="button"
                   onClick={() => { setForgotMethod("phone"); setError(null); }}
-                  className={`flex-1 py-2 text-xs font-bold rounded-[8px] transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  className={`flex-1 py-2 text-xs font-bold rounded-none transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     forgotMethod === "phone"
                       ? "bg-white text-[#0F5B5C] shadow-sm"
                       : "text-slate-500 hover:text-charcoal"
@@ -1070,7 +1075,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => { setForgotMethod("email"); setError(null); }}
-                  className={`flex-1 py-2 text-xs font-bold rounded-[8px] transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  className={`flex-1 py-2 text-xs font-bold rounded-none transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     forgotMethod === "email"
                       ? "bg-white text-[#0F5B5C] shadow-sm"
                       : "text-slate-500 hover:text-charcoal"
@@ -1087,13 +1092,13 @@ export default function Login() {
                     <button
                       type="button"
                       onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                      className="bg-white rounded-[8px] px-3.5 py-3.5 text-xs text-charcoal flex items-center gap-1.5 hover:bg-slate-50 shadow-sm border border-[#59AD63]/30 select-none whitespace-nowrap min-w-[76px] justify-center cursor-pointer font-bold transition-all shrink-0"
+                      className="bg-white rounded-none px-3.5 py-3.5 text-xs text-charcoal flex items-center gap-1.5 hover:bg-slate-50 shadow-sm border border-[#59AD63]/30 select-none whitespace-nowrap min-w-[76px] justify-center cursor-pointer font-bold transition-all shrink-0"
                     >
                       <span className="text-sm leading-none">{countryFlag}</span>
                       <span className="font-semibold text-charcoal">{countryCode}</span>
                     </button>
 
-                    <div className="flex-1 flex items-center bg-white rounded-[8px] px-4 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
+                    <div className="flex-1 flex items-center bg-white rounded-none px-4 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
                       <Phone size={16} className="text-slate-400 shrink-0" />
                       <input
                         type="tel"
@@ -1111,7 +1116,7 @@ export default function Login() {
                   </p>
                 </div>
               ) : (
-                <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
+                <div className="flex items-center bg-white rounded-none px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
                   <Mail size={16} className="text-slate-400 shrink-0" />
                   <input
                     type="email"
@@ -1126,13 +1131,13 @@ export default function Login() {
               )}
 
               {/* Error Message */}
-              {error && <p className="text-[11.5px] text-rose-600 font-semibold bg-rose-50 p-2.5 rounded-lg border border-rose-200 text-left">{error}</p>}
+              {error && <p className="text-[11.5px] text-rose-600 font-semibold bg-rose-50 p-2.5 rounded-none border border-rose-200 text-left">{error}</p>}
 
               {/* Submit Button */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 bg-[#0F5B5C] hover:bg-[#0F5B5C]/90 text-white rounded-[2px] text-xs font-bold tracking-wider uppercase shadow-md shadow-[#0F5B5C]/20 transition-all active:scale-[0.98] disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-1"
+                className="w-full py-4 bg-[#0F5B5C] hover:bg-[#0F5B5C]/90 text-white rounded-none text-xs font-bold tracking-wider uppercase shadow-md shadow-[#0F5B5C]/20 transition-all active:scale-[0.98] disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-1"
               >
                 <span>{loading ? "Sending OTP..." : "SEND OTP"}</span>
               </button>
@@ -1156,7 +1161,7 @@ export default function Login() {
                   </p>
                 </>
               ) : (
-                <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
+                <div className="flex items-center bg-white rounded-none px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
                   <input
                     type="text"
                     maxLength={6}
@@ -1188,7 +1193,7 @@ export default function Login() {
               </div>
 
               {/* New Password */}
-              <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
+              <div className="flex items-center bg-white rounded-none px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
                 <Lock size={16} className="text-slate-400 shrink-0" />
                 <input
                   type={showPassword ? "text" : "password"}
@@ -1208,7 +1213,7 @@ export default function Login() {
               </div>
 
               {/* Confirm New Password */}
-              <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
+              <div className="flex items-center bg-white rounded-none px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
                 <Lock size={16} className="text-slate-400 shrink-0" />
                 <input
                   type={showConfirmPassword ? "text" : "password"}
@@ -1228,14 +1233,14 @@ export default function Login() {
               </div>
 
               {/* Error & Success Messages */}
-              {successMsg && <p className="text-[11.5px] text-emerald-700 font-semibold bg-emerald-50 p-2.5 rounded-lg border border-emerald-200 text-left">{successMsg}</p>}
-              {error && <p className="text-[11.5px] text-rose-600 font-semibold bg-rose-50 p-2.5 rounded-lg border border-rose-200 text-left">{error}</p>}
+              {successMsg && <p className="text-[11.5px] text-emerald-700 font-semibold bg-emerald-50 p-2.5 rounded-none border border-emerald-200 text-left">{successMsg}</p>}
+              {error && <p className="text-[11.5px] text-rose-600 font-semibold bg-rose-50 p-2.5 rounded-none border border-rose-200 text-left">{error}</p>}
 
               {/* Submit Button */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 bg-[#0F5B5C] hover:bg-[#0F5B5C]/90 text-white rounded-[2px] text-xs font-bold tracking-wider uppercase shadow-md shadow-[#0F5B5C]/20 transition-all active:scale-[0.98] disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-2"
+                className="w-full py-4 bg-[#0F5B5C] hover:bg-[#0F5B5C]/90 text-white rounded-none text-xs font-bold tracking-wider uppercase shadow-md shadow-[#0F5B5C]/20 transition-all active:scale-[0.98] disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
                 <span>{loading ? "Resetting..." : "RESET PASSWORD & LOGIN"}</span>
               </button>
@@ -1246,26 +1251,41 @@ export default function Login() {
           {(mode === "login" || mode === "register" || mode === "register_otp") && (
             <>
               {/* Divider */}
-              <div className="flex items-center gap-3 my-5 select-none">
+              <div className="flex items-center gap-3 my-2.5 select-none">
                 <div className="h-[1px] flex-1 bg-slate-200" />
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Or continue with</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">OR CONTINUE WITH</span>
                 <div className="h-[1px] flex-1 bg-slate-200" />
               </div>
 
-              {/* Social Login Buttons */}
-              <div className="flex flex-col gap-3 mb-6">
+              {/* Social Login Buttons (all equal h-11, rounded-none) */}
+              <div className="flex flex-col gap-2 mb-2 w-full">
+                {/* Login with Mobile OTP */}
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    setSuccessMsg(null);
+                    setMode("forgot_password");
+                    setForgotMethod("phone");
+                  }}
+                  className="w-full h-11 bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-800 rounded-none border border-gray-300 shadow-2xs flex items-center justify-center gap-2 font-semibold text-xs transition-all active:scale-[0.99] cursor-pointer"
+                >
+                  <span className="text-sm">🔐</span>
+                  <span>Login with Mobile OTP</span>
+                </button>
+
                 {/* Continue with Google */}
                 <button 
                   type="button"
                   onClick={handleGoogleClick}
                   disabled={loading || connectingProvider !== null}
-                  className="w-full py-3.5 px-4 bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-700 rounded-[8px] border border-gray-300 shadow-xs flex items-center justify-center gap-3 font-semibold text-xs transition-all active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                  className="w-full h-11 bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-800 rounded-none border border-gray-300 shadow-2xs flex items-center justify-center gap-2.5 font-semibold text-xs transition-all active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {connectingProvider === "google" ? (
                     <span className="text-gray-500 font-bold">Connecting to Google...</span>
                   ) : (
                     <>
-                      <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.56-2.77c-.98.66-2.23 1.06-3.72 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                         <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
@@ -1281,13 +1301,13 @@ export default function Login() {
                   type="button"
                   onClick={handleFacebookClick}
                   disabled={loading || connectingProvider !== null}
-                  className="w-full py-3.5 px-4 bg-[#1877F2] hover:bg-[#166fe5] active:bg-[#1465d2] text-white rounded-[8px] shadow-xs flex items-center justify-center gap-3 font-semibold text-xs transition-all active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                  className="w-full h-11 bg-[#1877F2] hover:bg-[#166fe5] active:bg-[#1465d2] text-white rounded-none shadow-2xs flex items-center justify-center gap-2.5 font-semibold text-xs transition-all active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {connectingProvider === "facebook" ? (
                     <span className="font-bold">Connecting to Facebook...</span>
                   ) : (
                     <>
-                      <svg className="w-5 h-5 fill-current text-white shrink-0" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 fill-current text-white shrink-0" viewBox="0 0 24 24">
                         <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                       </svg>
                       <span>Continue with Facebook</span>
