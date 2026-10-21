@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { pool } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { sendOtpEmail } from "../utils/mailer.js";
+import { sendOtpSms } from "../utils/sms.js";
 
 const router = Router();
 
@@ -265,62 +266,250 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// POST /api/auth/forgot-password { email }
-router.post("/forgot-password", async (req, res) => {
+// POST /api/auth/send-signup-otp { phone }
+router.post("/send-signup-otp", async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email || !email.trim()) {
-      return res.status(400).json({ error: "Email address is required" });
+    const { phone } = req.body;
+    if (!phone || !String(phone).trim()) {
+      return res.status(400).json({ error: "Mobile number is required" });
     }
 
-    const trimmed = email.trim().toLowerCase();
-    const [rows] = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [trimmed]);
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "No account registered with this email address" });
+    const cleanedDigits = String(phone).replace(/\D/g, "");
+    if (cleanedDigits.length < 10) {
+      return res.status(400).json({ error: "Please enter a valid 10-digit mobile number" });
+    }
+    const last10 = cleanedDigits.slice(-10);
+
+    // Check if account already exists with this phone number
+    const [existing] = await pool.query(
+      "SELECT id FROM users WHERE phone LIKE ? OR phone = ?",
+      [`%${last10}`, phone]
+    );
+    if (existing.length > 0) {
+      return res.status(409).json({ error: "An account with this mobile number already exists. Please login." });
     }
 
-    const user = rows[0];
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins expiry
+    // Generate 4-digit numeric OTP
+    const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes validity
 
+    // Store in phone_otps table
     await pool.query(
-      "UPDATE users SET reset_otp = ?, reset_otp_expires_at = ? WHERE id = ?",
-      [otpCode, expiresAt, user.id]
+      "DELETE FROM phone_otps WHERE phone = ? AND purpose = 'signup' AND is_verified = 0",
+      [last10]
+    );
+    await pool.query(
+      "INSERT INTO phone_otps (phone, otp, purpose, expires_at) VALUES (?, ?, 'signup', ?)",
+      [last10, otpCode, expiresAt]
     );
 
-    await sendOtpEmail(user.email, user.name, otpCode);
+    // Send SMS via Fast2SMS
+    await sendOtpSms(last10, otpCode);
 
     res.json({
       success: true,
-      message: `OTP sent to your registered email address (${user.email}).`,
-      email: user.email,
+      message: `OTP sent successfully to mobile number ending in ${last10.slice(-4)}.`,
+      phone: last10,
     });
   } catch (err) {
-    console.error("Forgot password error:", err);
-    res.status(500).json({ error: "Failed to send reset OTP. Please try again." });
+    console.error("send-signup-otp error:", err);
+    res.status(500).json({ error: err.message || "Failed to send OTP. Please try again." });
   }
 });
 
-// POST /api/auth/verify-otp { email, otp }
-router.post("/verify-otp", async (req, res) => {
+// POST /api/auth/verify-signup-otp { phone, otp, name }
+router.post("/verify-signup-otp", async (req, res) => {
   try {
-    const { email, otp } = req.body;
-    if (!email || !otp) {
-      return res.status(400).json({ error: "Email and OTP code are required" });
+    const { phone, otp, name } = req.body;
+    if (!phone || !otp) {
+      return res.status(400).json({ error: "Mobile number and OTP are required" });
     }
 
-    const trimmed = email.trim().toLowerCase();
-    const [rows] = await pool.query(
-      "SELECT id, reset_otp, reset_otp_expires_at FROM users WHERE LOWER(email) = LOWER(?)",
-      [trimmed]
+    const cleanedDigits = String(phone).replace(/\D/g, "");
+    const last10 = cleanedDigits.slice(-10);
+    const trimmedOtp = String(otp).trim();
+
+    // Check phone_otps
+    const [otpRows] = await pool.query(
+      "SELECT * FROM phone_otps WHERE phone = ? AND purpose = 'signup' AND is_verified = 0 AND expires_at > NOW() ORDER BY id DESC LIMIT 1",
+      [last10]
     );
+
+    if (otpRows.length === 0 || otpRows[0].otp !== trimmedOtp) {
+      return res.status(400).json({ error: "Invalid or expired OTP code. Please enter the 4-digit code sent to your mobile." });
+    }
+
+    // Mark verified
+    await pool.query("UPDATE phone_otps SET is_verified = 1 WHERE id = ?", [otpRows[0].id]);
+
+    // Check if user was somehow already created
+    const [existingUsers] = await pool.query(
+      "SELECT * FROM users WHERE phone LIKE ? OR phone = ?",
+      [`%${last10}`, phone]
+    );
+
+    let user;
+    if (existingUsers.length > 0) {
+      user = existingUsers[0];
+    } else {
+      // Create new user with verified phone
+      const fullPhone = "+91" + last10;
+      const userName = (name && String(name).trim()) ? String(name).trim() : `User ${last10.slice(-4)}`;
+      // Generate temporary random password hash
+      const randomPassword = await bcrypt.hash(crypto.randomBytes(16).toString("hex"), 10);
+
+      const [insertRes] = await pool.query(
+        "INSERT INTO users (name, phone, password_hash, role, enquiry_credits_left, listing_slots_left) VALUES (?, ?, ?, 'user', 3, 2)",
+        [userName, fullPhone, randomPassword]
+      );
+      const newUserId = insertRes.insertId;
+
+      await pool.query(
+        `INSERT INTO credit_transactions (user_id, credit_type, transaction_type, amount_credits, balance_after, notes)
+         VALUES (?, 'enquiry', 'bonus', 3, 3, 'Welcome free enquiry tokens')`,
+        [newUserId]
+      );
+      await pool.query(
+        `INSERT INTO credit_transactions (user_id, credit_type, transaction_type, amount_credits, balance_after, notes)
+         VALUES (?, 'listing_slot', 'bonus', 2, 2, 'Welcome free listing slots')`,
+        [newUserId]
+      );
+
+      const [userRows] = await pool.query("SELECT * FROM users WHERE id = ?", [newUserId]);
+      user = userRows[0];
+    }
+
+    await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [user.id]);
+    const token = signToken(user.id);
+    setAuthCookie(res, token);
+    res.status(201).json({ token, user: toPublicUser(user), isNewUser: true });
+  } catch (err) {
+    console.error("verify-signup-otp error:", err);
+    res.status(500).json({ error: "Failed to verify OTP" });
+  }
+});
+
+// POST /api/auth/forgot-password { identifier, email, phone }
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const raw = req.body.identifier || req.body.phone || req.body.email;
+    if (!raw || !String(raw).trim()) {
+      return res.status(400).json({ error: "Mobile number or email address is required" });
+    }
+
+    const trimmed = String(raw).trim();
+    const isEmail = trimmed.includes("@");
+
+    if (isEmail) {
+      // Email-based forgot password
+      const emailLower = trimmed.toLowerCase();
+      const [rows] = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [emailLower]);
+      if (rows.length === 0) {
+        return res.status(404).json({ error: "No account registered with this email address" });
+      }
+
+      const user = rows[0];
+      const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+      await pool.query(
+        "UPDATE users SET reset_otp = ?, reset_otp_expires_at = ? WHERE id = ?",
+        [otpCode, expiresAt, user.id]
+      );
+
+      await sendOtpEmail(user.email, user.name, otpCode);
+
+      return res.json({
+        success: true,
+        type: "email",
+        message: `OTP sent to your registered email address (${user.email}).`,
+        email: user.email,
+      });
+    } else {
+      // Phone-based forgot password (Fast2SMS)
+      const cleanedDigits = trimmed.replace(/\D/g, "");
+      if (cleanedDigits.length < 10) {
+        return res.status(400).json({ error: "Please enter a valid 10-digit mobile number" });
+      }
+      const last10 = cleanedDigits.slice(-10);
+
+      const [rows] = await pool.query(
+        "SELECT * FROM users WHERE phone LIKE ? OR phone = ?",
+        [`%${last10}`, trimmed]
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).json({ error: "No account registered with this mobile number" });
+      }
+
+      const user = rows[0];
+      const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+      // Store in users and phone_otps
+      await pool.query(
+        "UPDATE users SET reset_otp = ?, reset_otp_expires_at = ? WHERE id = ?",
+        [otpCode, expiresAt, user.id]
+      );
+
+      await pool.query(
+        "DELETE FROM phone_otps WHERE phone = ? AND purpose = 'forgot_password' AND is_verified = 0",
+        [last10]
+      );
+      await pool.query(
+        "INSERT INTO phone_otps (phone, otp, purpose, expires_at) VALUES (?, ?, 'forgot_password', ?)",
+        [last10, otpCode, expiresAt]
+      );
+
+      // Send SMS via Fast2SMS
+      await sendOtpSms(last10, otpCode);
+
+      return res.json({
+        success: true,
+        type: "phone",
+        message: `OTP sent to your registered mobile number ending in ${last10.slice(-4)}.`,
+        phone: user.phone || last10,
+        last4: last10.slice(-4),
+      });
+    }
+  } catch (err) {
+    console.error("Forgot password error:", err);
+    res.status(500).json({ error: err.message || "Failed to send reset OTP. Please try again." });
+  }
+});
+
+// POST /api/auth/verify-otp { email, phone, identifier, otp }
+router.post("/verify-otp", async (req, res) => {
+  try {
+    const { email, phone, identifier, otp } = req.body;
+    const target = (phone || email || identifier || "").trim();
+    if (!target || !otp) {
+      return res.status(400).json({ error: "Mobile/Email and OTP code are required" });
+    }
+
+    const trimmedOtp = String(otp).trim();
+    let rows = [];
+
+    if (target.includes("@")) {
+      [rows] = await pool.query(
+        "SELECT id, reset_otp, reset_otp_expires_at FROM users WHERE LOWER(email) = LOWER(?)",
+        [target.toLowerCase()]
+      );
+    } else {
+      const cleanedDigits = target.replace(/\D/g, "");
+      const last10 = cleanedDigits.slice(-10);
+      [rows] = await pool.query(
+        "SELECT id, reset_otp, reset_otp_expires_at FROM users WHERE phone LIKE ? OR phone = ?",
+        [`%${last10}`, target]
+      );
+    }
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "Account not found" });
     }
 
     const user = rows[0];
-    if (!user.reset_otp || user.reset_otp !== otp.trim()) {
+    if (!user.reset_otp || user.reset_otp !== trimmedOtp) {
       return res.status(400).json({ error: "Invalid OTP code" });
     }
 
@@ -335,26 +524,38 @@ router.post("/verify-otp", async (req, res) => {
   }
 });
 
-// POST /api/auth/reset-password { email, otp, newPassword }
+// POST /api/auth/reset-password { identifier, email, phone, otp, newPassword }
 router.post("/reset-password", async (req, res) => {
   try {
-    const { email, otp, newPassword } = req.body;
-    if (!email || !otp || !newPassword) {
-      return res.status(400).json({ error: "Email, OTP, and new password are required" });
+    const { identifier, email, phone, otp, newPassword } = req.body;
+    const target = (phone || email || identifier || "").trim();
+    if (!target || !otp || !newPassword) {
+      return res.status(400).json({ error: "Mobile/Email, OTP, and new password are required" });
     }
     if (newPassword.length < 6) {
       return res.status(400).json({ error: "New password must be at least 6 characters" });
     }
 
-    const trimmed = email.trim().toLowerCase();
-    const [rows] = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [trimmed]);
+    const trimmedOtp = String(otp).trim();
+    let rows = [];
+
+    if (target.includes("@")) {
+      [rows] = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [target.toLowerCase()]);
+    } else {
+      const cleanedDigits = target.replace(/\D/g, "");
+      const last10 = cleanedDigits.slice(-10);
+      [rows] = await pool.query(
+        "SELECT * FROM users WHERE phone LIKE ? OR phone = ?",
+        [`%${last10}`, target]
+      );
+    }
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "Account not found" });
     }
 
     const user = rows[0];
-    if (!user.reset_otp || user.reset_otp !== otp.trim()) {
+    if (!user.reset_otp || user.reset_otp !== trimmedOtp) {
       return res.status(400).json({ error: "Invalid OTP code" });
     }
 
@@ -367,6 +568,15 @@ router.post("/reset-password", async (req, res) => {
       "UPDATE users SET password_hash = ?, reset_otp = NULL, reset_otp_expires_at = NULL, last_login = CURRENT_TIMESTAMP WHERE id = ?",
       [newHash, user.id]
     );
+
+    // Also mark phone_otps as verified if any
+    const digits = (user.phone || "").replace(/\D/g, "").slice(-10);
+    if (digits) {
+      await pool.query(
+        "UPDATE phone_otps SET is_verified = 1 WHERE phone = ? AND purpose = 'forgot_password'",
+        [digits]
+      ).catch(() => {});
+    }
 
     const token = signToken(user.id);
     setAuthCookie(res, token);

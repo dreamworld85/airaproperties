@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft, RotateCw } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { api, mediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
@@ -81,31 +81,128 @@ function detectUserCountry(): { code: string; name: string; flag: string } {
   return { code: "+91", name: "India", flag: "🇮🇳" };
 }
 
+/**
+ * 4-Digit Rounded Box OTP Input component matching Image 2
+ */
+function FourDigitOtpInput({
+  value,
+  onChange,
+  disabled = false,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  disabled?: boolean;
+}) {
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const digits = [
+    value[0] || "",
+    value[1] || "",
+    value[2] || "",
+    value[3] || "",
+  ];
+
+  const handleChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, "");
+    if (!raw) {
+      const next = [...digits];
+      next[index] = "";
+      onChange(next.join(""));
+      return;
+    }
+    if (raw.length === 1) {
+      const next = [...digits];
+      next[index] = raw;
+      onChange(next.join(""));
+      if (index < 3) {
+        inputRefs.current[index + 1]?.focus();
+      }
+    } else {
+      const pasted = raw.slice(0, 4);
+      const next = [...digits];
+      for (let i = 0; i < pasted.length; i++) {
+        next[i] = pasted[i];
+      }
+      onChange(next.join(""));
+      const nextIdx = Math.min(pasted.length, 3);
+      inputRefs.current[nextIdx]?.focus();
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !digits[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
+    if (!pasted) return;
+    const next = ["", "", "", ""];
+    for (let i = 0; i < pasted.length; i++) {
+      next[i] = pasted[i];
+    }
+    onChange(next.join(""));
+    const nextIdx = Math.min(pasted.length, 3);
+    inputRefs.current[nextIdx]?.focus();
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-3 w-full my-3">
+      {digits.map((digit, idx) => (
+        <input
+          key={idx}
+          ref={(el) => (inputRefs.current[idx] = el)}
+          type="tel"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={1}
+          disabled={disabled}
+          value={digit}
+          onChange={(e) => handleChange(idx, e)}
+          onKeyDown={(e) => handleKeyDown(idx, e)}
+          onPaste={handlePaste}
+          className="w-14 h-16 sm:w-16 sm:h-18 bg-white text-center font-bold text-2xl text-[#0F5B5C] rounded-2xl border-2 border-[#59AD63]/40 focus:border-[#0F5B5C] focus:ring-2 focus:ring-[#0F5B5C]/20 shadow-sm outline-none transition-all disabled:opacity-50"
+          autoFocus={idx === 0}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, token, user } = useAuth();
   const { activeLogoUrl, loadingBannerUrl: brandLoadingBanner, loginBannerUrl: brandLoginBanner } = useBrand();
 
-  const [mode, setMode] = useState<"loading" | "login" | "register" | "forgot_email" | "reset_password">(() => {
+  const [mode, setMode] = useState<"loading" | "login" | "register" | "register_otp" | "forgot_password" | "reset_password">(() => {
     if (typeof window !== "undefined" && (localStorage.getItem("pending_deep_link") || (location.state as any)?.from)) {
       return "login";
     }
     return "loading";
   });
+
   const [loginMethod, setLoginMethod] = useState<"phone" | "email">("phone");
+  const [forgotMethod, setForgotMethod] = useState<"phone" | "email">("phone");
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
-  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [role, setRole] = useState<"owner" | "broker" | "agency" | "user">("user");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [last4, setLast4] = useState("");
+  const [resendTimer, setResendTimer] = useState(0);
+  const [resetType, setResetType] = useState<"phone" | "email">("phone");
+  const [resetTarget, setResetTarget] = useState("");
+
   const [bannerUrl, setBannerUrl] = useState<string>(() => {
     const saved = typeof window !== "undefined" ? localStorage.getItem("sparrow_login_banner") : null;
     if (!saved || saved === "/app_background.jpg") return "/kerala_house_login.jpg";
@@ -116,17 +213,24 @@ export default function Login() {
     if (!saved || saved === "/app_background.jpg") return "";
     return saved;
   });
-  const [loginHeading, setLoginHeading] = useState("Hello!");
-  const [loginSubheading, setLoginSubheading] = useState("Welcome to Property");
 
   const bgUrl = brandLoginBanner || (bannerUrl ? mediaUrl(bannerUrl) : "/kerala_house_login.jpg");
   const loadingBgUrl = brandLoadingBanner || (loadingBannerUrl ? mediaUrl(loadingBannerUrl) : "");
 
-  // Country Code Dropdown State with automatic geolocation / timezone identification
+  // Country Code Dropdown State
   const [countryCode, setCountryCode] = useState(() => detectUserCountry().code);
   const [countryFlag, setCountryFlag] = useState(() => detectUserCountry().flag);
   const [countrySearch, setCountrySearch] = useState("");
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+
+  // Resend OTP countdown timer
+  useEffect(() => {
+    if (resendTimer <= 0) return;
+    const interval = setInterval(() => {
+      setResendTimer((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendTimer]);
 
   useEffect(() => {
     if (token && user) {
@@ -150,7 +254,7 @@ export default function Login() {
 
   const [connectingProvider, setConnectingProvider] = useState<"google" | "facebook" | null>(null);
 
-  // Desktop background (above 1000px): loginbg-1000.svg repeat-x at bottom
+  // Desktop background (above 1000px)
   useEffect(() => {
     const applyDesktopBg = () => {
       if (typeof window !== "undefined" && window.innerWidth >= 1000) {
@@ -239,22 +343,6 @@ export default function Login() {
       })
       .catch((err) => console.error("Failed to load login banner setting:", err));
 
-    api.fetchSetting("login_heading")
-      .then((data) => {
-        if (data && data.value) {
-          setLoginHeading(data.value);
-        }
-      })
-      .catch((err) => console.error("Failed to load login heading setting:", err));
-
-    api.fetchSetting("login_subheading")
-      .then((data) => {
-        if (data && data.value) {
-          setLoginSubheading(data.value);
-        }
-      })
-      .catch((err) => console.error("Failed to load login subheading setting:", err));
-
     api.fetchSetting("loading_banner_url")
       .then((data) => {
         if (data && data.value) {
@@ -275,13 +363,6 @@ export default function Login() {
     window.addEventListener("sparrow-banners-updated", handleBannersUpdated);
     return () => window.removeEventListener("sparrow-banners-updated", handleBannersUpdated);
   }, []);
-
-  useEffect(() => {
-    if (loadingBgUrl) {
-      const img = new Image();
-      img.src = loadingBgUrl;
-    }
-  }, [loadingBgUrl]);
 
   const selectCountry = (code: string, flag: string) => {
     setCountryCode(code);
@@ -320,94 +401,216 @@ export default function Login() {
     setPhone(cleaned);
   };
 
-  async function handleSubmit(e?: React.FormEvent) {
+  // Trigger Send OTP for Sign Up
+  async function handleSendSignupOtp(e?: React.FormEvent) {
     if (e) e.preventDefault();
+    setError(null);
+    setSuccessMsg(null);
+
+    const rawPhone = phone.trim();
+    if (!rawPhone) {
+      setError("Please enter your mobile number");
+      return;
+    }
+    const digitsOnly = rawPhone.replace(/\D/g, "");
+    if (digitsOnly.length < 10) {
+      setError("Please enter a valid 10-digit mobile number");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const fullPhone = rawPhone.startsWith("+") ? rawPhone : `${countryCode}${rawPhone}`;
+      const res = await api.sendSignupOtp(fullPhone);
+      setLast4(digitsOnly.slice(-4));
+      setOtp("");
+      setResendTimer(30);
+      setSuccessMsg(res.message || "OTP code sent to your mobile number.");
+      setMode("register_otp");
+    } catch (err: any) {
+      setError(err?.message || "Failed to send OTP to this mobile number");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Trigger Resend OTP for Sign Up
+  async function handleResendSignupOtp() {
+    if (resendTimer > 0) return;
     setError(null);
     setSuccessMsg(null);
     setLoading(true);
     try {
-      if (mode === "login") {
-        let loginIdentifier = "";
-        if (loginMethod === "phone") {
-          const raw = phone.trim();
-          if (!raw) {
-            setError("Please enter your mobile number");
-            setLoading(false);
-            return;
-          }
-          if (raw.includes("@")) {
-            loginIdentifier = raw;
-          } else if (raw.startsWith("+")) {
-            loginIdentifier = raw;
-          } else {
-            loginIdentifier = `${countryCode}${raw}`;
-          }
-        } else {
-          const raw = email.trim() || identifier.trim();
-          if (!raw) {
-            setError("Please enter your email address");
-            setLoading(false);
-            return;
-          }
-          loginIdentifier = raw;
-        }
+      const rawPhone = phone.trim();
+      const fullPhone = rawPhone.startsWith("+") ? rawPhone : `${countryCode}${rawPhone}`;
+      const res = await api.sendSignupOtp(fullPhone);
+      setResendTimer(30);
+      setSuccessMsg(res.message || "A new OTP code has been sent to your mobile number.");
+    } catch (err: any) {
+      setError(err?.message || "Failed to resend OTP");
+    } finally {
+      setLoading(false);
+    }
+  }
 
-        const { token, user } = await api.login(loginIdentifier, password);
-        login(token, user);
-      } else if (mode === "register") {
-        if (!phone.trim()) {
-          setError("Please enter your mobile number");
-          setLoading(false);
-          return;
-        }
-        const fullPhone = countryCode + phone.trim();
-        const { token, user } = await api.register({
-          name: name.trim(),
-          email: undefined,
-          phone: fullPhone,
-          password,
-          role,
-        });
-        login(token, user);
-      } else if (mode === "forgot_email") {
-        const targetEmail = email.trim() || identifier.trim();
-        if (!targetEmail) {
-          setError("Please enter your registered email address.");
-          setLoading(false);
-          return;
-        }
-        const res = await api.forgotPassword(targetEmail);
-        setEmail(targetEmail);
-        setSuccessMsg(res.message || "OTP code sent to your registered email address.");
-        setMode("reset_password");
-        setLoading(false);
+  // Trigger Verify OTP for Sign Up -> then redirect to Profile
+  async function handleVerifySignupOtp(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    setError(null);
+    setSuccessMsg(null);
+
+    if (otp.length < 4) {
+      setError("Please enter the complete 4-digit OTP code");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const rawPhone = phone.trim();
+      const fullPhone = rawPhone.startsWith("+") ? rawPhone : `${countryCode}${rawPhone}`;
+      const res = await api.verifySignupOtp({
+        phone: fullPhone,
+        otp: otp.trim(),
+        name: name.trim() || undefined,
+      });
+
+      login(res.token, res.user);
+
+      // Successfully verified phone via OTP -> navigate to Profile page to set name, email, and password
+      navigate("/profile/edit", { state: { isNewUser: true } });
+    } catch (err: any) {
+      setError(err?.message || "Invalid OTP code. Please check and try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Handle Standard Login with Password
+  async function handleLogin(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    setError(null);
+    setSuccessMsg(null);
+
+    let loginIdentifier = "";
+    if (loginMethod === "phone") {
+      const raw = phone.trim();
+      if (!raw) {
+        setError("Please enter your mobile number");
         return;
-      } else if (mode === "reset_password") {
-        const targetEmail = email.trim() || identifier.trim();
-        if (!targetEmail || !otp.trim() || !newPassword) {
-          setError("Please enter your email, OTP code, and new password.");
-          setLoading(false);
-          return;
-        }
-        const { token, user } = await api.resetPasswordWithOtp({
-          email: targetEmail,
-          otp: otp.trim(),
-          newPassword,
-        });
-        login(token, user);
       }
+      if (raw.includes("@") || raw.startsWith("+")) {
+        loginIdentifier = raw;
+      } else {
+        loginIdentifier = `${countryCode}${raw}`;
+      }
+    } else {
+      const raw = email.trim();
+      if (!raw) {
+        setError("Please enter your email address");
+        return;
+      }
+      loginIdentifier = raw;
+    }
+
+    if (!password) {
+      setError("Please enter your password");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { token, user } = await api.login(loginIdentifier, password);
+      login(token, user);
 
       const pendingLink = localStorage.getItem("pending_deep_link") || (location.state as any)?.from;
       if (pendingLink) {
         localStorage.removeItem("pending_deep_link");
         navigate(pendingLink, { replace: true });
-      } else if (mode === "register") {
-        navigate("/profile/edit");
       } else {
         navigate("/home");
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+    } catch (err: any) {
+      setError(err?.message || "Invalid credentials. Please check your details and try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Handle Forgot Password (Sends OTP to Mobile or Email)
+  async function handleSendForgotOtp(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    setError(null);
+    setSuccessMsg(null);
+
+    let target = "";
+    if (forgotMethod === "phone") {
+      const raw = phone.trim();
+      if (!raw) {
+        setError("Please enter your registered mobile number");
+        return;
+      }
+      target = raw.startsWith("+") ? raw : `${countryCode}${raw}`;
+    } else {
+      target = email.trim();
+      if (!target) {
+        setError("Please enter your registered email address");
+        return;
+      }
+    }
+
+    setLoading(true);
+    try {
+      const res = await api.forgotPassword(target);
+      setResetType((res.type as any) || (target.includes("@") ? "email" : "phone"));
+      setResetTarget(target);
+      const digits = target.replace(/\D/g, "");
+      setLast4(res.last4 || digits.slice(-4));
+      setOtp("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setResendTimer(30);
+      setSuccessMsg(res.message || "OTP code sent successfully.");
+      setMode("reset_password");
+    } catch (err: any) {
+      setError(err?.message || "Failed to send reset OTP");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Handle Reset Password with OTP
+  async function handleResetPassword(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    setError(null);
+    setSuccessMsg(null);
+
+    if (!otp.trim()) {
+      setError("Please enter the OTP code received on your phone");
+      return;
+    }
+    if (!newPassword || newPassword.length < 6) {
+      setError("New password must be at least 6 characters");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { token, user } = await api.resetPasswordWithOtp({
+        identifier: resetTarget,
+        phone: resetType === "phone" ? resetTarget : undefined,
+        email: resetType === "email" ? resetTarget : undefined,
+        otp: otp.trim(),
+        newPassword,
+      });
+
+      login(token, user);
+      navigate("/home");
+    } catch (err: any) {
+      setError(err?.message || "Failed to reset password. Please check your OTP code.");
     } finally {
       setLoading(false);
     }
@@ -432,13 +635,6 @@ export default function Login() {
           style={loadingBgUrl ? { backgroundImage: `url(${loadingBgUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
           className="w-full max-w-md min-h-screen flex flex-col justify-center relative overflow-hidden font-display shadow-2xl"
         >
-          {/* Top clover-like abstract background curves */}
-          <div className="absolute -top-10 -left-10 w-44 h-44 text-[#e1e9ee]/5 pointer-events-none">
-            <svg viewBox="0 0 100 100" fill="currentColor" className="w-full h-full">
-              <path d="M50 0 C60 25 90 25 100 50 C75 60 75 90 50 100 C40 75 10 75 0 50 C25 40 25 10 50 0 Z" />
-            </svg>
-          </div>
-
           {/* Central Logo Panel */}
           <div className="flex-1 flex flex-col items-center justify-center text-center animate-fade-in px-8 mt-12 select-none relative z-10">
             <img 
@@ -450,24 +646,11 @@ export default function Login() {
               }}
             />
           </div>
-
-          {/* Bottom leaf illustration branch matching mock */}
-          <div className="absolute bottom-0 right-4 w-32 h-44 pointer-events-none opacity-5 flex flex-col items-center select-none z-0">
-            <div className="w-[3px] h-36 bg-white rounded-full rotate-[-25deg] origin-bottom relative">
-              <div className="absolute -left-3.5 top-4 w-7 h-4 bg-white rounded-full rotate-[-45deg]" />
-              <div className="absolute -right-3.5 top-8 w-7 h-4 bg-white rounded-full rotate-[45deg]" />
-              <div className="absolute -left-3.5 top-12 w-7 h-4 bg-white rounded-full rotate-[-45deg]" />
-              <div className="absolute -right-3.5 top-16 w-7 h-4 bg-white rounded-full rotate-[45deg]" />
-              <div className="absolute -left-3.5 top-20 w-7 h-4 bg-white rounded-full rotate-[-45deg]" />
-              <div className="absolute -right-3.5 top-24 w-7 h-4 bg-white rounded-full rotate-[45deg]" />
-              <div className="absolute -left-3.5 top-28 w-7 h-4 bg-white rounded-full rotate-[-45deg]" />
-            </div>
-          </div>
-
         </div>
       </div>
     );
   }
+
   return (
     <div className="min-h-screen bg-[#FAF8F3] login-desktop-bg flex items-center justify-center p-0 select-none overflow-x-hidden relative">
       <style>{`
@@ -485,14 +668,13 @@ export default function Login() {
         style={{ backgroundImage: `url(${bgUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
         className="w-full max-w-md min-h-screen flex flex-col justify-start relative overflow-hidden font-display shadow-2xl"
       >
-        
         {/* Header container */}
         <div 
           style={{ backgroundImage: `url(${bgUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
-          className="text-white p-8 relative flex flex-col justify-center items-center overflow-hidden shrink-0 h-[240px]"
+          className="text-white p-8 relative flex flex-col justify-center items-center overflow-hidden shrink-0 h-[220px]"
         >
           {/* Brand Logo centered */}
-          <div className="relative z-20 w-full flex items-center justify-center select-none pt-4">
+          <div className="relative z-20 w-full flex items-center justify-center select-none pt-2">
             <img 
               src={activeLogoUrl} 
               alt="Brand Logo" 
@@ -505,7 +687,7 @@ export default function Login() {
         </div>
 
         {/* White Rounded Form Container */}
-        <div className="bg-[#F5F4F8] rounded-t-[40px] px-8 pt-12 pb-10 flex-1 flex flex-col -mt-8 z-10 shadow-2xl relative">
+        <div className="bg-[#F5F4F8] rounded-t-[40px] px-8 pt-10 pb-10 flex-1 flex flex-col -mt-8 z-10 shadow-2xl relative">
           
           {/* Back button for secondary modes */}
           {mode !== "login" && (
@@ -514,24 +696,30 @@ export default function Login() {
               onClick={() => {
                 setError(null);
                 setSuccessMsg(null);
-                setMode("login");
+                if (mode === "register_otp") {
+                  setMode("register");
+                } else {
+                  setMode("login");
+                }
               }}
-              className="flex items-center gap-1.5 text-xs font-bold text-[#0F5B5C] mb-6 hover:opacity-80 active:scale-95 transition-all self-start"
+              className="flex items-center gap-1.5 text-xs font-bold text-[#0F5B5C] mb-5 hover:opacity-80 active:scale-95 transition-all self-start cursor-pointer"
             >
               <ArrowLeft size={16} />
-              <span>Back to login</span>
+              <span>{mode === "register_otp" ? "Change mobile number" : "Back to login"}</span>
             </button>
           )}
 
           {/* Form Title */}
-          <h2 className="text-xl font-bold text-[#0F5B5C] mb-6 leading-tight select-none">
-            {mode === "login"
-              ? "Login"
-              : mode === "register"
-              ? "Sign Up"
-              : mode === "forgot_email"
-              ? "Forgot Password"
-              : "Reset Password"}
+          <h2 className="text-xl font-bold text-[#0F5B5C] mb-5 leading-tight select-none">
+            {mode === "login" ? (
+              "Login"
+            ) : mode === "register" || mode === "register_otp" ? (
+              <span><span className="font-bold">Sign Up</span> with your phone number.</span>
+            ) : mode === "forgot_password" ? (
+              "Forgot Password"
+            ) : (
+              "Reset Password"
+            )}
           </h2>
 
           {((location.state as any)?.from || (typeof window !== "undefined" && localStorage.getItem("pending_deep_link"))) && (
@@ -540,9 +728,166 @@ export default function Login() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {/* Mode: Login method toggle (Mobile Number vs Email) */}
-            {mode === "login" && (
+          {/* ============================================================== */}
+          {/* MODE: SIGN UP (Image 1: Phone + Name -> Send OTP)              */}
+          {/* ============================================================== */}
+          {mode === "register" && (
+            <form onSubmit={handleSendSignupOtp} className="flex flex-col gap-4">
+              {/* Full Name field */}
+              <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
+                <User size={16} className="text-slate-400 shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Full Name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  autoComplete="name"
+                  className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-400"
+                />
+              </div>
+
+              {/* Mobile Number with Country Code */}
+              <div>
+                <div className="flex gap-2 relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                    className="bg-white rounded-[8px] px-3.5 py-3.5 text-xs text-charcoal flex items-center gap-1.5 hover:bg-slate-50 shadow-sm border border-[#59AD63]/30 select-none whitespace-nowrap min-w-[76px] justify-center cursor-pointer font-bold transition-all shrink-0"
+                    title="Select Country Code"
+                  >
+                    <span className="text-sm leading-none">{countryFlag}</span>
+                    <span className="font-semibold text-charcoal">{countryCode}</span>
+                  </button>
+
+                  <div className="flex-1 flex items-center bg-white rounded-[8px] px-4 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
+                    <Phone size={16} className="text-slate-400 shrink-0" />
+                    <input
+                      type="tel"
+                      required
+                      placeholder="Mobile Number"
+                      value={phone}
+                      onChange={(e) => handlePhoneChange(e.target.value)}
+                      autoComplete="tel"
+                      className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-400"
+                    />
+                  </div>
+
+                  {showCountryDropdown && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setShowCountryDropdown(false)} 
+                      />
+                      <div className="absolute left-0 top-[48px] w-64 bg-white border border-[#59AD63]/30 rounded-[8px] p-2.5 z-50 shadow-2xl flex flex-col gap-2">
+                        <input
+                          type="text"
+                          placeholder="Search country name or code..."
+                          value={countrySearch}
+                          onChange={(e) => setCountrySearch(e.target.value)}
+                          className="w-full bg-slate-50 border border-[#59AD63]/30 rounded-lg px-2.5 py-1.5 text-[11px] text-charcoal placeholder-charcoal/30 focus:outline-none focus:border-[#0F5B5C]"
+                          autoFocus
+                        />
+                        <div className="flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar">
+                          {countries
+                            .filter(
+                              (c) =>
+                                c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+                                c.code.includes(countrySearch)
+                            )
+                            .map((c) => (
+                              <button
+                                key={c.code}
+                                type="button"
+                                onClick={() => selectCountry(c.code, c.flag)}
+                                className="w-full text-left flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-slate-50 text-charcoal text-[11px] font-semibold transition-colors cursor-pointer"
+                              >
+                                <span className="flex items-center gap-2">
+                                  <span className="text-sm">{c.flag}</span>
+                                  <span>{c.name}</span>
+                                </span>
+                                <span className="text-slate-500 font-mono text-[10px]">{c.code}</span>
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <p className="text-[12px] text-slate-500 font-medium mt-2 pl-1 select-none">
+                  You will receive an OTP on this number.
+                </p>
+              </div>
+
+              {/* Error Message */}
+              {error && <p className="text-[11.5px] text-rose-600 font-semibold bg-rose-50 p-2.5 rounded-lg border border-rose-200 text-left">{error}</p>}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-4 bg-[#0F5B5C] hover:bg-[#0F5B5C]/90 text-white rounded-[2px] text-xs font-bold tracking-wider uppercase shadow-md shadow-[#0F5B5C]/20 transition-all active:scale-[0.98] disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-1"
+              >
+                <span>{loading ? "Sending OTP..." : "SIGN UP"}</span>
+              </button>
+            </form>
+          )}
+
+          {/* ============================================================== */}
+          {/* MODE: SIGN UP OTP (Image 2: 4 Rounded Boxes -> Verify OTP)      */}
+          {/* ============================================================== */}
+          {mode === "register_otp" && (
+            <form onSubmit={handleVerifySignupOtp} className="flex flex-col gap-3">
+              {/* 4 Digit OTP Boxes */}
+              <FourDigitOtpInput 
+                value={otp} 
+                onChange={(val) => { setOtp(val); setError(null); }} 
+                disabled={loading} 
+              />
+
+              {/* Information Text */}
+              <p className="text-[12.5px] text-[#2C5282] font-medium leading-relaxed my-1 select-none text-left">
+                We've sent you a one-time code to your mobile ending in <span className="font-bold">{last4 || "..."}</span>. This code will expire after 5 minutes.
+              </p>
+
+              {/* Resend OTP button */}
+              <div className="flex items-center justify-between text-xs pt-1 pb-2">
+                <span className="text-slate-500">Didn't receive code?</span>
+                {resendTimer > 0 ? (
+                  <span className="text-slate-400 font-medium">Resend OTP in <span className="font-bold text-[#0F5B5C]">{resendTimer}s</span></span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendSignupOtp}
+                    disabled={loading}
+                    className="text-[#0F5B5C] font-bold hover:underline cursor-pointer flex items-center gap-1 active:scale-95 transition-all"
+                  >
+                    <RotateCw size={12} />
+                    <span>Resend OTP</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Error & Success Messages */}
+              {successMsg && <p className="text-[11.5px] text-emerald-700 font-semibold bg-emerald-50 p-2.5 rounded-lg border border-emerald-200 text-left">{successMsg}</p>}
+              {error && <p className="text-[11.5px] text-rose-600 font-semibold bg-rose-50 p-2.5 rounded-lg border border-rose-200 text-left">{error}</p>}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading || otp.length < 4}
+                className="w-full py-4 bg-[#0F5B5C] hover:bg-[#0F5B5C]/90 text-white rounded-[2px] text-xs font-bold tracking-wider uppercase shadow-md shadow-[#0F5B5C]/20 transition-all active:scale-[0.98] disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-2"
+              >
+                <span>{loading ? "Verifying..." : "SIGN UP"}</span>
+              </button>
+            </form>
+          )}
+
+          {/* ============================================================== */}
+          {/* MODE: LOGIN (Phone / Email with Password)                      */}
+          {/* ============================================================== */}
+          {mode === "login" && (
+            <form onSubmit={handleLogin} className="flex flex-col gap-4">
+              {/* Method Toggle: Mobile Number vs Email */}
               <div className="flex bg-[#EAE8F2] p-1 rounded-[10px] gap-1 mb-1">
                 <button
                   type="button"
@@ -569,202 +914,336 @@ export default function Login() {
                   <span>Email Address</span>
                 </button>
               </div>
-            )}
 
-            {/* Full Name field (Register only) */}
-            {mode === "register" && (
-              <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
-                <User size={16} className="text-slate/40 shrink-0" />
-                <input
-                  type="text"
-                  required
-                  placeholder="Full Name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  autoComplete="name"
-                  className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-300"
-                />
-              </div>
-            )}
+              {/* Mobile Number with Country Code */}
+              {loginMethod === "phone" && (
+                <div className="flex gap-2 relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                    className="bg-white rounded-[8px] px-3.5 py-3.5 text-xs text-charcoal flex items-center gap-1.5 hover:bg-slate-50 shadow-sm border border-[#59AD63]/30 select-none whitespace-nowrap min-w-[76px] justify-center cursor-pointer font-bold transition-all shrink-0"
+                    title="Select Country Code"
+                  >
+                    <span className="text-sm leading-none">{countryFlag}</span>
+                    <span className="font-semibold text-charcoal">{countryCode}</span>
+                  </button>
 
-            {/* Mobile Number with Country Code (Login with Phone OR Register) */}
-            {((mode === "login" && loginMethod === "phone") || mode === "register") && (
-              <div className="flex gap-2 relative">
-                <button
-                  type="button"
-                  onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                  className="bg-white rounded-[8px] px-3.5 py-3.5 text-xs text-charcoal flex items-center gap-1.5 hover:bg-slate-50 shadow-sm border border-[#59AD63]/30 select-none whitespace-nowrap min-w-[76px] justify-center cursor-pointer font-bold transition-all shrink-0"
-                  title="Select Country Code"
-                >
-                  <span className="text-sm leading-none">{countryFlag}</span>
-                  <span className="font-semibold text-charcoal">{countryCode}</span>
-                </button>
+                  <div className="flex-1 flex items-center bg-white rounded-[8px] px-4 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
+                    <Phone size={16} className="text-slate-400 shrink-0" />
+                    <input
+                      type="tel"
+                      required
+                      placeholder="Mobile Number"
+                      value={phone}
+                      onChange={(e) => handlePhoneChange(e.target.value)}
+                      autoComplete="tel"
+                      className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-400"
+                    />
+                  </div>
 
-                <div className="flex-1 flex items-center bg-white rounded-[8px] px-4 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
-                  <Phone size={16} className="text-slate/40 shrink-0" />
+                  {showCountryDropdown && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setShowCountryDropdown(false)} 
+                      />
+                      <div className="absolute left-0 top-[48px] w-64 bg-white border border-[#59AD63]/30 rounded-[8px] p-2.5 z-50 shadow-2xl flex flex-col gap-2">
+                        <input
+                          type="text"
+                          placeholder="Search country name or code..."
+                          value={countrySearch}
+                          onChange={(e) => setCountrySearch(e.target.value)}
+                          className="w-full bg-slate-50 border border-[#59AD63]/30 rounded-lg px-2.5 py-1.5 text-[11px] text-charcoal placeholder-charcoal/30 focus:outline-none focus:border-[#0F5B5C]"
+                          autoFocus
+                        />
+                        <div className="flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar">
+                          {countries
+                            .filter(
+                              (c) =>
+                                c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+                                c.code.includes(countrySearch)
+                            )
+                            .map((c) => (
+                              <button
+                                key={c.code}
+                                type="button"
+                                onClick={() => selectCountry(c.code, c.flag)}
+                                className="w-full text-left flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-slate-50 text-charcoal text-[11px] font-semibold transition-colors cursor-pointer"
+                              >
+                                <span className="flex items-center gap-2">
+                                  <span className="text-sm">{c.flag}</span>
+                                  <span>{c.name}</span>
+                                </span>
+                                <span className="text-slate-500 font-mono text-[10px]">{c.code}</span>
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Email Address */}
+              {loginMethod === "email" && (
+                <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
+                  <Mail size={16} className="text-slate-400 shrink-0" />
                   <input
-                    type="tel"
-                    required={mode === "register" || (mode === "login" && loginMethod === "phone")}
-                    placeholder="Mobile Number"
-                    value={phone}
-                    onChange={(e) => handlePhoneChange(e.target.value)}
-                    autoComplete="tel"
-                    className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-300"
+                    type="email"
+                    required
+                    placeholder="Email Address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-400"
                   />
                 </div>
+              )}
 
-                {showCountryDropdown && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-40" 
-                      onClick={() => setShowCountryDropdown(false)} 
-                    />
-                    <div className="absolute left-0 top-[48px] w-64 bg-white border border-[#59AD63]/30 rounded-[8px] p-2.5 z-50 shadow-2xl flex flex-col gap-2">
-                      <input
-                        type="text"
-                        placeholder="Search country name or code..."
-                        value={countrySearch}
-                        onChange={(e) => setCountrySearch(e.target.value)}
-                        className="w-full bg-slate-50 border border-[#59AD63]/30 rounded-lg px-2.5 py-1.5 text-[11px] text-charcoal placeholder-charcoal/30 focus:outline-none focus:border-[#0F5B5C]"
-                        autoFocus
-                      />
-                      <div className="flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar">
-                        {countries
-                          .filter(
-                            (c) =>
-                              c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
-                              c.code.includes(countrySearch)
-                          )
-                          .map((c) => (
-                            <button
-                              key={c.code}
-                              type="button"
-                              onClick={() => selectCountry(c.code, c.flag)}
-                              className="w-full text-left flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-slate-50 text-charcoal text-[11px] font-semibold transition-colors cursor-pointer"
-                            >
-                              <span className="flex items-center gap-2">
-                                <span className="text-sm">{c.flag}</span>
-                                <span>{c.name}</span>
-                              </span>
-                              <span className="text-slate/60 font-mono text-[10px]">{c.code}</span>
-                            </button>
-                          ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* Email Address field (Login with Email, Forgot, Reset) */}
-            {((mode === "login" && loginMethod === "email") || mode === "forgot_email" || mode === "reset_password") && (
+              {/* Password */}
               <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
-                <Mail size={16} className="text-slate/40 shrink-0" />
-                <input
-                  type="email"
-                  required
-                  placeholder="Email Address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                  className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-300"
-                />
-              </div>
-            )}
-
-            {/* OTP input field (Reset only) */}
-            {mode === "reset_password" && (
-              <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
-                <input
-                  type="text"
-                  maxLength={6}
-                  required
-                  placeholder="Enter 6-Digit OTP Code"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                  className="w-full bg-transparent text-center font-mono tracking-widest text-xs outline-none text-charcoal font-semibold placeholder:text-slate-300"
-                />
-              </div>
-            )}
-
-            {/* Password input field (Login and Register) */}
-            {(mode === "login" || mode === "register") && (
-              <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
-                <Lock size={16} className="text-slate/40 shrink-0" />
+                <Lock size={16} className="text-slate-400 shrink-0" />
                 <input
                   type={showPassword ? "text" : "password"}
                   required
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  autoComplete={mode === "login" ? "current-password" : "new-password"}
-                  className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-300"
+                  autoComplete="current-password"
+                  className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-400"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((s) => !s)}
-                  className="text-slate/40 hover:text-charcoal transition-colors shrink-0"
+                  className="text-slate-400 hover:text-charcoal transition-colors shrink-0 cursor-pointer"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-            )}
 
-            {/* New Password input field (Reset only) */}
-            {mode === "reset_password" && (
+              {/* Forgot password link */}
+              <button 
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setSuccessMsg(null);
+                  setMode("forgot_password");
+                }}
+                className="text-[10.5px] font-bold text-slate-500 hover:text-[#0F5B5C] block text-right uppercase tracking-wider self-end cursor-pointer"
+              >
+                Forgot Password?
+              </button>
+
+              {/* Error Message */}
+              {error && <p className="text-[11.5px] text-rose-600 font-semibold bg-rose-50 p-2.5 rounded-lg border border-rose-200 text-left">{error}</p>}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-4 bg-[#0F5B5C] hover:bg-[#0F5B5C]/90 text-white rounded-[2px] text-xs font-bold tracking-wider uppercase shadow-md shadow-[#0F5B5C]/20 transition-all active:scale-[0.98] disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-1"
+              >
+                <span>{loading ? "Signing In..." : "LOGIN"}</span>
+              </button>
+            </form>
+          )}
+
+          {/* ============================================================== */}
+          {/* MODE: FORGOT PASSWORD (Send OTP to Mobile or Email)            */}
+          {/* ============================================================== */}
+          {mode === "forgot_password" && (
+            <form onSubmit={handleSendForgotOtp} className="flex flex-col gap-4">
+              {/* Method Toggle */}
+              <div className="flex bg-[#EAE8F2] p-1 rounded-[10px] gap-1 mb-1">
+                <button
+                  type="button"
+                  onClick={() => { setForgotMethod("phone"); setError(null); }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-[8px] transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    forgotMethod === "phone"
+                      ? "bg-white text-[#0F5B5C] shadow-sm"
+                      : "text-slate-500 hover:text-charcoal"
+                  }`}
+                >
+                  <Phone size={13} />
+                  <span>Mobile OTP</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setForgotMethod("email"); setError(null); }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-[8px] transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    forgotMethod === "email"
+                      ? "bg-white text-[#0F5B5C] shadow-sm"
+                      : "text-slate-500 hover:text-charcoal"
+                  }`}
+                >
+                  <Mail size={13} />
+                  <span>Email OTP</span>
+                </button>
+              </div>
+
+              {forgotMethod === "phone" ? (
+                <div>
+                  <div className="flex gap-2 relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                      className="bg-white rounded-[8px] px-3.5 py-3.5 text-xs text-charcoal flex items-center gap-1.5 hover:bg-slate-50 shadow-sm border border-[#59AD63]/30 select-none whitespace-nowrap min-w-[76px] justify-center cursor-pointer font-bold transition-all shrink-0"
+                    >
+                      <span className="text-sm leading-none">{countryFlag}</span>
+                      <span className="font-semibold text-charcoal">{countryCode}</span>
+                    </button>
+
+                    <div className="flex-1 flex items-center bg-white rounded-[8px] px-4 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
+                      <Phone size={16} className="text-slate-400 shrink-0" />
+                      <input
+                        type="tel"
+                        required
+                        placeholder="Registered Mobile Number"
+                        value={phone}
+                        onChange={(e) => handlePhoneChange(e.target.value)}
+                        autoComplete="tel"
+                        className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-400"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[12px] text-slate-500 font-medium mt-2 pl-1 select-none">
+                    We will send an SMS OTP to reset your password.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
+                  <Mail size={16} className="text-slate-400 shrink-0" />
+                  <input
+                    type="email"
+                    required
+                    placeholder="Registered Email Address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-400"
+                  />
+                </div>
+              )}
+
+              {/* Error Message */}
+              {error && <p className="text-[11.5px] text-rose-600 font-semibold bg-rose-50 p-2.5 rounded-lg border border-rose-200 text-left">{error}</p>}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-4 bg-[#0F5B5C] hover:bg-[#0F5B5C]/90 text-white rounded-[2px] text-xs font-bold tracking-wider uppercase shadow-md shadow-[#0F5B5C]/20 transition-all active:scale-[0.98] disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-1"
+              >
+                <span>{loading ? "Sending OTP..." : "SEND OTP"}</span>
+              </button>
+            </form>
+          )}
+
+          {/* ============================================================== */}
+          {/* MODE: RESET PASSWORD (Enter OTP + New Password)               */}
+          {/* ============================================================== */}
+          {mode === "reset_password" && (
+            <form onSubmit={handleResetPassword} className="flex flex-col gap-3">
+              {resetType === "phone" ? (
+                <>
+                  <FourDigitOtpInput 
+                    value={otp} 
+                    onChange={(val) => { setOtp(val); setError(null); }} 
+                    disabled={loading} 
+                  />
+                  <p className="text-[12px] text-slate-500 font-medium text-left">
+                    Enter the 4-digit OTP sent to mobile ending in <span className="font-bold text-[#0F5B5C]">{last4}</span>
+                  </p>
+                </>
+              ) : (
+                <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
+                  <input
+                    type="text"
+                    maxLength={6}
+                    required
+                    placeholder="Enter OTP Code"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                    className="w-full bg-transparent text-center font-mono tracking-widest text-sm outline-none text-charcoal font-bold placeholder:text-slate-400"
+                  />
+                </div>
+              )}
+
+              {/* Resend OTP button */}
+              <div className="flex items-center justify-between text-xs py-1">
+                <span className="text-slate-500">Didn't receive code?</span>
+                {resendTimer > 0 ? (
+                  <span className="text-slate-400 font-medium">Resend in <span className="font-bold text-[#0F5B5C]">{resendTimer}s</span></span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSendForgotOtp}
+                    disabled={loading}
+                    className="text-[#0F5B5C] font-bold hover:underline cursor-pointer flex items-center gap-1 active:scale-95 transition-all"
+                  >
+                    <RotateCw size={12} />
+                    <span>Resend OTP</span>
+                  </button>
+                )}
+              </div>
+
+              {/* New Password */}
               <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
-                <Lock size={16} className="text-slate/40 shrink-0" />
+                <Lock size={16} className="text-slate-400 shrink-0" />
                 <input
                   type={showPassword ? "text" : "password"}
                   required
                   placeholder="New Password (min 6 chars)"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  autoComplete="new-password"
-                  className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-300"
+                  className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-400"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword((s) => !s)}
-                  className="text-slate/40 hover:text-charcoal transition-colors shrink-0"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-slate-400 hover:text-charcoal cursor-pointer"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-            )}
 
+              {/* Confirm New Password */}
+              <div className="flex items-center bg-white rounded-[8px] px-5 py-3.5 shadow-sm border border-[#59AD63]/30 gap-3 focus-within:ring-2 focus-within:ring-[#0F5B5C]/20 transition-all">
+                <Lock size={16} className="text-slate-400 shrink-0" />
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  required
+                  placeholder="Confirm New Password"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  className="flex-1 bg-transparent text-xs outline-none text-charcoal font-semibold placeholder:text-slate-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="text-slate-400 hover:text-charcoal cursor-pointer"
+                >
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
 
-            {/* Forgot password link */}
-            {mode === "login" && (
-              <button 
-                type="button"
-                onClick={() => {
-                  setError(null);
-                  setSuccessMsg(null);
-                  setMode("forgot_email");
-                }}
-                className="text-[10px] font-bold text-slate/70 hover:text-charcoal block text-right mt-1 uppercase tracking-wider self-end"
+              {/* Error & Success Messages */}
+              {successMsg && <p className="text-[11.5px] text-emerald-700 font-semibold bg-emerald-50 p-2.5 rounded-lg border border-emerald-200 text-left">{successMsg}</p>}
+              {error && <p className="text-[11.5px] text-rose-600 font-semibold bg-rose-50 p-2.5 rounded-lg border border-rose-200 text-left">{error}</p>}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-4 bg-[#0F5B5C] hover:bg-[#0F5B5C]/90 text-white rounded-[2px] text-xs font-bold tracking-wider uppercase shadow-md shadow-[#0F5B5C]/20 transition-all active:scale-[0.98] disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
-                Forgot Password
+                <span>{loading ? "Resetting..." : "RESET PASSWORD & LOGIN"}</span>
               </button>
-            )}
+            </form>
+          )}
 
-            {/* Error & Success Messages */}
-            {successMsg && <p className="text-[11px] text-emerald-600 font-semibold mt-1 bg-emerald-50 p-2 rounded-lg border border-emerald-500/10 text-left">{successMsg}</p>}
-            {error && <p className="text-[11px] text-coral font-semibold mt-1 text-left">{error}</p>}
-
-            {/* Form Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full py-4 bg-[#0F5B5C] hover:bg-[#0F5B5C]/90 text-white rounded-[2px] text-xs font-bold tracking-wider uppercase shadow-md shadow-[#0F5B5C]/20 transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer ${mode === "register" ? "mt-3" : "mt-2"}`}
-            >
-              <span>{loading ? "Processing..." : mode === "login" ? "Login" : mode === "register" ? "Sign Up" : "Submit"}</span>
-            </button>
-          </form>
-
-          {/* Social login option */}
-          {(mode === "login" || mode === "register") && (
+          {/* Social login options */}
+          {(mode === "login" || mode === "register" || mode === "register_otp") && (
             <>
               {/* Divider */}
               <div className="flex items-center gap-3 my-5 select-none">
@@ -773,7 +1252,7 @@ export default function Login() {
                 <div className="h-[1px] flex-1 bg-slate-200" />
               </div>
 
-              {/* Social Login Full Width Buttons */}
+              {/* Social Login Buttons */}
               <div className="flex flex-col gap-3 mb-6">
                 {/* Continue with Google */}
                 <button 
@@ -820,10 +1299,10 @@ export default function Login() {
           )}
 
           {/* Toggle login vs register links */}
-          <p className="text-center text-slate text-xs font-semibold select-none mt-auto">
+          <p className="text-center text-slate-500 text-xs font-semibold select-none mt-auto">
             {mode === "login" ? (
               <>
-                Don't have account?{" "}
+                Already have an account?{" "}
                 <button 
                   type="button" 
                   onClick={() => { setError(null); setSuccessMsg(null); setMode("register"); }} 
@@ -847,9 +1326,7 @@ export default function Login() {
           </p>
 
         </div>
-
       </div>
-
     </div>
   );
 }

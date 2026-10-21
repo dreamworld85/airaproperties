@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { Camera } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Camera, Lock, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { api, mediaUrl } from "@/lib/api";
 import Header from "@/components/Header";
@@ -19,14 +19,42 @@ export default function EditProfile() {
   const [deleting, setDeleting] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const locationState = useLocation();
+  const isNewSignup = !!(locationState.state as any)?.isNewUser;
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   async function handleSave() {
     setSaving(true);
     setError(null);
+    if (password) {
+      if (password.length < 6) {
+        setError("Password must be at least 6 characters.");
+        setSaving(false);
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError("Passwords do not match. Please re-enter.");
+        setSaving(false);
+        return;
+      }
+    }
     try {
-      const updated = await api.updateMyProfile({ name, phone, email, location });
+      const updated = await api.updateMyProfile({
+        name,
+        phone,
+        email,
+        location,
+        password: password.trim() ? password.trim() : undefined,
+      });
       if (token) login(token, updated);
-      navigate("/home");
+      setSuccessMsg("Profile details saved successfully!");
+      setTimeout(() => {
+        navigate("/home");
+      }, 700);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save changes");
     } finally {
@@ -115,6 +143,12 @@ export default function EditProfile() {
         </div>
 
         {/* Form Inputs */}
+        {isNewSignup && (
+          <div className="bg-emerald-50 border border-emerald-500/20 text-emerald-800 text-xs font-semibold px-4 py-3 rounded-xl flex items-center gap-2.5">
+            <ShieldCheck size={18} className="text-emerald-600 shrink-0" />
+            <span>Mobile verified successfully! Please enter your name, email, and set your password to finish.</span>
+          </div>
+        )}
         <div className="flex flex-col gap-4">
           {/* Row 1: Full Name & Phone No */}
           <div className="grid grid-cols-2 gap-4">
@@ -164,8 +198,58 @@ export default function EditProfile() {
               className="w-full h-11 rounded-xl border border-slate-200/80 bg-white px-4 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
             />
           </div>
+
+          {/* Row 4: Password & Confirm Password */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[13.5px] font-medium text-charcoal/80 pl-0.5 flex items-center gap-1.5">
+                <Lock size={14} className="text-slate-400" />
+                <span>Set Password {isNewSignup && <span className="text-emerald-600 font-bold">*</span>}</span>
+              </label>
+              <div className="relative flex items-center">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder={isNewSignup ? "Create password (min 6 chars)" : "Enter new password (optional)"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full h-11 rounded-xl border border-slate-200/80 bg-white px-4 pr-11 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 text-slate-400 hover:text-charcoal cursor-pointer"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[13.5px] font-medium text-charcoal/80 pl-0.5 flex items-center gap-1.5">
+                <Lock size={14} className="text-slate-400" />
+                <span>Confirm Password</span>
+              </label>
+              <div className="relative flex items-center">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Repeat password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full h-11 rounded-xl border border-slate-200/80 bg-white px-4 pr-11 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3.5 text-slate-400 hover:text-charcoal cursor-pointer"
+                >
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
+        {successMsg && <p className="text-sm text-emerald-600 font-semibold pl-0.5 bg-emerald-50 p-2.5 rounded-lg border border-emerald-500/20">{successMsg}</p>}
         {error && <p className="text-sm text-coral pl-0.5">{error}</p>}
 
         {/* Row 4: Buttons (Save & Cancel) */}

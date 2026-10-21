@@ -163,6 +163,24 @@ async function handle<T>(res: Response): Promise<T> {
 }
 
 export const api = {
+  async sendSignupOtp(phone: string) {
+    const res = await fetch(`${API_URL}/api/auth/send-signup-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone }),
+    });
+    return handle<{ success: boolean; message: string; phone: string }>(res);
+  },
+
+  async verifySignupOtp(input: { phone: string; otp: string; name?: string }) {
+    const res = await fetch(`${API_URL}/api/auth/verify-signup-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    return handle<{ token: string; user: ApiUser; isNewUser?: boolean }>(res);
+  },
+
   async register(input: { name: string; email?: string; phone?: string; password: string; role?: string }) {
     const res = await fetch(`${API_URL}/api/auth/register`, {
       method: "POST",
@@ -181,25 +199,25 @@ export const api = {
     return handle<{ token: string; user: ApiUser }>(res);
   },
 
-  async forgotPassword(email: string) {
+  async forgotPassword(identifier: string) {
     const res = await fetch(`${API_URL}/api/auth/forgot-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ identifier }),
     });
-    return handle<{ success: boolean; message: string; email: string }>(res);
+    return handle<{ success: boolean; message: string; type?: string; phone?: string; email?: string; last4?: string }>(res);
   },
 
-  async verifyOtp(email: string, otp: string) {
+  async verifyOtp(identifier: string, otp: string) {
     const res = await fetch(`${API_URL}/api/auth/verify-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, otp }),
+      body: JSON.stringify({ identifier, otp }),
     });
     return handle<{ valid: boolean; message: string }>(res);
   },
 
-  async resetPasswordWithOtp(input: { email: string; otp: string; newPassword: string }) {
+  async resetPasswordWithOtp(input: { identifier?: string; email?: string; phone?: string; otp: string; newPassword: string }) {
     const res = await fetch(`${API_URL}/api/auth/reset-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -371,7 +389,7 @@ export const api = {
     return handle<{ success: boolean }>(res);
   },
 
-  async updateMyProfile(input: Partial<Pick<ApiUser, "name" | "phone" | "email" | "location" | "whatsappNumber">>) {
+  async updateMyProfile(input: Partial<Pick<ApiUser, "name" | "phone" | "email" | "location" | "whatsappNumber">> & { password?: string }) {
     const res = await fetch(`${API_URL}/api/users/me`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...authHeaders() },

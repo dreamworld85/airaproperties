@@ -141,6 +141,20 @@ async function checkDbMigration() {
     `);
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS phone_otps (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        phone VARCHAR(20) NOT NULL,
+        otp VARCHAR(10) NOT NULL,
+        purpose ENUM('signup', 'forgot_password', 'login') NOT NULL DEFAULT 'signup',
+        expires_at DATETIME NOT NULL,
+        is_verified TINYINT(1) NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_phone (phone),
+        INDEX idx_phone_purpose (phone, purpose)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS role_switch_requests (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,

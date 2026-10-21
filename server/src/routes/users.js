@@ -1,4 +1,5 @@
 import { Router } from "express";
+import bcrypt from "bcryptjs";
 import { pool } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { checkUserAccess } from "../utils/access.js";
@@ -92,13 +93,21 @@ router.get("/me/transactions", requireAuth, async (req, res) => {
   }
 });
 
-// PATCH /api/users/me  { name, phone, email, location, avatarUrl, whatsappNumber }
+// PATCH /api/users/me  { name, phone, email, location, avatarUrl, whatsappNumber, password }
 router.patch("/me", requireAuth, async (req, res) => {
   try {
-    const { name, phone, email, location, avatarUrl, whatsappNumber } = req.body;
+    const { name, phone, email, location, avatarUrl, whatsappNumber, password } = req.body;
     const cleanEmail = email !== undefined ? (email && String(email).trim() ? String(email).trim().toLowerCase() : null) : undefined;
     const cleanPhone = phone !== undefined ? (phone && String(phone).trim() ? String(phone).trim() : null) : undefined;
     const cleanName = name !== undefined ? (name && String(name).trim() ? String(name).trim() : null) : undefined;
+
+    if (password && String(password).trim()) {
+      if (String(password).trim().length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+      const hash = await bcrypt.hash(String(password).trim(), 10);
+      await pool.query("UPDATE users SET password_hash = ? WHERE id = ?", [hash, req.userId]);
+    }
 
     await pool.query(
       `UPDATE users SET

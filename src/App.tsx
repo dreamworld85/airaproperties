@@ -59,6 +59,8 @@ import RoleUpgrades from "@/screens/Admin/RoleUpgrades";
 import Subscriptions from "@/screens/Admin/Subscriptions";
 import ServiceEnquiries from "@/screens/Admin/ServiceEnquiries";
 import BuilderInquiries from "@/screens/Admin/BuilderInquiries";
+import AdminLaunch from "@/screens/Admin/Launch";
+import LaunchPopup from "@/components/LaunchPopup";
 
 export default function App() {
   const location = useLocation();
@@ -191,6 +193,7 @@ export default function App() {
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="logs" element={<AdminActivityLogs />} />
           <Route path="settings" element={<AdminSettings />} />
+          <Route path="launch" element={<AdminLaunch />} />
           <Route path="role-upgrades" element={<RoleUpgrades />} />
           <Route path="subscriptions" element={<Subscriptions />} />
         </Route>
@@ -198,6 +201,9 @@ export default function App() {
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
       </AddPropertyProvider>
+
+      {/* Main page promotional Launch popup */}
+      {(location.pathname === "/" || location.pathname === "/home") && <LaunchPopup />}
     </div>
   );
 }
