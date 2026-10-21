@@ -1,5 +1,28 @@
 import { useState } from "react";
-import { X, CheckCircle2, Send, Home } from "lucide-react";
+import { 
+  X, 
+  CheckCircle2, 
+  Send, 
+  Home, 
+  BedDouble, 
+  Building, 
+  Briefcase, 
+  Trees, 
+  Layers, 
+  Phone, 
+  MessageCircle, 
+  Smartphone, 
+  Mail, 
+  Key, 
+  ShoppingBag, 
+  Users, 
+  Wrench, 
+  User, 
+  MapPin, 
+  Calendar, 
+  Clock, 
+  BadgeIndianRupee 
+} from "lucide-react";
 import { submitPropertyRequest, PropertyRequestPayload } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -8,10 +31,31 @@ interface RequestPropertyModalProps {
   onClose: () => void;
 }
 
-const REQUEST_TYPES = ["Rent", "Buy", "Roommate", "Property service"];
-const PROPERTY_TYPES = ["Room", "Apartment", "House", "Office", "Land", "Other"];
+const REQUEST_TYPE_ITEMS = [
+  { label: "Rent", icon: Key },
+  { label: "Buy", icon: ShoppingBag },
+  { label: "Roommate", icon: Users },
+  { label: "Property service", icon: Wrench },
+];
+
+const PROPERTY_TYPE_ITEMS = [
+  { label: "Room", icon: BedDouble },
+  { label: "Apartment", icon: Building },
+  { label: "House", icon: Home },
+  { label: "Office", icon: Briefcase },
+  { label: "Land", icon: Trees },
+  { label: "Other", icon: Layers },
+];
+
 const FURNISHED_OPTIONS = ["Yes", "No", "Either"];
-const CONTACT_PREFERENCES = ["Call", "WhatsApp", "SMS", "Email"];
+
+const CONTACT_PREFERENCE_ITEMS = [
+  { label: "Call", icon: Phone },
+  { label: "WhatsApp", icon: MessageCircle },
+  { label: "SMS", icon: Smartphone },
+  { label: "Email", icon: Mail },
+];
+
 const BEST_TIME_OPTIONS = [
   "Anytime",
   "Morning (9 AM - 12 PM)",
@@ -172,55 +216,66 @@ export default function RequestPropertyModal({ isOpen, onClose }: RequestPropert
 
               {/* 1. Contact details */}
               <div>
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#0F5B5C] border-b border-gray-200 pb-1.5 mb-3">
-                  Contact details
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#0F5B5C] border-b border-gray-200 pb-1.5 mb-3 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5" />
+                  <span>Contact details</span>
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Full name <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. John Doe"
-                      value={formData.fullName}
-                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                      className="w-full px-3 py-2 text-xs border border-gray-300 rounded-none focus:outline-none focus:border-[#0F5B5C]"
-                    />
+                    <div className="relative">
+                      <User className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. John Doe"
+                        value={formData.fullName}
+                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                        className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-none focus:outline-none focus:border-[#0F5B5C]"
+                      />
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Phone number <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="tel"
-                      required
-                      placeholder="e.g. 9876543210"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full px-3 py-2 text-xs border border-gray-300 rounded-none focus:outline-none focus:border-[#0F5B5C]"
-                    />
+                    <div className="relative">
+                      <Phone className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="tel"
+                        required
+                        placeholder="e.g. 9876543210"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-none focus:outline-none focus:border-[#0F5B5C]"
+                      />
+                    </div>
                   </div>
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Email address <span className="text-gray-400 font-normal">(optional)</span>
                     </label>
-                    <input
-                      type="email"
-                      placeholder="e.g. user@example.com"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full px-3 py-2 text-xs border border-gray-300 rounded-none focus:outline-none focus:border-[#0F5B5C]"
-                    />
+                    <div className="relative">
+                      <Mail className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="email"
+                        placeholder="e.g. user@example.com"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-none focus:outline-none focus:border-[#0F5B5C]"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* 2. What are you looking for? */}
               <div>
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#0F5B5C] border-b border-gray-200 pb-1.5 mb-3">
-                  What are you looking for?
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#0F5B5C] border-b border-gray-200 pb-1.5 mb-3 flex items-center gap-1.5">
+                  <Home className="w-3.5 h-3.5" />
+                  <span>What are you looking for?</span>
                 </h3>
                 <div className="space-y-3.5">
                   {/* Request type */}
@@ -229,18 +284,19 @@ export default function RequestPropertyModal({ isOpen, onClose }: RequestPropert
                       Request type
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {REQUEST_TYPES.map((type) => (
+                      {REQUEST_TYPE_ITEMS.map(({ label, icon: Icon }) => (
                         <button
-                          key={type}
+                          key={label}
                           type="button"
-                          onClick={() => setFormData({ ...formData, requestType: type })}
-                          className={`py-2 px-3 text-xs font-semibold border rounded-none transition cursor-pointer text-center ${
-                            formData.requestType === type
-                              ? "bg-[#0F5B5C] text-white border-[#0F5B5C]"
+                          onClick={() => setFormData({ ...formData, requestType: label })}
+                          className={`py-2 px-3 text-xs font-semibold border rounded-none transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                            formData.requestType === label
+                              ? "bg-[#0F5B5C] text-white border-[#0F5B5C] shadow-xs"
                               : "bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100"
                           }`}
                         >
-                          {type}
+                          <Icon className="w-3.5 h-3.5 shrink-0" />
+                          <span>{label}</span>
                         </button>
                       ))}
                     </div>
@@ -251,19 +307,20 @@ export default function RequestPropertyModal({ isOpen, onClose }: RequestPropert
                     <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                       Property type
                     </label>
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                      {PROPERTY_TYPES.map((pt) => (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                      {PROPERTY_TYPE_ITEMS.map(({ label, icon: Icon }) => (
                         <button
-                          key={pt}
+                          key={label}
                           type="button"
-                          onClick={() => setFormData({ ...formData, propertyType: pt })}
-                          className={`py-2 px-2 text-xs font-semibold border rounded-none transition cursor-pointer text-center ${
-                            formData.propertyType === pt
-                              ? "bg-[#0F5B5C] text-white border-[#0F5B5C]"
+                          onClick={() => setFormData({ ...formData, propertyType: label })}
+                          className={`py-2 px-2 text-xs font-semibold border rounded-none transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                            formData.propertyType === label
+                              ? "bg-[#0F5B5C] text-white border-[#0F5B5C] shadow-xs"
                               : "bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100"
                           }`}
                         >
-                          {pt}
+                          <Icon className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">{label}</span>
                         </button>
                       ))}
                     </div>
@@ -274,51 +331,63 @@ export default function RequestPropertyModal({ isOpen, onClose }: RequestPropert
                       <label className="block text-xs font-semibold text-gray-700 mb-1">
                         Preferred location <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. Wayanad, Kochi, Calicut..."
-                        value={formData.preferredLocation}
-                        onChange={(e) => setFormData({ ...formData, preferredLocation: e.target.value })}
-                        className="w-full px-3 py-2 text-xs border border-gray-300 rounded-none focus:outline-none focus:border-[#0F5B5C]"
-                      />
+                      <div className="relative">
+                        <MapPin className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Wayanad, Kochi, Calicut..."
+                          value={formData.preferredLocation}
+                          onChange={(e) => setFormData({ ...formData, preferredLocation: e.target.value })}
+                          className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-none focus:outline-none focus:border-[#0F5B5C]"
+                        />
+                      </div>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 mb-1">
                         Number of bedrooms or rooms
                       </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. 2 BHK, 3 Bedrooms, or Single Room"
-                        value={formData.bedrooms}
-                        onChange={(e) => setFormData({ ...formData, bedrooms: e.target.value })}
-                        className="w-full px-3 py-2 text-xs border border-gray-300 rounded-none focus:outline-none focus:border-[#0F5B5C]"
-                      />
+                      <div className="relative">
+                        <BedDouble className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          placeholder="e.g. 2 BHK, 3 Bedrooms, or Single Room"
+                          value={formData.bedrooms}
+                          onChange={(e) => setFormData({ ...formData, bedrooms: e.target.value })}
+                          className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-none focus:outline-none focus:border-[#0F5B5C]"
+                        />
+                      </div>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 mb-1">
                         Budget range <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. ₹15,000 - ₹25,000 / mo or ₹65 Lakhs"
-                        value={formData.budgetRange}
-                        onChange={(e) => setFormData({ ...formData, budgetRange: e.target.value })}
-                        className="w-full px-3 py-2 text-xs border border-gray-300 rounded-none focus:outline-none focus:border-[#0F5B5C]"
-                      />
+                      <div className="relative">
+                        <BadgeIndianRupee className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. ₹15,000 - ₹25,000 / mo or ₹65 Lakhs"
+                          value={formData.budgetRange}
+                          onChange={(e) => setFormData({ ...formData, budgetRange: e.target.value })}
+                          className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-none focus:outline-none focus:border-[#0F5B5C]"
+                        />
+                      </div>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 mb-1">
                         Move-in or service date
                       </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Immediate, Within 1 month, or DD/MM/YYYY"
-                        value={formData.moveInDate}
-                        onChange={(e) => setFormData({ ...formData, moveInDate: e.target.value })}
-                        className="w-full px-3 py-2 text-xs border border-gray-300 rounded-none focus:outline-none focus:border-[#0F5B5C]"
-                      />
+                      <div className="relative">
+                        <Calendar className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          placeholder="e.g. Immediate, Within 1 month, or DD/MM/YYYY"
+                          value={formData.moveInDate}
+                          onChange={(e) => setFormData({ ...formData, moveInDate: e.target.value })}
+                          className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-none focus:outline-none focus:border-[#0F5B5C]"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -348,8 +417,9 @@ export default function RequestPropertyModal({ isOpen, onClose }: RequestPropert
 
               {/* 3. Tell us more */}
               <div>
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#0F5B5C] border-b border-gray-200 pb-1.5 mb-3">
-                  Tell us more
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#0F5B5C] border-b border-gray-200 pb-1.5 mb-3 flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Tell us more</span>
                 </h3>
                 <div className="space-y-3.5">
                   <div>
@@ -382,8 +452,9 @@ export default function RequestPropertyModal({ isOpen, onClose }: RequestPropert
 
               {/* 4. Contact preference */}
               <div>
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#0F5B5C] border-b border-gray-200 pb-1.5 mb-3">
-                  Contact preference
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#0F5B5C] border-b border-gray-200 pb-1.5 mb-3 flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>Contact preference</span>
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div>
@@ -391,18 +462,19 @@ export default function RequestPropertyModal({ isOpen, onClose }: RequestPropert
                       Preferred contact channel
                     </label>
                     <div className="grid grid-cols-2 gap-2">
-                      {CONTACT_PREFERENCES.map((pref) => (
+                      {CONTACT_PREFERENCE_ITEMS.map(({ label, icon: Icon }) => (
                         <button
-                          key={pref}
+                          key={label}
                           type="button"
-                          onClick={() => setFormData({ ...formData, contactPreference: pref })}
-                          className={`py-1.5 px-2 text-xs font-semibold border rounded-none transition cursor-pointer text-center ${
-                            formData.contactPreference === pref
-                              ? "bg-[#0F5B5C] text-white border-[#0F5B5C]"
+                          onClick={() => setFormData({ ...formData, contactPreference: label })}
+                          className={`py-2 px-2 text-xs font-semibold border rounded-none transition cursor-pointer flex items-center justify-center gap-2 ${
+                            formData.contactPreference === label
+                              ? "bg-[#0F5B5C] text-white border-[#0F5B5C] shadow-xs"
                               : "bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100"
                           }`}
                         >
-                          {pref}
+                          <Icon className={`w-3.5 h-3.5 shrink-0 ${formData.contactPreference === label ? "text-white" : (label === "WhatsApp" ? "text-emerald-600" : "text-gray-600")}`} />
+                          <span>{label}</span>
                         </button>
                       ))}
                     </div>
@@ -411,17 +483,20 @@ export default function RequestPropertyModal({ isOpen, onClose }: RequestPropert
                     <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Best time to contact you
                     </label>
-                    <select
-                      value={formData.bestTimeToContact}
-                      onChange={(e) => setFormData({ ...formData, bestTimeToContact: e.target.value })}
-                      className="w-full px-3 py-2 text-xs border border-gray-300 rounded-none bg-white focus:outline-none focus:border-[#0F5B5C]"
-                    >
-                      {BEST_TIME_OPTIONS.map((time) => (
-                        <option key={time} value={time}>
-                          {time}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <Clock className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <select
+                        value={formData.bestTimeToContact}
+                        onChange={(e) => setFormData({ ...formData, bestTimeToContact: e.target.value })}
+                        className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-none bg-white focus:outline-none focus:border-[#0F5B5C]"
+                      >
+                        {BEST_TIME_OPTIONS.map((time) => (
+                          <option key={time} value={time}>
+                            {time}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
