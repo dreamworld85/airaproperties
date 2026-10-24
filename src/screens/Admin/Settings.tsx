@@ -52,7 +52,10 @@ export default function Settings() {
       setActiveTab("menu");
     }
   }, [location.search]);
-  const [selectedSetting, setSelectedSetting] = useState<"welcome_banner_url" | "login_banner_url" | "loading_banner_url">("welcome_banner_url");
+  const [selectedSetting, setSelectedSetting] = useState<"home_hero_banner_url" | "welcome_banner_url" | "login_banner_url" | "loading_banner_url">("home_hero_banner_url");
+  const [currentHomeHeroBanner, setCurrentHomeHeroBanner] = useState<string>(() => {
+    return localStorage.getItem("sparrow_home_hero_banner") || "/images/home-hero.png";
+  });
   const [currentBanner, setCurrentBanner] = useState<string>(() => {
     return localStorage.getItem("sparrow_welcome_banner") || "/kerala_house_banner.jpg";
   });
@@ -95,6 +98,10 @@ export default function Settings() {
   const [featuredPrice, setFeaturedPrice] = useState(299);
   const [featuredText, setFeaturedText] = useState("");
   const [enableScheduleVisit, setEnableScheduleVisit] = useState(true);
+  const [enableHomeHeroBanner, setEnableHomeHeroBanner] = useState<boolean>(() => {
+    const val = localStorage.getItem("sparrow_enable_home_hero_banner");
+    return val !== "false";
+  });
   const [locationsList, setLocationsList] = useState<{ id: number; name: string; image_url: string }[]>([]);
   const [newLocationName, setNewLocationName] = useState("");
   const [newLocationFile, setNewLocationFile] = useState<File | null>(null);
@@ -472,6 +479,17 @@ export default function Settings() {
       })
       .catch(err => console.error("Error loading mobile logo:", err));
 
+    // Fetch home hero banner setting
+    fetch(`${getApiUrl()}/api/admin/settings/home_hero_banner_url`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.value) {
+          setCurrentHomeHeroBanner(data.value);
+          localStorage.setItem("sparrow_home_hero_banner", data.value);
+        }
+      })
+      .catch(err => console.error("Error loading home hero banner:", err));
+
     // Fetch welcome banner setting
     fetch(`${getApiUrl()}/api/admin/settings/welcome_banner_url`)
       .then(res => res.json())
@@ -625,6 +643,18 @@ export default function Settings() {
       })
       .catch(err => console.error("Error loading featured_text setting:", err));
 
+    // Fetch enable_home_hero_banner setting
+    fetch(`${getApiUrl()}/api/admin/settings/enable_home_hero_banner`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.value !== null && data.value !== undefined) {
+          const isEnabled = data.value === "true" || data.value === true || data.value === "1";
+          setEnableHomeHeroBanner(isEnabled);
+          localStorage.setItem("sparrow_enable_home_hero_banner", String(isEnabled));
+        }
+      })
+      .catch(err => console.error("Error loading enable_home_hero_banner setting:", err));
+
     // Fetch enable_schedule_visit setting
     fetch(`${getApiUrl()}/api/admin/settings/enable_schedule_visit`)
       .then(res => res.json())
@@ -766,6 +796,22 @@ export default function Settings() {
       alert("Banner reset to default asset successfully!");
     } catch (err: any) {
       alert(err.message || "Failed to reset banner.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleToggleHomeHeroBanner() {
+    const newValue = !enableHomeHeroBanner;
+    setSaving(true);
+    try {
+      await adminApi.updateSetting("enable_home_hero_banner", String(newValue));
+      setEnableHomeHeroBanner(newValue);
+      localStorage.setItem("sparrow_enable_home_hero_banner", String(newValue));
+      window.dispatchEvent(new Event("sparrow-banners-updated"));
+      alert(`Desktop Home Hero Banner ${newValue ? "enabled" : "disabled"} successfully!`);
+    } catch (err: any) {
+      alert(err.message || "Failed to update home hero banner visibility.");
     } finally {
       setSaving(false);
     }
@@ -1237,7 +1283,7 @@ export default function Settings() {
                 <p className="text-[10px] text-slate mt-0.5">Upload a new image file to replace the hero cover.</p>
                 <input 
                   type="file" 
-                  accept="image/*"
+                  accept="image/*,.svg,.png,.jpg,.jpeg,.webp"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
@@ -2149,7 +2195,53 @@ export default function Settings() {
                </button>
             </div>
 
-            {selectedSetting === "welcome_banner_url" ? (
+            {selectedSetting === "home_hero_banner_url" ? (
+              <div className="mb-4">
+                {/* Enable / Disable Banner Toggle */}
+                <div className="flex items-center justify-between bg-slate-50 border border-charcoal/5 p-3.5 rounded-2xl mb-4">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs font-bold text-ink">Desktop Hero Banner Visibility</span>
+                    <p className="text-[10px] text-slate">
+                      {enableHomeHeroBanner
+                        ? "Banner is currently active and visible on the desktop homepage."
+                        : "Banner is currently disabled and hidden from the desktop homepage."}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleToggleHomeHeroBanner}
+                    disabled={saving}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-bold font-display cursor-pointer transition-all ${
+                      enableHomeHeroBanner
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+                        : "bg-rose-100 text-rose-700 hover:bg-rose-200"
+                    }`}
+                  >
+                    {enableHomeHeroBanner ? "Active (Visible)" : "Disabled (Hidden)"}
+                  </button>
+                </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold text-slate uppercase tracking-wider">
+                    Desktop Hero Banner Preview
+                  </span>
+                  <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                    Below &lt;DesktopHeader /&gt; on Home Page
+                  </span>
+                </div>
+                <div className="w-full overflow-hidden rounded-2xl border border-gray-200/80 shadow-xs bg-white p-2">
+                  <div className="w-full overflow-hidden rounded-xl bg-[#FAF8F3] border border-gray-200/60 relative">
+                    <img 
+                      src={mediaUrl(previewUrl || currentHomeHeroBanner)} 
+                      alt="Desktop Hero Banner Preview" 
+                      className="w-full h-auto max-h-52 object-cover select-none"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = "/images/home-hero.png";
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : selectedSetting === "welcome_banner_url" ? (
               <div className="relative h-40 rounded-2xl overflow-hidden border border-charcoal/10 shadow-inner bg-slate-100 mb-4">
                 <img 
                   src={mediaUrl(previewUrl || currentBanner)} 
@@ -2215,7 +2307,7 @@ export default function Settings() {
             <div className="flex flex-col gap-2.5">
               <div>
                 <label className="text-xs font-bold text-ink">Choose New Image File</label>
-                <p className="text-[10px] text-slate mt-0.5">Upload a landscape format image (recommended ratio 16:9).</p>
+                <p className="text-[10px] text-slate mt-0.5">Supports SVG, PNG, JPG, JPEG, WebP or any image format.</p>
               </div>
               <input 
                 type="file" 

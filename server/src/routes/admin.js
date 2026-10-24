@@ -319,6 +319,7 @@ router.put("/settings/:key", upload.any(), async (req, res) => {
 
     const isImageKey = [
       "welcome_banner_url",
+      "home_hero_banner_url",
       "login_banner_url",
       "loading_banner_url",
       "landing_hero_image",

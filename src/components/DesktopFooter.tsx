@@ -82,7 +82,7 @@ export default function DesktopFooter() {
                 onClick={() => navigate("/refund")} 
                 className="text-gray-900 hover:text-[#60A963] transition-colors cursor-pointer w-fit"
               >
-                Refund Policy
+                Cancellation & Refund
               </span>
               <span 
                 onClick={() => navigate("/contact-us")} 
@@ -122,6 +122,12 @@ export default function DesktopFooter() {
                 className="text-[#60A963] font-bold hover:underline transition-colors cursor-pointer w-fit mt-1"
               >
                 Contact Us
+              </span>
+              <span 
+                onClick={() => window.dispatchEvent(new CustomEvent("open-request-property-modal"))} 
+                className="text-[#60A963] font-bold hover:underline transition-colors cursor-pointer w-fit"
+              >
+                Request a Property
               </span>
             </div>
           </div>

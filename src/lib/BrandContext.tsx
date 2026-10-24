@@ -6,6 +6,7 @@ const API_URL = getApiUrl();
 export const DEFAULT_DESKTOP_LOGO = "/brand_logo-web.png";
 export const DEFAULT_MOBILE_LOGO = "/brand_logo.png";
 export const DEFAULT_WELCOME_BANNER = "/kerala_house_banner.jpg";
+export const DEFAULT_HOME_HERO_BANNER = "/images/home-hero.png";
 export const DEFAULT_LOGIN_BANNER = "/kerala_house_login.jpg";
 export const DEFAULT_LOADING_BANNER = "";
 
@@ -16,6 +17,8 @@ interface BrandContextType {
   loadingBannerUrl: string;
   loginBannerUrl: string;
   welcomeBannerUrl: string;
+  homeHeroBannerUrl: string;
+  isHomeHeroBannerEnabled: boolean;
   isDesktop: boolean;
   refreshLogos: () => Promise<void>;
   refreshBanners: () => Promise<void>;
@@ -28,6 +31,8 @@ const BrandContext = createContext<BrandContextType>({
   loadingBannerUrl: DEFAULT_LOADING_BANNER,
   loginBannerUrl: DEFAULT_LOGIN_BANNER,
   welcomeBannerUrl: DEFAULT_WELCOME_BANNER,
+  homeHeroBannerUrl: DEFAULT_HOME_HERO_BANNER,
+  isHomeHeroBannerEnabled: true,
   isDesktop: typeof window !== "undefined" ? window.innerWidth >= 1000 : true,
   refreshLogos: async () => {},
   refreshBanners: async () => {},
@@ -52,6 +57,13 @@ export function BrandProvider({ children }: { children: ReactNode }) {
   });
   const [welcomeBanner, setWelcomeBanner] = useState<string>(() => {
     return localStorage.getItem("sparrow_welcome_banner") || DEFAULT_WELCOME_BANNER;
+  });
+  const [homeHeroBanner, setHomeHeroBanner] = useState<string>(() => {
+    return localStorage.getItem("sparrow_home_hero_banner") || DEFAULT_HOME_HERO_BANNER;
+  });
+  const [isHomeHeroBannerEnabled, setIsHomeHeroBannerEnabled] = useState<boolean>(() => {
+    const val = localStorage.getItem("sparrow_enable_home_hero_banner");
+    return val !== "false";
   });
   const [isDesktop, setIsDesktop] = useState<boolean>(() => {
     return typeof window !== "undefined" ? window.innerWidth >= 1000 : true;
@@ -90,6 +102,15 @@ export function BrandProvider({ children }: { children: ReactNode }) {
           setWelcomeBanner(data.welcome_banner_url);
           localStorage.setItem("sparrow_welcome_banner", data.welcome_banner_url);
         }
+        if (data.home_hero_banner_url) {
+          setHomeHeroBanner(data.home_hero_banner_url);
+          localStorage.setItem("sparrow_home_hero_banner", data.home_hero_banner_url);
+        }
+        if (data.enable_home_hero_banner !== undefined) {
+          const isEnabled = data.enable_home_hero_banner === "true" || data.enable_home_hero_banner === true || data.enable_home_hero_banner === "1";
+          setIsHomeHeroBannerEnabled(isEnabled);
+          localStorage.setItem("sparrow_enable_home_hero_banner", String(isEnabled));
+        }
       }
     } catch {
       try {
@@ -125,6 +146,10 @@ export function BrandProvider({ children }: { children: ReactNode }) {
       if (savedLogin) setLoginBanner(savedLogin);
       const savedWelcome = localStorage.getItem("sparrow_welcome_banner");
       if (savedWelcome) setWelcomeBanner(savedWelcome);
+      const savedHero = localStorage.getItem("sparrow_home_hero_banner");
+      if (savedHero) setHomeHeroBanner(savedHero);
+      const savedHeroEnabled = localStorage.getItem("sparrow_enable_home_hero_banner");
+      if (savedHeroEnabled !== null) setIsHomeHeroBannerEnabled(savedHeroEnabled !== "false");
       loadSettings();
     };
     window.addEventListener("sparrow-logos-updated", handleCustomUpdate);
@@ -141,6 +166,7 @@ export function BrandProvider({ children }: { children: ReactNode }) {
   const resolvedLoadingBanner = loadingBanner ? mediaUrl(loadingBanner) : "";
   const resolvedLoginBanner = loginBanner ? mediaUrl(loginBanner) : DEFAULT_LOGIN_BANNER;
   const resolvedWelcomeBanner = welcomeBanner ? mediaUrl(welcomeBanner) : DEFAULT_WELCOME_BANNER;
+  const resolvedHomeHeroBanner = homeHeroBanner ? mediaUrl(homeHeroBanner) : DEFAULT_HOME_HERO_BANNER;
 
   return (
     <BrandContext.Provider
@@ -151,6 +177,8 @@ export function BrandProvider({ children }: { children: ReactNode }) {
         loadingBannerUrl: resolvedLoadingBanner,
         loginBannerUrl: resolvedLoginBanner,
         welcomeBannerUrl: resolvedWelcomeBanner,
+        homeHeroBannerUrl: resolvedHomeHeroBanner,
+        isHomeHeroBannerEnabled,
         isDesktop,
         refreshLogos: loadSettings,
         refreshBanners: loadSettings,

@@ -234,3 +234,22 @@ textarea:focus-visible {
   }
 }
 
+
+/* Leaflet Map Property Pill Marker (0px 10px 0px 10px) */
+.custom-leaflet-pill {
+  width: auto !important;
+  height: auto !important;
+  border-radius: 0px 10px 0px 10px !important;
+}
+
+.custom-leaflet-pill > div,
+.custom-leaflet-pill.active-pill > div {
+  border-radius: 0px 10px 0px 10px !important;
+}
+
+.custom-leaflet-pill.active-pill > div {
+  background-color: #0F3D3E !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+}

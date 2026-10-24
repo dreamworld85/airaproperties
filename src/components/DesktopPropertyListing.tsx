@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { LayoutGrid, List, ChevronDown, MapPin, X } from "lucide-react";
 import { ApiProperty, mediaUrl, api } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
+import { useBrand } from "@/lib/BrandContext";
 import DesktopHeader from "./DesktopHeader";
 import DesktopFooter from "./DesktopFooter";
 import PropertyCard from "./PropertyCard";
@@ -49,8 +50,10 @@ export default function DesktopPropertyListing({
 }: DesktopPropertyListingProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const isHomePage = location.pathname === "/" || location.pathname === "/home";
   const searchParams = new URLSearchParams(location.search);
   const { token } = useAuth();
+  const { homeHeroBannerUrl, isHomeHeroBannerEnabled } = useBrand();
   const [properties, setProperties] = useState<ApiProperty[]>(initialProperties || []);
   const [allProperties, setAllProperties] = useState<ApiProperty[]>([]);
   const [visibleMapProperties, setVisibleMapProperties] = useState<ApiProperty[]>([]);
@@ -263,17 +266,17 @@ export default function DesktopPropertyListing({
           const isSelectedPin = selectedProperty?.id === prop.id;
           const bgStyle = isSelectedPin ? "#0F3D3E" : "#ffffff";
           const textColor = isSelectedPin ? "#ffffff" : "#000000";
-          const borderStyle = isSelectedPin ? "2px solid #0F3D3E" : "1px solid #cbd5e1";
+          const borderStyle = isSelectedPin ? "none" : "1px solid #cbd5e1";
           const scaleStyle = isSelectedPin ? "transform: scale(1.15); z-index: 99999;" : "";
 
           const customIcon = window.L.divIcon({
             className: `custom-leaflet-pill ${isSelectedPin ? "active-pill" : ""}`,
-            html: `<div style="background:${bgStyle}; color:${textColor}; padding:4px 10px; border-radius:16px; border:${borderStyle}; ${scaleStyle} box-shadow:0 3px 10px rgba(0,0,0,0.2); white-space:nowrap; cursor:pointer; text-align:center; line-height:1.2; transition:all 0.2s ease;">
-              <div style="font-size:11.5px; font-weight:800;">${priceText}</div>
-              <div style="font-size:9px; font-weight:700; color:${isSelectedPin ? '#e2e8f0' : '#059669'}; text-transform:capitalize; margin-top:1px;">${typeShort} • ${purposeShort}</div>
+            html: `<div style="background:${bgStyle}; color:${textColor}; padding:5px 12px; border-radius: 0px 10px 0px 10px; border:${borderStyle}; ${scaleStyle} box-shadow:0 4px 14px rgba(0,0,0,${isSelectedPin ? '0.35' : '0.15'}); white-space:nowrap; cursor:pointer; text-align:center; line-height:1.2; transition:all 0.2s ease;">
+              <div style="font-size:12.5px; font-weight:800; letter-spacing:-0.2px;">${priceText}</div>
+              <div style="font-size:9.5px; font-weight:700; color:${isSelectedPin ? '#ffffff' : '#059669'}; text-transform:capitalize; margin-top:2px;">${typeShort} • ${purposeShort}</div>
             </div>`,
-            iconSize: [85, 34],
-            iconAnchor: [42, 17]
+            iconSize: [85, 36],
+            iconAnchor: [42, 18]
           });
 
           const marker = window.L.marker([lat, lng], { icon: customIcon }).addTo(mapRef.current);
@@ -348,6 +351,22 @@ export default function DesktopPropertyListing({
         onToggleMap={() => setShowMap((prev) => !prev)}
         isMapOpen={showMap}
       />
+
+      {/* Home Hero Banner — only on home page below the filter section */}
+      {isHomePage && isHomeHeroBannerEnabled && (
+        <div className="w-full max-w-[1750px] mx-auto px-4 sm:px-6 select-none">
+          <div className="w-full overflow-hidden rounded-t-none rounded-b-2xl sm:rounded-b-3xl shadow-xs border border-t-0 border-gray-200/80 bg-white">
+            <img
+              src={mediaUrl(homeHeroBannerUrl || "/images/home-hero.png")}
+              alt="Home Hero"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = "/images/home-hero.png";
+              }}
+              className="w-full h-auto object-cover block"
+            />
+          </div>
+        </div>
+      )}
 
       {/* DUAL SPLIT-SCREEN VIEW WHEN MAP IS ON (Matching Image 1) */}
       {showMap ? (

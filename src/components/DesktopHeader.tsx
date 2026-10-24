@@ -276,13 +276,17 @@ export default function DesktopHeader({
       <div 
         className={`w-full transition-all duration-300 border-b z-50 ${
           isScrolled
-            ? "fixed top-0 left-0 right-0 bg-[#FAF8F3]/95 backdrop-blur-md border-gray-300 shadow-md py-3 px-6"
-            : "relative bg-[#FAF8F3] border-gray-200/80 py-4 px-6"
+            ? "fixed top-0 left-0 right-0 shadow-md py-3 px-6"
+            : "relative py-4 px-6"
         }`}
+        style={{
+          background: "rgb(96 169 99 / var(--tw-text-opacity, 1))",
+          borderColor: "rgba(0, 0, 0, 0.08)",
+        }}
       >
         <div className="max-w-7xl mx-auto flex flex-wrap items-center gap-3 justify-between">
           {/* Purpose Tabs (All / Buy / Rent / Lease) */}
-          <div className="flex items-center bg-gray-100/80 p-1 rounded-full border border-gray-200 shrink-0">
+          <div className="flex items-center bg-white/95 p-1 rounded-full border border-white/40 shadow-xs shrink-0">
             {["All", "For Sale", "For Rent", "For Lease"].map((p) => {
               const isActive = (p === "All" && !purpose) || purpose === p;
               return (
