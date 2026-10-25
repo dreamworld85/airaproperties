@@ -73,10 +73,10 @@ export default function BuildersDirectory() {
               VERIFIED BUILDERS DIRECTORY
             </span>
             <h1 className="text-2xl sm:text-4xl font-extrabold font-display">
-              Top Real Estate Builders & Constructors in Kerala
+              Top Real Estate Builders & Constructors in India
             </h1>
             <p className="text-xs sm:text-sm text-emerald-100 font-medium leading-relaxed">
-              Explore reputable RERA-registered developers, view categorized ongoing luxury apartments & gated villas, and connect directly with builder desks.
+              Explore reputable Aira Properties verified developers, view categorized ongoing luxury apartments & gated villas, and connect directly with builder desks.
             </p>
           </div>
 

@@ -61,7 +61,7 @@ export default function RefundPolicy() {
             ) : (
               <>
                 <p>
-                  Please review our strict cancellation and refund policies before purchasing any premium subscription plans on Kerala Realty:
+                  Please review our strict cancellation and refund policies before purchasing any premium subscription plans on Aira Properties:
                 </p>
 
                 <h3 className="font-display font-bold text-base text-ink mt-2">1. Subscription Cancellations</h3>
@@ -71,7 +71,7 @@ export default function RefundPolicy() {
 
                 <h3 className="font-display font-bold text-base text-ink mt-2">2. No-Refunds Policy</h3>
                 <p>
-                  We do not offer refunds, credits, or prorated billing for any purchased subscription plans, including unused time, accidental purchases, or changes in preference. All payments made to Kerala Realty are strictly final and non-refundable.
+                  We do not offer refunds, credits, or prorated billing for any purchased subscription plans, including unused time, accidental purchases, or changes in preference. All payments made to Aira Properties are strictly final and non-refundable.
                 </p>
               </>
             )}

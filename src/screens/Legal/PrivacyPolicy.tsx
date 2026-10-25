@@ -43,7 +43,7 @@ export default function PrivacyPolicy() {
               {title}
             </h1>
             <p className="text-sm text-gray-600 leading-relaxed font-medium">
-              How Kerala Realty collects, protects, and securely handles your data.
+              How Aira Properties collects, protects, and securely handles your data.
             </p>
           </div>
         )}
@@ -56,7 +56,7 @@ export default function PrivacyPolicy() {
               <>
                 <p><strong>Effective Date:</strong> August 4, 2026</p>
                 <p>
-                  At GreenReal (Kerala Realty), we value the trust you place in us. This Privacy Policy details how we collect, use, process, and protect your information when you register and use our platform.
+                  At Aira Properties, we value the trust you place in us. This Privacy Policy details how we collect, use, process, and protect your information when you register and use our platform.
                 </p>
 
                 <h3 className="font-display font-bold text-base text-ink mt-2">1. Data We Collect</h3>

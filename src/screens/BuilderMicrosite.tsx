@@ -295,7 +295,7 @@ export default function BuilderMicrosite() {
 
                 {builder.phone && (
                   <a
-                    href={`https://wa.me/${builder.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hi ${builder.name}, I am interested in your residential projects on Kerala Realty.`)}`}
+                    href={`https://wa.me/${builder.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hi ${builder.name}, I am interested in your residential projects on Aira Properties.`)}`}
                     target="_blank"
                     rel="noreferrer"
                     className="px-4 py-2.5 bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer active:scale-95"
@@ -395,7 +395,7 @@ export default function BuilderMicrosite() {
                 )}
                 <div className="flex items-center gap-2">
                   <Award size={14} className="text-emerald-600 shrink-0" />
-                  <span>K-RERA Registered Developer</span>
+                  <span>Aira Properties Verified Developer</span>
                 </div>
               </div>
             </section>
@@ -530,7 +530,7 @@ export default function BuilderMicrosite() {
                           {/* Action Footer */}
                           <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-3">
                             <span className="text-[10px] text-gray-400 font-mono truncate">
-                              {project.rera_reg_number ? `RERA: ${project.rera_reg_number}` : "K-RERA Certified"}
+                              {project.rera_reg_number ? `RERA: ${project.rera_reg_number}` : "Aira Properties Certified"}
                             </span>
 
                             <button

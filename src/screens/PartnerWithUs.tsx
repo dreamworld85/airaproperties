@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
   Building2, 
@@ -16,12 +16,91 @@ import {
   Briefcase, 
   Award,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Search,
+  X
 } from "lucide-react";
 import DesktopHeader from "@/components/DesktopHeader";
 import DesktopFooter from "@/components/DesktopFooter";
 import BottomNav from "@/components/BottomNav";
 import { submitBuilderInquiry, BuilderInquiryPayload } from "@/lib/api";
+import { STATE_DISTRICTS_MAP } from "@/lib/indiaLocationData";
+
+interface LocationSuggestion {
+  city: string;
+  state: string;
+  display: string;
+}
+
+const ALL_INDIA_LOCATIONS: LocationSuggestion[] = (() => {
+  const list: LocationSuggestion[] = [];
+  
+  const popularAliases = [
+    { city: "Kochi", state: "Kerala", alias: "Ernakulam" },
+    { city: "Bengaluru", state: "Karnataka", alias: "Bangalore" },
+    { city: "Mumbai", state: "Maharashtra", alias: "Bombay" },
+    { city: "Delhi", state: "Delhi", alias: "New Delhi / NCR" },
+    { city: "Hyderabad", state: "Telangana", alias: "Secunderabad" },
+    { city: "Chennai", state: "Tamil Nadu", alias: "Madras" },
+    { city: "Kolkata", state: "West Bengal", alias: "Calcutta" },
+    { city: "Pune", state: "Maharashtra" },
+    { city: "Ahmedabad", state: "Gujarat" },
+    { city: "Jaipur", state: "Rajasthan" },
+    { city: "Lucknow", state: "Uttar Pradesh" },
+    { city: "Gurugram", state: "Haryana", alias: "Gurgaon" },
+    { city: "Noida", state: "Uttar Pradesh", alias: "Greater Noida" },
+    { city: "Chandigarh", state: "Chandigarh" },
+    { city: "Thiruvananthapuram", state: "Kerala", alias: "Trivandrum" },
+    { city: "Kozhikode", state: "Kerala", alias: "Calicut" },
+    { city: "Thrissur", state: "Kerala" },
+    { city: "Kannur", state: "Kerala" },
+    { city: "Kottayam", state: "Kerala" },
+    { city: "Kollam", state: "Kerala" },
+    { city: "Alappuzha", state: "Kerala" },
+    { city: "Palakkad", state: "Kerala" },
+    { city: "Malappuram", state: "Kerala" },
+    { city: "Coimbatore", state: "Tamil Nadu" },
+    { city: "Madurai", state: "Tamil Nadu" },
+    { city: "Surat", state: "Gujarat" },
+    { city: "Indore", state: "Madhya Pradesh" },
+    { city: "Bhopal", state: "Madhya Pradesh" },
+    { city: "Nagpur", state: "Maharashtra" },
+    { city: "Visakhapatnam", state: "Andhra Pradesh", alias: "Vizag" },
+    { city: "Vijayawada", state: "Andhra Pradesh" },
+    { city: "Patna", state: "Bihar" },
+    { city: "Mangaluru", state: "Karnataka", alias: "Mangalore" },
+    { city: "Mysuru", state: "Karnataka", alias: "Mysore" },
+    { city: "Vadodara", state: "Gujarat", alias: "Baroda" },
+    { city: "Goa (North/South)", state: "Goa" }
+  ];
+
+  popularAliases.forEach(item => {
+    list.push({
+      city: item.city,
+      state: item.state,
+      display: item.alias ? `${item.city} (${item.alias}), ${item.state}` : `${item.city}, ${item.state}`
+    });
+  });
+
+  Object.entries(STATE_DISTRICTS_MAP).forEach(([state, districts]) => {
+    districts.forEach(district => {
+      const alreadyAdded = list.some(
+        item => item.city.toLowerCase() === district.toLowerCase() && item.state === state
+      );
+      if (!alreadyAdded) {
+        list.push({
+          city: district,
+          state: state,
+          display: `${district}, ${state}`
+        });
+      }
+    });
+  });
+
+  return list;
+})();
+
+
 
 const PACKAGES = [
   {
@@ -30,7 +109,7 @@ const PACKAGES = [
     price: "₹9,999 / year",
     units: "10 Project Units",
     leads: "150 Verified Leads",
-    desc: "Dedicated builder microsite, brochure downloads & RERA verified badge."
+    desc: "Dedicated builder microsite, brochure downloads & Aira Properties verified badge."
   },
   {
     id: "Builder Elite Showcase",
@@ -78,12 +157,45 @@ export default function PartnerWithUs() {
     phone: "",
     email: "",
     office_address: "",
-    city_district: "Ernakulam",
+    city_district: "",
     active_projects: "3-5 Projects",
     package_preference: "Builder Elite Showcase",
     experience_years: 10,
     message: ""
   });
+
+  const [citySearchQuery, setCitySearchQuery] = useState("");
+  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
+  const cityDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (cityDropdownRef.current && !cityDropdownRef.current.contains(event.target as Node)) {
+        setIsCityDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredLocations = useMemo(() => {
+    if (!citySearchQuery.trim()) {
+      return ALL_INDIA_LOCATIONS.slice(0, 30);
+    }
+    const q = citySearchQuery.trim().toLowerCase();
+    return ALL_INDIA_LOCATIONS.filter(item => 
+      item.city.toLowerCase().includes(q) || 
+      item.state.toLowerCase().includes(q) ||
+      item.display.toLowerCase().includes(q)
+    ).slice(0, 40);
+  }, [citySearchQuery]);
+
+  const handleSelectLocation = (loc: LocationSuggestion) => {
+    const value = `${loc.city}, ${loc.state}`;
+    setCitySearchQuery(value);
+    setFormData(prev => ({ ...prev, city_district: value }));
+    setIsCityDropdownOpen(false);
+  };
 
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -112,7 +224,15 @@ export default function PartnerWithUs() {
       <main className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-8 flex flex-col gap-10">
         
         {/* Hero Section */}
-        <section className="bg-gradient-to-br from-[#0F2922] via-[#1B5E4F] to-[#2D7A68] rounded-3xl p-8 sm:p-12 text-white shadow-xl relative overflow-hidden">
+        <section 
+          className="rounded-3xl p-8 sm:p-12 text-white shadow-xl relative overflow-hidden bg-[#0F2922]"
+          style={{
+            backgroundImage: "linear-gradient(to right, rgba(15, 41, 34, 0.94) 0%, rgba(27, 94, 79, 0.88) 55%, rgba(45, 122, 104, 0.65) 100%), url('/images/partner-with-us.svg')",
+            backgroundRepeat: "no-repeat",
+            backgroundSize: "cover",
+            backgroundPosition: "bottom center"
+          }}
+        >
           <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-10 -left-10 w-80 h-80 bg-emerald-400/10 rounded-full blur-2xl pointer-events-none" />
 
@@ -123,11 +243,11 @@ export default function PartnerWithUs() {
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold font-display tracking-tight leading-tight">
-              List Your Projects & Connect With <span className="text-emerald-300">50,000+ Active Kerala Homebuyers</span>
+              List Your Projects & Connect With <span className="text-emerald-300">50,000+ Active Indian Homebuyers</span>
             </h1>
 
             <p className="text-sm sm:text-base text-emerald-100 font-medium leading-relaxed max-w-2xl">
-              Showcase your ongoing, upcoming, and completed residential towers and luxury villas on Kerala's premier real estate portal. Get direct, high-intent buyer leads with zero brokerage.
+              Showcase your ongoing, upcoming, and completed residential towers and luxury villas on India's premier real estate portal. Get direct, high-intent buyer leads with zero brokerage.
             </p>
 
             <div className="flex flex-wrap items-center gap-4 pt-3">
@@ -138,14 +258,6 @@ export default function PartnerWithUs() {
                 <span>Partner With Us</span>
                 <ArrowRight size={16} />
               </a>
-
-              <Link
-                to="/builder-preview"
-                className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold text-sm rounded-xl backdrop-blur-md border border-white/20 transition-all flex items-center gap-2"
-              >
-                <Eye size={16} />
-                <span>View Client Demo Microsite</span>
-              </Link>
             </div>
           </div>
 
@@ -153,7 +265,7 @@ export default function PartnerWithUs() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-10 pt-8 border-t border-white/15">
             <div>
               <div className="text-2xl sm:text-3xl font-black text-white font-display">150+</div>
-              <div className="text-xs text-emerald-200 mt-0.5">Top Kerala Builders</div>
+              <div className="text-xs text-emerald-200 mt-0.5">Top Builders in India</div>
             </div>
             <div>
               <div className="text-2xl sm:text-3xl font-black text-white font-display">50,000+</div>
@@ -209,40 +321,12 @@ export default function PartnerWithUs() {
               <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
                 <Award size={24} />
               </div>
-              <h3 className="font-bold text-base text-gray-900 font-display">RERA Verified Stamp</h3>
+              <h3 className="font-bold text-base text-gray-900 font-display">Aira Properties Verified Stamp</h3>
               <p className="text-xs text-gray-600 leading-relaxed">
-                Gain instant trust among domestic buyers and Gulf NRIs with official RERA verification badges and prominent developer spotlighting.
+                Gain instant trust among domestic buyers and Gulf NRIs with official Aira Properties verification badges and prominent developer spotlighting.
               </p>
             </div>
           </div>
-        </section>
-
-        {/* Demo Preview Callout Box */}
-        <section className="bg-amber-50/70 border border-amber-200/80 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xs">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-amber-400 text-white flex items-center justify-center shadow-md shrink-0">
-              <Eye size={30} />
-            </div>
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 bg-amber-200/60 px-2.5 py-0.5 rounded-full inline-block mb-1">
-                LIVE DEMO PREVIEW
-              </span>
-              <h3 className="text-lg sm:text-xl font-black text-gray-900 font-display">
-                See How Your Dedicated Builder Page Will Look
-              </h3>
-              <p className="text-xs text-gray-600 font-medium mt-1 max-w-xl">
-                Experience our interactive 99Acres-inspired developer showcase featuring high-res banners, categorized ongoing/upcoming projects, and instant lead capture forms.
-              </p>
-            </div>
-          </div>
-
-          <Link
-            to="/builder-preview"
-            className="w-full sm:w-auto px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all active:scale-95 shrink-0 text-center flex items-center justify-center gap-2"
-          >
-            <span>Explore Demo Showcase</span>
-            <ExternalLink size={14} />
-          </Link>
         </section>
 
         {/* Builder Inquiry Form */}
@@ -258,17 +342,11 @@ export default function PartnerWithUs() {
               <p className="text-xs sm:text-sm text-gray-600 leading-relaxed font-medium">
                 Thank you for choosing to partner with Aira Properties. Our Builder Relations Director will review your company details and reach out within 24 hours to initiate your developer onboarding and project catalog setup.
               </p>
-              <div className="flex items-center gap-3 pt-4">
-                <Link
-                  to="/builder-preview"
-                  className="px-6 py-2.5 bg-[#1B5E4F] hover:bg-[#14473C] text-white text-xs font-bold rounded-xl shadow-sm transition-all"
-                >
-                  Explore Demo Microsite
-                </Link>
+              <div className="flex items-center justify-center pt-4">
                 <button
                   type="button"
                   onClick={() => setSubmitted(false)}
-                  className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                  className="px-6 py-2.5 bg-[#1B5E4F] hover:bg-[#14473C] text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
                 >
                   Submit Another Project
                 </button>
@@ -281,7 +359,7 @@ export default function PartnerWithUs() {
                   Builder Partnership Application
                 </h2>
                 <p className="text-xs text-gray-500 mt-1">
-                  Fill in your construction firm details below. Our team will verify your RERA license and configure your developer profile.
+                  Fill in your construction firm details below. Our team will verify your builder credentials and configure your developer profile.
                 </p>
               </div>
 
@@ -356,28 +434,84 @@ export default function PartnerWithUs() {
                   />
                 </div>
 
-                {/* City / District */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                    <MapPin size={14} className="text-emerald-600" />
-                    Primary City / District *
-                  </label>
-                  <select
-                    value={formData.city_district}
-                    onChange={(e) => setFormData({ ...formData, city_district: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-50 border border-gray-200 rounded-2xl text-xs sm:text-sm text-gray-900 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
-                  >
-                    <option value="Ernakulam">Kochi / Ernakulam</option>
-                    <option value="Thiruvananthapuram">Thiruvananthapuram</option>
-                    <option value="Kozhikode">Kozhikode</option>
-                    <option value="Thrissur">Thrissur</option>
-                    <option value="Kottayam">Kottayam</option>
-                    <option value="Alappuzha">Alappuzha</option>
-                    <option value="Kannur">Kannur</option>
-                    <option value="Kollam">Kollam</option>
-                    <option value="Palakkad">Palakkad</option>
-                    <option value="Malappuram">Malappuram</option>
-                  </select>
+                {/* City / District with All India Autosearch */}
+                <div className="space-y-1.5 relative" ref={cityDropdownRef}>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                      <MapPin size={14} className="text-emerald-600" />
+                      Primary City / District *
+                    </label>
+                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100/80">
+                      All India Search
+                    </span>
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      value={citySearchQuery}
+                      onFocus={() => setIsCityDropdownOpen(true)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCitySearchQuery(val);
+                        setFormData(prev => ({ ...prev, city_district: val }));
+                        setIsCityDropdownOpen(true);
+                      }}
+                      placeholder="Search city or district across India (e.g. Mumbai, Kochi, Bengaluru...)"
+                      className="w-full px-4 py-3 pl-10 pr-9 bg-slate-50 border border-gray-200 rounded-2xl text-xs sm:text-sm text-gray-900 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-xs"
+                    />
+                    <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    {citySearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCitySearchQuery("");
+                          setFormData(prev => ({ ...prev, city_district: "" }));
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded-full"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* All India Auto-suggest Dropdown */}
+                  {isCityDropdownOpen && (
+                    <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto py-2 divide-y divide-gray-50">
+                      {filteredLocations.length > 0 ? (
+                        filteredLocations.map((loc, idx) => (
+                          <div
+                            key={idx}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleSelectLocation(loc);
+                            }}
+                            className="px-4 py-2.5 hover:bg-emerald-50/70 transition-colors cursor-pointer flex items-center justify-between text-left group"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <MapPin size={14} className="text-gray-400 group-hover:text-emerald-600 shrink-0" />
+                              <span className="text-xs sm:text-sm font-semibold text-gray-900 group-hover:text-emerald-950 truncate">
+                                {loc.city}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-md ml-2 shrink-0">
+                              {loc.state}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-4 py-4 text-center">
+                          <p className="text-xs text-gray-500 font-medium">
+                            No predefined district matched "{citySearchQuery}".
+                          </p>
+                          <p className="text-[11px] text-emerald-700 font-bold mt-1">
+                            Your typed custom location will be saved!
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Active Projects Count */}

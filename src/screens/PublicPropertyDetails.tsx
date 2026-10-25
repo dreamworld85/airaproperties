@@ -381,7 +381,7 @@ export default function PublicPropertyDetails() {
     ? (property.brokerName || "Broker")
     : (property.ownerName || "Owner");
 
-  const messageText = `Hi, I'm interested in "${property.title}" listed on Kerala Realty.
+  const messageText = `Hi, I'm interested in "${property.title}" listed on Aira Properties.
 
 *Property Details:*
 - *Price*: ${priceStr}

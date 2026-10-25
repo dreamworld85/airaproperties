@@ -32,7 +32,7 @@ export default function DesktopFooter() {
               />
             </div>
             <p className="text-xs text-gray-600 leading-relaxed max-w-md font-medium">
-              Discover, buy, and lease properties across Kerala. GreenReal is the premier real estate platform connecting buyers and verified listing promoters.
+              Discover, buy, and lease properties across India. Aira Properties is the premier real estate platform connecting buyers and verified listing promoters.
             </p>
             <a
               href="https://greensparrows.com"

@@ -17,10 +17,10 @@ export default function Footer() {
             <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
             <polyline points="9 22 9 12 15 12 15 22" />
           </svg>
-          <span>Kerala Realty</span>
+          <span>Aira Properties</span>
         </div>
         <p className="text-xs text-gray-600 max-w-[280px] leading-relaxed">
-          Find your dream home, villa, land, or commercial space across Kerala's finest locations.
+          Find your dream home, villa, land, or commercial space across India's finest locations.
         </p>
         <a
           href="https://greensparrows.com"
@@ -48,7 +48,7 @@ export default function Footer() {
           <Link to="/contact-us" className="text-gray-900 hover:text-[#60A963] transition-colors">Support</Link>
         </div>
         <p className="text-[11px] text-gray-500 mt-2">
-          &copy; {new Date().getFullYear()} Kerala Realty. All rights reserved.
+          &copy; {new Date().getFullYear()} Aira Properties. All rights reserved.
         </p>
       </div>
     </footer>

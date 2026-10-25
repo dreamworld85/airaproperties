@@ -128,7 +128,7 @@ export default function LaunchPopup({ forceOpen = false, onClose }: LaunchPopupP
         </h1>
 
         <h2 className="text-base sm:text-xl font-semibold text-emerald-400 mt-3 tracking-wide">
-          Discover, Buy, and Lease Properties Across Kerala.
+          Discover, Buy, and Lease Properties Across India.
         </h2>
 
         <p className="text-xs sm:text-base text-slate-100 font-medium mt-4 leading-relaxed max-w-lg">

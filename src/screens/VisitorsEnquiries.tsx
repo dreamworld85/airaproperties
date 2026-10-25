@@ -307,7 +307,7 @@ export default function VisitorsEnquiries() {
             ) : (
               filteredVisitors.map((v, i) => {
                 const waText = encodeURIComponent(
-                  `Hi ${v.visitorName}, thank you for your enquiry on "${v.propertyTitle}" listed on Kerala Realty! How can I help you?`
+                  `Hi ${v.visitorName}, thank you for your enquiry on "${v.propertyTitle}" listed on Aira Properties! How can I help you?`
                 );
                 const isClickAction = v.message?.startsWith("Clicked ");
 
@@ -426,7 +426,7 @@ export default function VisitorsEnquiries() {
                           <div className="flex items-center gap-1.5 text-gray-500 font-medium">
                             <Mail size={13} className="text-gray-400" />
                             <span className={v.isLocked ? "filter blur-[4px] select-none" : ""}>
-                              {v.isLocked ? "locked@keralarealty.com" : v.visitorEmail}
+                              {v.isLocked ? "locked@airaproperties.com" : v.visitorEmail}
                             </span>
                           </div>
                         )}
@@ -499,7 +499,7 @@ export default function VisitorsEnquiries() {
               filteredSent.map((s, idx) => {
                 const sellerContact = s.sellerPhone || s.sellerWhatsapp;
                 const waText = encodeURIComponent(
-                  `Hi ${s.sellerName}, I sent an enquiry regarding "${s.propertyTitle}" via Kerala Realty and would love to follow up.`
+                  `Hi ${s.sellerName}, I sent an enquiry regarding "${s.propertyTitle}" via Aira Properties and would love to follow up.`
                 );
 
                 return (

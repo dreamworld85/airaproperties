@@ -56,12 +56,12 @@ export default function DataDeletion() {
               <>
                 <p><strong>User Data Deletion Instructions</strong></p>
                 <p>
-                  GreenReal (Kerala Realty) values your privacy. If you wish to delete your account, remove social logins (Google/Facebook), or request permanent erasure of your personal data from our platform, please follow the steps below.
+                  Aira Properties values your privacy. If you wish to delete your account, remove social logins (Google/Facebook), or request permanent erasure of your personal data from our platform, please follow the steps below.
                 </p>
 
                 <h3 className="font-display font-bold text-base text-ink mt-2">Option 1: Delete Account via App</h3>
                 <p>
-                  1. Log in to your GreenReal account.<br />
+                  1. Log in to your Aira Properties account.<br />
                   2. Go to <strong>Profile</strong> ➔ <strong>Edit Profile</strong>.<br />
                   3. Scroll down and click <strong>Delete Account & Data</strong>.<br />
                   4. Confirm deletion to permanently erase your profile, saved properties, and linked social accounts.

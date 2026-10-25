@@ -43,7 +43,7 @@ export default function TermsConditions() {
               {title}
             </h1>
             <p className="text-sm text-gray-600 leading-relaxed font-medium">
-              Please review the general terms, platform rules, and guidelines for Kerala Realty.
+              Please review the general terms, platform rules, and guidelines for Aira Properties.
             </p>
           </div>
         )}
@@ -56,7 +56,7 @@ export default function TermsConditions() {
               <>
                 <p><strong>Effective Date:</strong> August 4, 2026</p>
                 <p>
-                  By accessing and registering on GreenReal, you agree to comply with and be bound by the following terms of use. Please read these terms carefully.
+                  By accessing and registering on Aira Properties, you agree to comply with and be bound by the following terms of use. Please read these terms carefully.
                 </p>
 
                 <h3 className="font-display font-bold text-base text-ink mt-2">1. Eligibility & Registration</h3>

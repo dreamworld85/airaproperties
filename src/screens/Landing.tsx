@@ -63,8 +63,8 @@ export default function Landing() {
   const [appStoreUrl, setAppStoreUrl] = useState("https://www.apple.com/app-store");
 
   const [landingSettings, setLandingSettings] = useState({
-    landing_hero_title: "Find Your Perfect Kerala Nest & Escape",
-    landing_hero_description: "Explore curated houses, villas, apartments, and land plots across the lush greenery of Kerala. Connect directly with owners, brokers, and certified agencies.",
+    landing_hero_title: "Find Your Perfect Nest & Escape Across India",
+    landing_hero_description: "Explore curated houses, villas, apartments, and land plots across India. Connect directly with owners, brokers, and certified agencies.",
     landing_hero_image: "https://images.unsplash.com/photo-1564507592333-c60657eea523?w=1000&q=80",
     landing_app_title: "Download Our Mobile App For Real-Time Notifications",
     landing_app_description: "Visiting our mobile app gives you access to maps, instant push notifications for matching properties, real-time agent chats, and location-aware search features. Scan the QR code or click the download button below to load the mobile-optimized experience directly on your smartphone.",
@@ -194,7 +194,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-6 text-left flex flex-col gap-6">
             <span className="text-[11px] font-bold text-gold uppercase tracking-widest block bg-gold/10 px-3 py-1 rounded-full w-max">
-              The Kerala Real Estate Platform
+              India's Premier Real Estate Platform
             </span>
             <h1 className="font-display font-extrabold text-5xl text-ink leading-tight tracking-wide">
               {landingSettings.landing_hero_title}
@@ -339,7 +339,7 @@ export default function Landing() {
           <div className="mb-6 text-center flex flex-col items-center gap-2">
             <span className="text-[10px] font-bold text-forest uppercase tracking-wider block">Client Testimonials</span>
             <h2 className="font-display font-extrabold text-3xl text-ink">What Our Users Say</h2>
-            <p className="text-slate text-xs max-w-md mt-1">Discover why thousands of buyers, sellers, and agents across Kerala trust our real estate platform.</p>
+            <p className="text-slate text-xs max-w-md mt-1">Discover why thousands of buyers, sellers, and agents across India trust our real estate platform.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -354,7 +354,7 @@ export default function Landing() {
                   <Star size={16} fill="currentColor" />
                 </div>
                 <p className="text-xs text-charcoal/90 leading-relaxed font-semibold italic">
-                  "Finding an apartment in Kochi without brokers was always a nightmare. Through Kerala Realty, I directly connected with the owner and completed everything in a week!"
+                  "Finding an apartment in Kochi without brokers was always a nightmare. Through Aira Properties, I directly connected with the owner and completed everything in a week!"
                 </p>
               </div>
               <div className="flex items-center gap-3.5 mt-6 border-t border-charcoal/5 pt-4">
@@ -566,7 +566,7 @@ export default function Landing() {
               />
             </div>
             <p className="text-xs text-gray-600 leading-relaxed max-w-sm font-medium">
-              Discover, buy, and lease properties across Kerala. GreenReal is the premier real estate platform connecting buyers and verified listing promoters.
+              Discover, buy, and lease properties across India. Aira Properties is the premier real estate platform connecting buyers and verified listing promoters.
             </p>
             <a
               href="https://greensparrows.com"

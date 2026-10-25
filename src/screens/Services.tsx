@@ -53,7 +53,7 @@ const BUILDER_BOSS_PLANS = [
       "150 Verified High-Intent Buyer Leads",
       "Dedicated Builder Microsite Page",
       "Direct Inquiries to Builder WhatsApp & Email",
-      "RERA Verification Badge on Projects",
+      "Aira Properties Verification Badge on Projects",
       "Brochure Download & Floor Plan Showcase",
       "1 Year Validity with Dedicated Support"
     ]
@@ -62,7 +62,7 @@ const BUILDER_BOSS_PLANS = [
     plan_id: "builder_elite",
     name: "Builder Elite Showcase",
     role: "builder",
-    subtitle: "25 Project Units + 400 Buyer Leads + Featured Developer Spotlight across Kerala.",
+    subtitle: "25 Project Units + 400 Buyer Leads + Featured Developer Spotlight across India.",
     price: 24999,
     discount: 3000,
     finalPrice: 21999,
@@ -76,7 +76,7 @@ const BUILDER_BOSS_PLANS = [
       "Prominent Developer Spotlight on Homepage & Search",
       "Custom Branded Builder Microsite with Video Walkthroughs",
       "Direct Lead Capture CRM Integration",
-      "Priority Search Ranking Across Kerala",
+      "Priority Search Ranking Across India",
       "Quarterly Investor Email & Push Notification Spotlight",
       "Dedicated Key Account Manager"
     ]
@@ -136,6 +136,9 @@ const SERVICE_DETAILS: Record<string, { title: string; bullets: string[] }> = {
   "Premium Plan": {
     title: "Premium Plan",
     bullets: [
+      "Premium Landing Page - High-converting, dedicated property showcase landing page with direct lead capture",
+      "Custom Site - Branded custom microsite tailored to your real estate portfolio",
+      "Social Media - Targeted social media campaigns and promotions across major platforms",
       "Attract customers with bigger & better listing - Bigger and prominent display on search result page",
       "Generate more buyer/tenant interest in your listing by highlighting unique property features",
       "Win customers trust with 2x more free verifications - Customers are ~70-100% more likely to contact a verified listing"
@@ -283,7 +286,7 @@ export default function Services() {
           </div>
         </div>
 
-        {/* Section 1: Hero Banner Image & BOSS Feature Callout */}
+        {/* Section 1: Hero Banner Image */}
         <section className="flex flex-col items-center text-center gap-6">
           {/* Main Panoramic Hero Banner Image Card */}
           <div className="relative w-full h-56 sm:h-72 md:h-80 rounded-3xl overflow-hidden shadow-md group">
@@ -294,188 +297,17 @@ export default function Services() {
             />
             {/* Gradient Overlay for Readable Text */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10 flex flex-col justify-end p-6 sm:p-8 text-left">
-              <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-300 bg-amber-950/60 backdrop-blur-md border border-amber-400/30 px-3 py-1 rounded-full inline-block w-fit mb-2">
+              <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-white bg-[#60A963] px-3 py-1 rounded-full inline-block w-fit mb-2 shadow-xs">
                 GROW YOUR REAL ESTATE NETWORK
               </span>
               <h1 className="text-xl sm:text-3xl md:text-4xl font-black text-white tracking-tight font-display drop-shadow-md">
                 Plans & Services to Reach {activeTab === "Seekers" ? "Verified Properties & Owners" : activeTab}
               </h1>
               <p className="text-xs sm:text-sm text-gray-200 font-medium mt-1.5 max-w-xl leading-relaxed">
-                Connect directly with thousands of verified property buyers, owners, brokers, and certified developers across Kerala with transparent token packs.
+                Connect directly with thousands of verified property buyers, owners, brokers, and certified developers across India with transparent token packs.
               </p>
             </div>
           </div>
-
-          {/* BOSS Feature Callout Banner Box */}
-          <div className="w-full bg-[#EEF7FF] border border-blue-150 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xs text-left relative overflow-hidden">
-            {/* Left Graphic Badge */}
-            <div className="flex items-center gap-4">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white/90 border border-blue-100 shadow-sm flex flex-col items-center justify-center shrink-0 p-2 relative">
-                <div className="w-8 h-8 rounded-full bg-amber-400 text-white flex items-center justify-center font-bold text-xs mb-1">
-                  👤
-                </div>
-                <div className="w-10 h-2 bg-blue-300 rounded-full mb-1" />
-                <div className="w-8 h-1.5 bg-gray-200 rounded-full" />
-                <div className="absolute top-2 left-2 w-3 h-3 rounded-full bg-blue-400 opacity-60" />
-                <div className="absolute bottom-2 right-2 w-3 h-3 rounded-full bg-amber-400 opacity-60" />
-              </div>
-
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 bg-blue-100/80 px-2.5 py-0.5 rounded-full inline-block mb-1">
-                  BROKER OWNER SUPPLY SOLUTION
-                </span>
-                <h3 className="text-xl font-black text-gray-900 font-display">
-                  Introducing <span className="text-blue-600">BOSS</span> Token System
-                </h3>
-                <p className="text-xs text-gray-600 font-medium mt-1 max-w-md">
-                  Unlock direct verified phone numbers and list concurrent properties with zero expiry and automatic token roll-over!
-                </p>
-              </div>
-            </div>
-
-            {/* Right Action Button */}
-            <a
-              href="#subscription-plans"
-              className="w-full sm:w-auto px-8 py-3.5 bg-[#0078D4] hover:bg-[#0060B5] text-white font-bold text-sm rounded-xl shadow-md transition-all active:scale-95 cursor-pointer text-center shrink-0"
-            >
-              Explore Plans
-            </a>
-          </div>
-        </section>
-
-        {/* SECTION: MAIN BOSS BUILDER PLANS */}
-        <section id="subscription-plans" className="space-y-6">
-          <div className="text-center max-w-2xl mx-auto space-y-2">
-            <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-100/80 px-3 py-1 rounded-full">
-              BUILDER & DEVELOPER PACKAGES
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 font-display">
-              Developer Showcase & Growth Plans
-            </h2>
-            <p className="text-xs sm:text-sm text-gray-600">
-              Tailored flagship packages to launch your residential projects, capture high-intent NRI and local buyer leads, and establish statewide market presence.
-            </p>
-          </div>
-
-          {/* Boss Plans Grid dynamically rendered based on Admin active toggle */}
-          {displayBossPlans.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch pt-2">
-              {displayBossPlans.map((plan) => (
-                <div
-                  key={plan.plan_id}
-                  className={`bg-white rounded-3xl p-6 sm:p-7 border flex flex-col justify-between transition-all relative group hover:shadow-xl ${
-                    plan.isPopular 
-                      ? "border-emerald-500 shadow-md ring-2 ring-emerald-500/20" 
-                      : "border-charcoal/10 shadow-xs"
-                  }`}
-                >
-                  {plan.isPopular && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-md whitespace-nowrap">
-                      Most Popular Choice
-                    </span>
-                  )}
-
-                  <div className="space-y-4">
-                    {/* Plan Role & Name */}
-                    <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
-                        BUILDER PACK
-                      </span>
-                      <h3 className="text-xl font-black font-display text-gray-900 mt-2">
-                        {plan.name}
-                      </h3>
-                      <p className="text-xs text-gray-500 mt-1 leading-relaxed min-h-[36px]">
-                        {plan.subtitle}
-                      </p>
-                    </div>
-
-                    {/* Pricing Tag */}
-                    <div className="pt-2 border-t border-gray-100">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-3xl font-black text-gray-900 font-display">
-                          ₹{plan.finalPrice.toLocaleString("en-IN")}
-                        </span>
-                        <span className="text-xs text-gray-400 line-through">
-                          ₹{plan.price.toLocaleString("en-IN")}
-                        </span>
-                        <span className="text-xs text-gray-500 font-medium">
-                          /12 mo
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md mt-1 inline-block">
-                        Save ₹{plan.discount.toLocaleString("en-IN")} Package Discount
-                      </span>
-                    </div>
-
-                    {/* Quota Highlights Box */}
-                    <div className="bg-slate-50 border border-charcoal/5 rounded-2xl p-3 grid grid-cols-2 gap-2 text-center text-xs">
-                      <div className="p-1">
-                        <div className="font-black text-emerald-700 text-base">
-                          {plan.enquiry_tokens}
-                        </div>
-                        <div className="text-[10px] text-gray-500 font-bold">
-                          Contact Reveals
-                        </div>
-                      </div>
-                      <div className="p-1 border-l border-gray-200">
-                        <div className="font-black text-blue-700 text-base">
-                          {plan.listing_slots}
-                        </div>
-                        <div className="text-[10px] text-gray-500 font-bold">
-                          Active Postings
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Features Checklist */}
-                    <div className="space-y-2 pt-2">
-                      {plan.features.map((feat, i) => (
-                        <div key={i} className="flex items-start gap-2.5 text-xs text-gray-600">
-                          <Check size={14} className="text-emerald-600 shrink-0 mt-0.5" />
-                          <span className="leading-snug">{feat}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Bottom Action Button - Prominent Choose Button on every plan */}
-                  <div className="pt-5 mt-4 border-t border-gray-100 flex flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleChoosePlan(plan)}
-                      className="w-full py-3.5 px-4 rounded-xl text-xs sm:text-sm font-black transition-all active:scale-95 cursor-pointer shadow-md flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                    >
-                      <CreditCard size={15} />
-                      <span>Choose Plan</span>
-                    </button>
-
-                    <Link
-                      to={`/partner-with-us?package=${encodeURIComponent(plan.name)}`}
-                      className="text-[11px] text-center font-bold text-emerald-700 hover:underline inline-flex items-center justify-center gap-1 mt-0.5"
-                    >
-                      <span>Apply for Dedicated Showcase Page</span>
-                      <ExternalLink size={12} />
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-3xl p-8 border border-dashed border-gray-300 text-center max-w-lg mx-auto my-6 space-y-3">
-              <Building2 className="w-12 h-12 text-emerald-700 mx-auto" />
-              <h3 className="font-black text-gray-900 text-base">Builder Packages Under Tailored Review</h3>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Direct builder subscription packages are currently being updated. Please contact our builder desk or submit a custom inquiry to get our tailored rates.
-              </p>
-              <Link
-                to="/partner-with-us"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-sm hover:bg-emerald-700 transition-all"
-              >
-                <span>Partner With Us / Request Custom Quote</span>
-                <ArrowRight size={14} />
-              </Link>
-            </div>
-          )}
         </section>
 
         {/* PROMINENT BUILDER PARTNER CALLOUT */}
@@ -485,10 +317,10 @@ export default function Services() {
               BUILDER & CONSTRUCTOR ONBOARDING
             </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold font-display">
-              Are You a Builder or Real Estate Developer in Kerala?
+              Are You a Builder or Real Estate Developer in India?
             </h2>
             <p className="text-xs sm:text-sm text-emerald-100 leading-relaxed font-medium">
-              List your ongoing, upcoming, and completed residential towers and luxury villas. Get your own dedicated developer microsite, verified buyer inquiries, and RERA certification spotlights.
+              List your ongoing, upcoming, and completed residential towers and luxury villas. Get your own dedicated developer microsite, verified buyer inquiries, and Aira Properties certification spotlights.
             </p>
           </div>
 
@@ -499,14 +331,6 @@ export default function Services() {
             >
               <Building2 size={16} />
               <span>Partner With Us</span>
-            </Link>
-
-            <Link
-              to="/builder-preview"
-              className="w-full sm:w-auto px-5 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm rounded-xl border border-white/20 transition-all text-center flex items-center justify-center gap-2"
-            >
-              <span>Demo Microsite</span>
-              <ExternalLink size={14} />
             </Link>
           </div>
         </section>
@@ -531,7 +355,7 @@ export default function Services() {
               <div className="flex-1 space-y-3 z-10">
                 <h3 className="text-lg font-bold text-gray-900 font-display">Banners</h3>
                 <p className="text-xs text-gray-600 leading-relaxed font-medium">
-                  Get your brand noticed by property buyers by securing high-impact brand space across Kerala search feeds.
+                  Get your brand noticed by property buyers by securing high-impact brand space across India search feeds.
                 </p>
                 <button
                   type="button"
@@ -546,11 +370,12 @@ export default function Services() {
                 </button>
               </div>
               
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-amber-100/60 border border-amber-200/80 flex flex-col items-center justify-center shrink-0 p-3 relative group-hover:scale-105 transition-transform">
-                <div className="w-16 h-12 bg-amber-400 rounded-lg flex items-center justify-center shadow-xs">
-                  <Building className="w-6 h-6 text-white" />
-                </div>
-                <div className="w-3 h-6 bg-amber-600/70 mt-1 rounded-sm" />
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-amber-100/60 border border-amber-200/80 flex items-center justify-center shrink-0 p-2 relative group-hover:scale-105 transition-transform overflow-hidden">
+                <img 
+                  src="/images/properties-banners.svg" 
+                  alt="Banners" 
+                  className="w-full h-full object-contain"
+                />
               </div>
             </div>
 
@@ -577,19 +402,12 @@ export default function Services() {
                 </button>
               </div>
 
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-sky-100/60 border border-sky-200/80 flex items-center justify-center shrink-0 p-3 relative group-hover:scale-105 transition-transform">
-                <div className="w-20 h-16 bg-white rounded-xl shadow-sm border border-sky-200 p-2 relative flex flex-col justify-between">
-                  <div className="w-6 h-6 rounded-md bg-sky-500 flex items-center justify-center text-white">
-                    <Sparkles className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="space-y-1">
-                    <div className="w-12 h-1.5 bg-sky-500 rounded-full" />
-                    <div className="w-8 h-1 bg-sky-200 rounded-full" />
-                  </div>
-                  <span className="absolute top-2 right-2 text-[7px] font-bold bg-sky-600 text-white px-1.5 py-0.5 rounded">
-                    Featured
-                  </span>
-                </div>
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-sky-100/60 border border-sky-200/80 flex items-center justify-center shrink-0 p-2 relative group-hover:scale-105 transition-transform overflow-hidden">
+                <img 
+                  src="/images/featured-listing2.svg" 
+                  alt="Featured Listing" 
+                  className="w-full h-full object-contain"
+                />
               </div>
             </div>
 
@@ -616,16 +434,12 @@ export default function Services() {
                 </button>
               </div>
 
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-orange-100/60 border border-orange-200/80 flex flex-col items-center justify-end shrink-0 p-2 relative group-hover:scale-105 transition-transform">
-                <div className="w-14 h-20 bg-orange-400 rounded-t-xl p-1.5 flex flex-col items-center justify-between shadow-xs">
-                  <Star className="w-4 h-4 fill-white text-white mt-1" />
-                  <div className="grid grid-cols-2 gap-1 w-full px-1">
-                    <div className="h-1.5 bg-white/70 rounded-xs" />
-                    <div className="h-1.5 bg-white/70 rounded-xs" />
-                    <div className="h-1.5 bg-white/70 rounded-xs" />
-                    <div className="h-1.5 bg-white/70 rounded-xs" />
-                  </div>
-                </div>
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-orange-100/60 border border-orange-200/80 flex items-center justify-center shrink-0 p-2 relative group-hover:scale-105 transition-transform overflow-hidden">
+                <img 
+                  src="/images/featured-listing2.svg" 
+                  alt="Featured Project" 
+                  className="w-full h-full object-contain"
+                />
               </div>
             </div>
 
@@ -639,7 +453,6 @@ export default function Services() {
                 <p className="text-xs text-gray-600 leading-relaxed font-medium">
                   Highlight unique property features with larger search placement and verified badges.
                 </p>
-                <div className="text-xs font-extrabold text-blue-700">₹899 Onwards</div>
                 <button
                   type="button"
                   onClick={(e) => {
@@ -653,13 +466,12 @@ export default function Services() {
                 </button>
               </div>
 
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-blue-100/60 border border-blue-200/80 flex items-center justify-center shrink-0 p-3 relative group-hover:scale-105 transition-transform">
-                <div className="w-16 h-16 rounded-full bg-blue-600 text-white flex flex-col items-center justify-center shadow-md relative">
-                  <Building className="w-6 h-6 text-white" />
-                  <div className="absolute -bottom-2 w-12 h-5 bg-blue-800 rounded-md flex items-center justify-center text-[9px] font-black uppercase">
-                    ⭐ Premium
-                  </div>
-                </div>
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-blue-100/60 border border-blue-200/80 flex items-center justify-center shrink-0 p-2 relative group-hover:scale-105 transition-transform overflow-hidden">
+                <img 
+                  src="/images/premium-plan-2.svg" 
+                  alt="Premium Plan" 
+                  className="w-full h-full object-contain"
+                />
               </div>
             </div>
           </div>
@@ -687,6 +499,10 @@ export default function Services() {
               <p className="text-xs text-gray-600 leading-relaxed font-medium">
                 Upgraded postings appear higher in search results giving your posting 5x more views and direct buyer responses.
               </p>
+              <div className="inline-flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-xl w-fit mt-1">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>AI-powered listings across all social media platforms</span>
+              </div>
             </div>
 
             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-xs flex flex-col gap-3">
@@ -702,13 +518,13 @@ export default function Services() {
             </div>
           </div>
 
-          <a
-            href="#subscription-plans"
+          <Link
+            to="/subscription"
             className="text-xs font-bold text-gray-900 hover:text-[#0078D4] transition-colors cursor-pointer inline-flex items-center gap-1.5 group"
           >
             <span>View plans to sell faster</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </a>
+          </Link>
         </section>
 
       </main>

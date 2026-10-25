@@ -124,7 +124,7 @@ export default function MyApp() {
             </div>
 
             <p className="text-xs sm:text-sm font-bold text-[#0F5B5C] tracking-wider uppercase">
-              Discover, buy, and lease properties across Kerala.
+              Discover, buy, and lease properties across India.
             </p>
 
             <div className="flex items-center gap-3.5 my-2">
