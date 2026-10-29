@@ -19,6 +19,17 @@ function formatPrice(price: number, purpose?: string): string {
   return text;
 }
 
+function formatPostedDate(dateStr?: string | null): string {
+  if (!dateStr) return "";
+  const clean = typeof dateStr === "string" && dateStr.includes(" ") && !dateStr.includes("T")
+    ? dateStr.replace(" ", "T")
+    : dateStr;
+  const d = new Date(clean);
+  if (isNaN(d.getTime())) return "";
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
 export default function PropertyCard({ 
   property,
   onToggleSave,
@@ -72,6 +83,8 @@ export default function PropertyCard({
 
   const priceFormatted = formatPrice(property.price, property.purpose);
   const roleFormatted = property.purpose === "For Rent" ? "" : (property.listingRole || "Broker");
+  const postedDate = formatPostedDate(property.createdAt || (property as any).created_at);
+  const isSold = property.status === "Sold" || (property.status as string) === "";
 
   return (
     <div
@@ -96,11 +109,17 @@ export default function PropertyCard({
           onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
         />
 
-        {/* Top Left Overlay Tag (Sales / For Rent / etc.) */}
+        {/* Top Left Overlay Tag (Sold Out / Sales / For Rent) */}
         <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-10">
-          <span className="px-2.5 py-0.5 bg-white/95 text-gray-900 font-semibold text-[10.5px] rounded-full shadow-xs backdrop-blur-xs select-none">
-            {displayTag}
-          </span>
+          {isSold ? (
+            <span className="px-2.5 py-1 bg-red-600 text-white font-bold text-xs sm:text-[12px] rounded-md shadow-md select-none tracking-wide">
+              Sold Out
+            </span>
+          ) : (
+            <span className="px-2.5 py-0.5 bg-white/95 text-gray-900 font-semibold text-[10.5px] rounded-full shadow-xs backdrop-blur-xs select-none">
+              {displayTag}
+            </span>
+          )}
         </div>
 
         {/* Top Right Overlay Favorite Heart Icon */}
@@ -112,6 +131,15 @@ export default function PropertyCard({
         >
           <Heart size={15} className={saved ? "fill-rose-500 text-rose-500" : "text-white"} />
         </button>
+
+        {/* Bottom Overlay: White gradient with Posted Date */}
+        {postedDate && (
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-white/90 via-white/50 to-transparent pt-7 pb-2 px-3 z-10 pointer-events-none flex items-end">
+            <span className="text-gray-900 font-bold italic text-[12px] sm:text-[13px] tracking-tight select-none">
+              Posted Date: {postedDate}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Text Section Below Image */}
@@ -134,4 +162,3 @@ export default function PropertyCard({
     </div>
   );
 }
-

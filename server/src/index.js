@@ -75,7 +75,7 @@ async function checkDbMigration() {
         broker_name VARCHAR(120),
         agency_name VARCHAR(120),
         agency_logo_url VARCHAR(500),
-        status ENUM('Draft','Pending','Active','Inactive','Rejected') DEFAULT 'Pending',
+        status ENUM('Draft','Pending','Active','Inactive','Rejected','Sold') DEFAULT 'Pending',
         views INT DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -645,6 +645,15 @@ async function checkDbMigration() {
     if (!propColNames.includes("state")) {
       console.log("Adding state column to properties...");
       await pool.query("ALTER TABLE properties ADD COLUMN state VARCHAR(100) NOT NULL DEFAULT 'Kerala'");
+    }
+
+    // Ensure 'Sold' is in status ENUM of properties table and migrate any blank status to 'Sold'
+    try {
+      await pool.query("ALTER TABLE properties MODIFY COLUMN status ENUM('Draft','Pending','Active','Inactive','Rejected','Sold') DEFAULT 'Pending'");
+      await pool.query("UPDATE properties SET status = 'Sold' WHERE status = '' OR status IS NULL");
+      console.log("Properties status ENUM successfully updated to include 'Sold'");
+    } catch (enumErr) {
+      console.error("Error migrating properties status enum:", enumErr.message);
     }
 
     // Run role migration: User -> user, Owner -> owner, etc.

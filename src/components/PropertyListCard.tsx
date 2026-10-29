@@ -19,6 +19,17 @@ function formatPrice(price: number, purpose?: string): string {
   return text;
 }
 
+function formatPostedDate(dateStr?: string | null): string {
+  if (!dateStr) return "";
+  const clean = typeof dateStr === "string" && dateStr.includes(" ") && !dateStr.includes("T")
+    ? dateStr.replace(" ", "T")
+    : dateStr;
+  const d = new Date(clean);
+  if (isNaN(d.getTime())) return "";
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
 export default function PropertyListCard({
   property,
   onToggleSave,
@@ -70,6 +81,8 @@ export default function PropertyListCard({
 
   const priceFormatted = formatPrice(property.price, property.purpose);
   const roleFormatted = property.purpose === "For Rent" ? "Host" : (property.listingRole || "Owner");
+  const postedDate = formatPostedDate(property.createdAt || (property as any).created_at);
+  const isSold = property.status === "Sold" || (property.status as string) === "";
 
   const locationParts = [property.address, property.district].filter(Boolean);
   const locationText = locationParts.length > 0 ? locationParts.join(", ") : (property.state || "India");
@@ -105,9 +118,15 @@ export default function PropertyListCard({
         />
 
         {/* Top-Left Badge */}
-        <span className="absolute top-2 left-2 px-2 py-0.5 bg-white/95 text-gray-900 font-semibold text-[10px] rounded-full shadow-xs backdrop-blur-xs select-none">
-          {displayTag}
-        </span>
+        {isSold ? (
+          <span className="absolute top-2 left-2 px-2 py-0.5 bg-red-600 text-white font-bold text-[10px] rounded-md shadow-xs select-none tracking-wide">
+            Sold Out
+          </span>
+        ) : (
+          <span className="absolute top-2 left-2 px-2 py-0.5 bg-white/95 text-gray-900 font-semibold text-[10px] rounded-full shadow-xs backdrop-blur-xs select-none">
+            {displayTag}
+          </span>
+        )}
 
         {/* Top-Right Favorite Heart */}
         <button
@@ -118,6 +137,15 @@ export default function PropertyListCard({
         >
           <Heart size={13} className={saved ? "fill-rose-500 text-rose-500" : "text-white"} />
         </button>
+
+        {/* Bottom Overlay: White gradient with Posted Date */}
+        {postedDate && (
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-white/90 via-white/50 to-transparent pt-4 pb-1.5 px-2 z-10 pointer-events-none flex items-end">
+            <span className="text-gray-900 font-bold italic text-[9.5px] sm:text-[10px] tracking-tight select-none">
+              Posted Date: {postedDate}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Right side: Data */}

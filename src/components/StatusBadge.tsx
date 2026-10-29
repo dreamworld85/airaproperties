@@ -6,15 +6,15 @@ const statusStyles: Record<PropertyStatus, string> = {
   Draft: "bg-slate/15 text-slate",
   Inactive: "bg-coral/10 text-coral",
   Rejected: "bg-coral/10 text-coral",
-  Sold: "bg-blue-500/10 text-blue-700 border border-blue-200",
+  Sold: "bg-red-600 text-white font-bold",
 };
 
 export default function StatusBadge({ status }: { status: PropertyStatus }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${statusStyles[status]}`}
+      className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${statusStyles[status]}`}
     >
-      {status}
+      {status === "Sold" ? "Sold Out" : status}
     </span>
   );
 }

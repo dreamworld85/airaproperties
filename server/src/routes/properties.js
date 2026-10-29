@@ -78,9 +78,19 @@ async function fetchMediaByPropertyIds(ids) {
 // Performs JOIN with users table to fetch live user role dynamically.
 router.get("/", optionalAuth, async (req, res) => {
   try {
-    const { state, district, propertyType, purpose, status = "Active", ownerId, search } = req.query;
-    const clauses = ["p.status = ?"];
-    const params = [status];
+    const { state, district, propertyType, purpose, status, ownerId, search } = req.query;
+    const clauses = [];
+    const params = [];
+
+    if (status === "All") {
+      // no status filter
+    } else if (status && status !== "Active") {
+      clauses.push("p.status = ?");
+      params.push(status);
+    } else {
+      // Default public browse includes both Active and Sold listings
+      clauses.push("p.status IN ('Active', 'Sold')");
+    }
 
     if (state) { clauses.push("p.state = ?"); params.push(state); }
     if (district) { clauses.push("p.district = ?"); params.push(district); }
@@ -301,8 +311,9 @@ router.get("/:id", optionalAuth, async (req, res) => {
     const isOwnerViewing = visitorId && visitorId === rows[0].owner_id;
 
     // "rejected then not show to frontent that property any user"
-    // Hide non-active (Rejected, Pending, Inactive) listings from any user who is not the uploader or admin
-    if (rows[0].status !== "Active" && !isOwnerViewing && !isAdmin) {
+    // Hide non-active (Rejected, Pending, Inactive) listings from any user who is not the uploader or admin.
+    // Active and Sold listings are viewable on frontend.
+    if (rows[0].status !== "Active" && rows[0].status !== "Sold" && !isOwnerViewing && !isAdmin) {
       return res.status(404).json({ error: "Property is currently not available or under review." });
     }
 

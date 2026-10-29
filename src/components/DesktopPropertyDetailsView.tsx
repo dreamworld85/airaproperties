@@ -420,6 +420,13 @@ export default function DesktopPropertyDetailsView({
         )}
 
         {/* View All Photos Button (Bottom-left of Main Card, exactly like attached screen) */}
+        {isMain && (property.status === "Sold" || (property.status as string) === "") && (
+          <div className="absolute top-4 left-4 z-20">
+            <span className="px-3 py-1 bg-red-600 text-white font-bold text-xs uppercase rounded-md shadow-md select-none tracking-wider">
+              Sold Out
+            </span>
+          </div>
+        )}
         {isMain && (
           <button
             type="button"
@@ -452,7 +459,12 @@ export default function DesktopPropertyDetailsView({
           <div>
             <h1 className="text-[1.4rem] font-semibold text-gray-900 tracking-tight font-display">
               {property.title}
-            </h1>
+              </h1>
+              {(property.status === "Sold" || (property.status as string) === "") && (
+                <span className="px-2.5 py-0.5 bg-red-600 text-white font-bold text-xs rounded-md shadow-xs select-none">
+                  Sold Out
+                </span>
+              )}
 
             {/* Sub-bar Specs & Address */}
             <div className="flex flex-wrap items-center gap-6 text-sm text-gray-600 font-medium mt-3">

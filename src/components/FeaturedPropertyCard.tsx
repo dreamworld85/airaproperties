@@ -16,6 +16,7 @@ export default function FeaturedPropertyCard({ property }: { property: ApiProper
   const navigate = useNavigate();
   const { user, token } = useAuth();
   const isOwner = user && user.id === property.ownerId;
+  const isSold = property.status === "Sold" || (property.status as string) === "";
 
   const image = property.images[0] ? mediaUrl(property.images[0]) : FALLBACK_IMAGE;
   const rating = property.avgRating !== undefined && property.avgRating > 0 ? property.avgRating : 4.5;
@@ -43,10 +44,17 @@ export default function FeaturedPropertyCard({ property }: { property: ApiProper
       {/* Vignette Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
 
-      {/* Top Left: Rating Badge (White Pill) */}
-      <div className="absolute top-3.5 left-3.5 z-10 bg-white/95 backdrop-blur-sm text-charcoal text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-0.5 shadow-sm border border-charcoal/5">
-        <span>{rating.toFixed(1)}</span>
-        <Star size={9.5} className="fill-gold text-gold" />
+      {/* Top Left: Sold Out Badge or Rating Badge */}
+      <div className="absolute top-3.5 left-3.5 z-10 flex items-center gap-1.5">
+        {isSold && (
+          <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-md select-none tracking-wide">
+            Sold Out
+          </span>
+        )}
+        <div className="bg-white/95 backdrop-blur-sm text-charcoal text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-0.5 shadow-sm border border-charcoal/5">
+          <span>{rating.toFixed(1)}</span>
+          <Star size={9.5} className="fill-gold text-gold" />
+        </div>
       </div>
 
       {/* Bottom Left Content Info */}
