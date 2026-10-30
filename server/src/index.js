@@ -1590,7 +1590,43 @@ app.use("/api/property-requests", propertyRequestRoutes);
 // Serve frontend static build assets from dist if present
 const rootDistDir = path.resolve(process.cwd(), "..", "dist");
 const localDistDir = path.resolve(process.cwd(), "dist");
-const activeDistDir = fs.existsSync(rootDistDir) ? rootDistDir : (fs.existsSync(localDistDir) ? localDistDir : null);
+export const activeDistDir = fs.existsSync(rootDistDir) ? rootDistDir : (fs.existsSync(localDistDir) ? localDistDir : null);
+
+// Auto-sync frontend build to main domain document root on Hostinger
+export const hostingerFrontendDir = "/home/u859202671/domains/airaproperties.in/public_html";
+export function syncFrontendToLive(targetDir = hostingerFrontendDir) {
+  if (!activeDistDir || !fs.existsSync(targetDir)) {
+    return { synced: false, reason: "activeDistDir or targetDir not found", activeDistDir, targetDirExists: fs.existsSync(targetDir) };
+  }
+  try {
+    const srcIndex = path.join(activeDistDir, "index.html");
+    const destIndex = path.join(targetDir, "index.html");
+    if (fs.existsSync(srcIndex)) {
+      fs.copyFileSync(srcIndex, destIndex);
+    }
+
+    const srcAssets = path.join(activeDistDir, "assets");
+    const destAssets = path.join(targetDir, "assets");
+    let copiedAssetsCount = 0;
+    if (fs.existsSync(srcAssets)) {
+      if (!fs.existsSync(destAssets)) fs.mkdirSync(destAssets, { recursive: true });
+      const assetFiles = fs.readdirSync(srcAssets);
+      for (const file of assetFiles) {
+        fs.copyFileSync(path.join(srcAssets, file), path.join(destAssets, file));
+        copiedAssetsCount++;
+      }
+    }
+    console.log(`[DEPLOY] Successfully synced frontend build to ${targetDir} (${copiedAssetsCount} assets)`);
+    return { synced: true, copiedAssetsCount };
+  } catch (err) {
+    console.error(`[DEPLOY] Failed syncing frontend build to ${targetDir}:`, err);
+    return { synced: false, error: err.message };
+  }
+}
+
+if (fs.existsSync(hostingerFrontendDir)) {
+  syncFrontendToLive(hostingerFrontendDir);
+}
 
 if (activeDistDir) {
   console.log(`Serving static frontend build from: ${activeDistDir}`);

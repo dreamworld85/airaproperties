@@ -1634,4 +1634,15 @@ router.delete("/service-enquiries/:id", async (req, res) => {
   }
 });
 
+// POST /api/admin/sync-live-frontend (Admin Protected)
+router.post("/sync-live-frontend", checkAdminSession, async (req, res) => {
+  try {
+    const { syncFrontendToLive } = await import("../index.js");
+    const result = syncFrontendToLive();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
