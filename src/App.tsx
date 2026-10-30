@@ -202,6 +202,9 @@ export default function App() {
           <Route path="subscriptions" element={<Subscriptions />} />
         </Route>
 
+        {/* Independent Agency Public Page by slug (e.g. /wayanad-properties) */}
+        <Route path="/:slug" element={<AgencyProfile />} />
+
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
       </AddPropertyProvider>

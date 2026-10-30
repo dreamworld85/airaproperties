@@ -34,6 +34,7 @@ export interface ApiUser {
   agencyLogoUrl?: string | null;
   agencyAddress?: string | null;
   agencyDistrict?: string | null;
+  agencyBannerUrl?: string | null;
   hasAccess?: boolean;
   hasTrial?: boolean;
   remainingDays?: number;
@@ -534,9 +535,20 @@ export const api = {
     return handle<ApiDashboardStats>(res);
   },
 
-  async fetchPublicProfile(userId: number) {
-    const res = await fetch(`${API_URL}/api/users/${userId}/profile`);
+  async fetchPublicProfile(userIdOrSlug: number | string) {
+    const res = await fetch(`${API_URL}/api/users/${userIdOrSlug}/profile`);
     return handle<ApiPublicProfile>(res);
+  },
+
+  async uploadAgencyBanner(file: File) {
+    const formData = new FormData();
+    formData.append("banner", file);
+    const res = await fetch(`${API_URL}/api/users/me/banner`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: formData,
+    });
+    return handle<ApiUser>(res);
   },
 
   async createProperty(formData: FormData) {

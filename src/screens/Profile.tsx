@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Home, 
@@ -12,13 +12,24 @@ import {
   ShieldAlert, 
   Coins, 
   Layers, 
-  PlusCircle 
+  PlusCircle,
+  Camera,
+  Image as ImageIcon,
+  ExternalLink,
+  LayoutGrid,
+  List,
+  UploadCloud,
+  Check,
+  Building2
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
-import { api, mediaUrl } from "@/lib/api";
+import { api, mediaUrl, ApiProperty } from "@/lib/api";
 import BottomNav from "@/components/BottomNav";
 import DesktopHeader from "@/components/DesktopHeader";
 import DesktopFooter from "@/components/DesktopFooter";
+import PropertyCard from "@/components/PropertyCard";
+import PropertyListCard from "@/components/PropertyListCard";
+import { toSlug } from "./AgencyProfile";
 
 const menuItems = [
   { icon: Home, label: "My Properties", path: "/my-properties", desc: "Manage your active, draft & sold listings" },
@@ -36,6 +47,15 @@ export default function Profile() {
   const [switchStatus, setSwitchStatus] = useState<string | null>(null);
   const [requesting, setRequesting] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1000);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [bannerSuccess, setBannerSuccess] = useState(false);
+  const [myProperties, setMyProperties] = useState<ApiProperty[]>([]);
+  const [propertiesLoading, setPropertiesLoading] = useState(false);
+  const [agencyViewMode, setAgencyViewMode] = useState<"grid" | "list">("grid");
+
+  const isAgency = user?.role?.toLowerCase() === "agency";
+  const agencySlug = user?.name ? toSlug(user.name) : "";
 
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 1000);
@@ -52,6 +72,17 @@ export default function Profile() {
         .catch((err) => console.error("Failed to refresh user profile:", err));
     }
   }, [token]);
+
+  // If agency, fetch all properties uploaded by this agency
+  useEffect(() => {
+    if (isAgency && user?.id) {
+      setPropertiesLoading(true);
+      api.fetchProperties({ ownerId: String(user.id) })
+        .then((props) => setMyProperties(props || []))
+        .catch((err) => console.error("Failed to fetch agency properties:", err))
+        .finally(() => setPropertiesLoading(false));
+    }
+  }, [isAgency, user?.id]);
 
   const [requestedRole, setRequestedRole] = useState<"Broker" | "Agency">("Broker");
 
@@ -85,6 +116,25 @@ export default function Profile() {
       alert(err.message || "Failed to submit upgrade request");
     } finally {
       setRequesting(false);
+    }
+  };
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingBanner(true);
+    try {
+      const updatedUser = await api.uploadAgencyBanner(file);
+      if (token && updatedUser) {
+        login(token, updatedUser);
+      }
+      setBannerSuccess(true);
+      setTimeout(() => setBannerSuccess(false), 3000);
+    } catch (err: any) {
+      alert(err.message || "Failed to upload agency banner");
+    } finally {
+      setUploadingBanner(false);
+      if (bannerInputRef.current) bannerInputRef.current.value = "";
     }
   };
 
@@ -125,6 +175,14 @@ export default function Profile() {
                 {user?.location && (
                   <p className="text-xs text-slate/70">📍 {user.location}</p>
                 )}
+                {isAgency && agencySlug && (
+                  <button
+                    onClick={() => navigate(`/${agencySlug}`)}
+                    className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 mt-1 cursor-pointer w-fit"
+                  >
+                    <ExternalLink size={13} /> View Public Agency Page ({window.location.origin}/{agencySlug})
+                  </button>
+                )}
               </div>
             </div>
 
@@ -146,6 +204,78 @@ export default function Profile() {
               </button>
             </div>
           </div>
+
+          {/* AGENCY BANNER MANAGEMENT (If Agency Role) */}
+          {isAgency && (
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-emerald-600/15 shadow-sm flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700">
+                      <ImageIcon size={18} />
+                    </span>
+                    <h2 className="text-base font-bold text-gray-900 font-display">Agency Banner Setting</h2>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Upload your custom agency banner. This banner will be displayed on your independent agency page.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <input
+                    ref={bannerInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleBannerUpload}
+                  />
+                  <button
+                    disabled={uploadingBanner}
+                    onClick={() => bannerInputRef.current?.click()}
+                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    <UploadCloud size={15} />
+                    <span>{uploadingBanner ? "Uploading..." : (user?.agencyBannerUrl ? "Change Banner" : "Add Banner")}</span>
+                  </button>
+
+                  {agencySlug && (
+                    <button
+                      onClick={() => navigate(`/${agencySlug}`)}
+                      className="px-4 py-2.5 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <ExternalLink size={14} />
+                      <span>Preview Page</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {bannerSuccess && (
+                <div className="p-3 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-xl flex items-center gap-2 border border-emerald-200">
+                  <Check size={16} /> Agency banner updated successfully!
+                </div>
+              )}
+
+              {/* Banner Live Preview */}
+              <div className="relative w-full h-44 sm:h-52 rounded-2xl overflow-hidden bg-gray-100 border border-gray-200 shadow-inner group">
+                {user?.agencyBannerUrl ? (
+                  <img
+                    src={mediaUrl(user.agencyBannerUrl)}
+                    alt="Agency Banner"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-r from-slate-100 to-emerald-50/40 text-gray-500">
+                    <ImageIcon size={32} className="text-gray-400" />
+                    <p className="text-xs font-medium">No custom banner uploaded yet. Click "Add Banner" above.</p>
+                  </div>
+                )}
+                <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-xs text-white text-[11px] font-semibold px-3 py-1 rounded-lg">
+                  Public URL: {window.location.origin}/{agencySlug || "your-agency-name"}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Upgrade request section for Locked Roles */}
           {user?.role && user?.role.toLowerCase() !== "user" && user?.role.toLowerCase() !== "agency" && (
@@ -267,6 +397,76 @@ export default function Profile() {
               );
             })}
           </div>
+
+          {/* ALL PROPERTIES UPLOADED BY AGENCY (Grid & List View) */}
+          {isAgency && (
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200/80 shadow-sm flex flex-col gap-6 mt-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+                <div>
+                  <h2 className="font-display font-bold text-xl text-gray-900 tracking-tight">
+                    All Properties Uploaded by {user?.name || "Agency"} ({myProperties.length})
+                  </h2>
+                  <p className="text-xs text-gray-500 font-medium mt-0.5">
+                    View all your listings in grid or list view format
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center bg-gray-100 p-1 rounded-xl">
+                    <button
+                      onClick={() => setAgencyViewMode("grid")}
+                      className={`p-2 rounded-lg transition cursor-pointer ${
+                        agencyViewMode === "grid"
+                          ? "bg-white text-emerald-600 shadow-xs font-bold"
+                          : "text-gray-500 hover:text-gray-800"
+                      }`}
+                      title="Grid View"
+                    >
+                      <LayoutGrid className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setAgencyViewMode("list")}
+                      className={`p-2 rounded-lg transition cursor-pointer ${
+                        agencyViewMode === "list"
+                          ? "bg-white text-emerald-600 shadow-xs font-bold"
+                          : "text-gray-500 hover:text-gray-800"
+                      }`}
+                      title="List View"
+                    >
+                      <List className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => navigate("/add-property")}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <PlusCircle size={14} /> Add Property
+                  </button>
+                </div>
+              </div>
+
+              {propertiesLoading ? (
+                <div className="p-8 text-center text-xs font-semibold text-gray-400">Loading listings...</div>
+              ) : myProperties.length === 0 ? (
+                <div className="text-center py-12 text-gray-400 text-xs font-medium">
+                  No properties uploaded yet. Click "Add Property" to create your first listing!
+                </div>
+              ) : agencyViewMode === "grid" ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {myProperties.map((p) => (
+                    <PropertyCard key={p.id} property={p} />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {myProperties.map((p) => (
+                    <PropertyListCard key={p.id} property={p} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </main>
 
         <DesktopFooter />
@@ -276,7 +476,7 @@ export default function Profile() {
 
   // MOBILE LAYOUT (< 1000px)
   return (
-    <div className="min-h-screen pb-28 bg-cream">
+    <div className="min-h-screen pb-28 bg-cream text-left">
       <header className="px-4 pt-6 pb-5 flex items-center gap-4 bg-white border-b border-charcoal/5">
         {user?.avatarUrl ? (
           <img 
@@ -289,10 +489,10 @@ export default function Profile() {
             {(user?.name || "U").charAt(0)}
           </div>
         )}
-        <div>
-          <p className="font-display font-bold text-lg text-ink">{user?.name || "Your Name"}</p>
-          <p className="text-xs text-slate mt-0.5">{user?.phone || user?.email}</p>
-          <div className="flex gap-2 items-center mt-1.5">
+        <div className="flex-1 min-w-0">
+          <p className="font-display font-bold text-lg text-ink truncate">{user?.name || "Your Name"}</p>
+          <p className="text-xs text-slate mt-0.5 truncate">{user?.phone || user?.email}</p>
+          <div className="flex gap-2 items-center mt-1.5 flex-wrap">
             <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-600/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
               {user?.role?.toLowerCase() === "user" ? "Buyer" : user?.role || "Owner"}
             </span>
@@ -302,8 +502,63 @@ export default function Profile() {
               </span>
             )}
           </div>
+          {isAgency && agencySlug && (
+            <button
+              onClick={() => navigate(`/${agencySlug}`)}
+              className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:underline mt-1.5 cursor-pointer"
+            >
+              <ExternalLink size={12} /> View Agency Page (/{agencySlug})
+            </button>
+          )}
         </div>
       </header>
+
+      {/* AGENCY BANNER OPTION (Mobile) */}
+      {isAgency && (
+        <div className="mx-4 mt-4 bg-white rounded-3xl p-4 border border-emerald-600/15 shadow-sm flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ImageIcon size={16} className="text-emerald-600" />
+              <span className="font-display font-bold text-sm text-ink">Agency Banner</span>
+            </div>
+            <input
+              ref={bannerInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleBannerUpload}
+            />
+            <button
+              disabled={uploadingBanner}
+              onClick={() => bannerInputRef.current?.click()}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-1"
+            >
+              <UploadCloud size={13} />
+              <span>{uploadingBanner ? "Uploading..." : (user?.agencyBannerUrl ? "Change Banner" : "Add Banner")}</span>
+            </button>
+          </div>
+
+          {bannerSuccess && (
+            <div className="p-2.5 bg-emerald-50 text-emerald-700 text-[11px] font-semibold rounded-xl flex items-center gap-1.5 border border-emerald-200">
+              <Check size={14} /> Banner updated successfully!
+            </div>
+          )}
+
+          <div className="relative w-full h-28 rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
+            {user?.agencyBannerUrl ? (
+              <img
+                src={mediaUrl(user.agencyBannerUrl)}
+                alt="Banner"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-[11px] text-gray-400">
+                Tap "Add Banner" to upload
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Upgrade request section for Locked Roles */}
       {user?.role && user?.role.toLowerCase() !== "user" && user?.role.toLowerCase() !== "agency" && (
@@ -389,6 +644,7 @@ export default function Profile() {
         </button>
       </div>
 
+      {/* Menu list */}
       <div className="px-4 mt-5 flex flex-col gap-2">
         {menuItems.map(({ icon: Icon, label, path }) => {
           const isSubscriptionItem = label === "Subscription" || label === "Credits & Subscription";
@@ -423,6 +679,53 @@ export default function Profile() {
           <LogOut size={18} /> Logout
         </button>
       </div>
+
+      {/* ALL PROPERTIES UPLOADED BY AGENCY (Mobile Grid / List View) */}
+      {isAgency && (
+        <div className="mx-4 mt-6 bg-white rounded-3xl p-4 border border-charcoal/5 shadow-sm flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-display font-bold text-sm text-ink">
+                My Properties ({myProperties.length})
+              </h3>
+              <p className="text-[10px] text-slate">Uploaded by your agency</p>
+            </div>
+
+            <div className="flex items-center bg-gray-100 p-0.5 rounded-lg">
+              <button
+                onClick={() => setAgencyViewMode("grid")}
+                className={`p-1.5 rounded-md transition ${agencyViewMode === "grid" ? "bg-white text-emerald-600 shadow-xs" : "text-gray-500"}`}
+              >
+                <LayoutGrid size={14} />
+              </button>
+              <button
+                onClick={() => setAgencyViewMode("list")}
+                className={`p-1.5 rounded-md transition ${agencyViewMode === "list" ? "bg-white text-emerald-600 shadow-xs" : "text-gray-500"}`}
+              >
+                <List size={14} />
+              </button>
+            </div>
+          </div>
+
+          {propertiesLoading ? (
+            <div className="py-6 text-center text-xs text-gray-400">Loading properties...</div>
+          ) : myProperties.length === 0 ? (
+            <div className="py-6 text-center text-xs text-gray-400">No properties uploaded yet.</div>
+          ) : agencyViewMode === "grid" ? (
+            <div className="grid grid-cols-2 gap-2.5">
+              {myProperties.map((p) => (
+                <PropertyCard key={p.id} property={p} />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {myProperties.map((p) => (
+                <PropertyListCard key={p.id} property={p} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <BottomNav />
     </div>

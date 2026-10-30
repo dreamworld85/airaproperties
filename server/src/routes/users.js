@@ -45,6 +45,7 @@ function toPublicUser(row) {
     agencyLogoUrl: row.agency_logo_url,
     agencyAddress: row.agency_address,
     agencyDistrict: row.agency_district,
+    agencyBannerUrl: row.agency_banner_url || null,
     enquiryCreditsLeft: row.enquiry_credits_left !== null && row.enquiry_credits_left !== undefined ? Number(row.enquiry_credits_left) : 3,
     listingSlotsLeft: row.listing_slots_left !== null && row.listing_slots_left !== undefined ? Number(row.listing_slots_left) : 2,
   };
@@ -184,6 +185,33 @@ router.post("/me/avatar", requireAuth, upload.single("avatar"), async (req, res)
   }
 });
 
+// POST /api/users/me/banner — Upload and update agency banner image
+router.post("/me/banner", requireAuth, upload.single("banner"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+    const bannerUrl = `/uploads/${req.file.filename}`;
+    await pool.query("UPDATE users SET agency_banner_url = ? WHERE id = ?", [bannerUrl, req.userId]);
+
+    const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [req.userId]);
+    const accessCheck = await checkUserAccess(req.userId);
+    const [countRows] = await pool.query("SELECT COUNT(*) AS count FROM properties WHERE owner_id = ?", [req.userId]);
+    res.json({
+      ...toPublicUser(rows[0]),
+      hasAccess: accessCheck.hasAccess,
+      hasTrial: accessCheck.hasTrial,
+      remainingDays: accessCheck.remainingDays,
+      isSubscribed: accessCheck.isSubscribed,
+      inquiryCount: accessCheck.inquiryCount,
+      propertiesCount: countRows[0].count,
+    });
+  } catch (err) {
+    console.error("Banner upload failed:", err);
+    res.status(500).json({ error: "Failed to upload banner" });
+  }
+});
+
 // GET /api/users/me/stats — dashboard totals + recent visitors, across all of the
 // user's properties. Backs the Visitors & Enquiries screen.
 router.get("/me/stats", requireAuth, async (req, res) => {
@@ -294,30 +322,96 @@ router.get("/me/sent-enquiries", requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/users/:id/profile — public profile for Agency/Broker/Owner cards.
-// "Years on Kerala Realty" is derived from account age rather than self-reported,
-// since that's the only trustworthy signal we actually have.
-router.get("/:id/profile", async (req, res) => {
+// Helper to clean slug
+function toSlug(str) {
+  return (str || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
+}
+
+// GET /api/users/agency-by-slug/:slug — get agency public profile by agency name slug
+router.get("/agency-by-slug/:slug", async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [req.params.id]);
-    if (rows.length === 0) return res.status(404).json({ error: "User not found" });
+    const targetSlug = toSlug(req.params.slug);
+    if (!targetSlug) return res.status(404).json({ error: "Agency not found" });
+
+    // Fetch agencies and find matching slug
+    const [rows] = await pool.query(
+      "SELECT * FROM users WHERE LOWER(role) = 'agency' OR name IS NOT NULL"
+    );
+
+    let match = rows.find((r) => toSlug(r.name) === targetSlug);
+    // If not direct match, check if targetSlug is a numeric ID
+    if (!match && /^\d+$/.test(req.params.slug)) {
+      match = rows.find((r) => r.id === parseInt(req.params.slug, 10));
+    }
+
+    if (!match) return res.status(404).json({ error: "Agency not found" });
 
     const [[listingsRow]] = await pool.query(
-      "SELECT COUNT(*) AS totalListings FROM properties WHERE owner_id = ? AND status = 'Active'",
-      [req.params.id]
+      "SELECT COUNT(*) AS totalListings FROM properties WHERE owner_id = ? AND status IN ('Active', 'Sold')",
+      [match.id]
     );
     const [[clientsRow]] = await pool.query(
       `SELECT COUNT(DISTINCT e.visitor_id) AS distinctEnquirers
        FROM enquiries e JOIN properties p ON p.id = e.property_id
        WHERE p.owner_id = ?`,
-      [req.params.id]
+      [match.id]
     );
 
-    const joined = new Date(rows[0].created_at);
+    const joined = new Date(match.created_at);
     const yearsActive = Math.max(0, (Date.now() - joined.getTime()) / (365 * 24 * 60 * 60 * 1000));
 
     res.json({
-      ...toPublicUser(rows[0]),
+      ...toPublicUser(match),
+      totalListings: listingsRow.totalListings,
+      distinctEnquirers: clientsRow.distinctEnquirers,
+      yearsActive: Math.round(yearsActive * 10) / 10,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch agency by slug" });
+  }
+});
+
+// GET /api/users/:id/profile — public profile for Agency/Broker/Owner cards.
+// "Years on Kerala Realty" is derived from account age rather than self-reported,
+// since that's the only trustworthy signal we actually have.
+router.get("/:id/profile", async (req, res) => {
+  try {
+    let userRow = null;
+    const isNumeric = /^\d+$/.test(req.params.id);
+
+    if (isNumeric) {
+      const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [req.params.id]);
+      if (rows.length > 0) userRow = rows[0];
+    }
+
+    if (!userRow) {
+      const targetSlug = toSlug(req.params.id);
+      const [allUsers] = await pool.query("SELECT * FROM users WHERE name IS NOT NULL");
+      userRow = allUsers.find((r) => toSlug(r.name) === targetSlug);
+    }
+
+    if (!userRow) return res.status(404).json({ error: "User not found" });
+
+    const [[listingsRow]] = await pool.query(
+      "SELECT COUNT(*) AS totalListings FROM properties WHERE owner_id = ? AND status IN ('Active', 'Sold')",
+      [userRow.id]
+    );
+    const [[clientsRow]] = await pool.query(
+      `SELECT COUNT(DISTINCT e.visitor_id) AS distinctEnquirers
+       FROM enquiries e JOIN properties p ON p.id = e.property_id
+       WHERE p.owner_id = ?`,
+      [userRow.id]
+    );
+
+    const joined = new Date(userRow.created_at);
+    const yearsActive = Math.max(0, (Date.now() - joined.getTime()) / (365 * 24 * 60 * 60 * 1000));
+
+    res.json({
+      ...toPublicUser(userRow),
       totalListings: listingsRow.totalListings,
       distinctEnquirers: clientsRow.distinctEnquirers,
       yearsActive: Math.round(yearsActive * 10) / 10,

@@ -583,6 +583,11 @@ async function checkDbMigration() {
       await pool.query("ALTER TABLE users ADD COLUMN whatsapp_number VARCHAR(50) NULL");
     }
 
+    if (!userColNames.includes("agency_banner_url")) {
+      console.log("Adding agency_banner_url column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN agency_banner_url VARCHAR(500) NULL");
+    }
+
     // Modify subscription_plans table schema
     const [planCols] = await pool.query("SHOW COLUMNS FROM subscription_plans");
     const planColNames = planCols.map(c => c.Field);
