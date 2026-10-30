@@ -253,7 +253,7 @@ export default function Login() {
     const applyDesktopBg = () => {
       if (typeof window !== "undefined" && window.innerWidth >= 1000) {
         document.body.style.backgroundColor = "#FAF8F3";
-        document.body.style.backgroundImage = "url('/images/loginbg-1000.svg')";
+        document.body.style.backgroundImage = "url('/images/login-background.svg')";
         document.body.style.backgroundRepeat = "repeat-x";
         document.body.style.backgroundPosition = "bottom center";
         document.body.style.backgroundSize = "auto 240px";
@@ -712,7 +712,7 @@ export default function Login() {
         @media (min-width: 1000px) {
           .login-desktop-bg {
             background-color: #FAF8F3;
-            background-image: url('/images/loginbg-1000.svg');
+            background-image: url('/images/login-background.svg');
             background-repeat: repeat-x;
             background-position: bottom center;
             background-size: auto 240px;
