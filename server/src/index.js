@@ -1605,30 +1605,18 @@ export function syncFrontendToLive(targetDir = hostingerFrontendDir) {
     return { synced: false, reason: "activeDistDir or targetDir not found", activeDistDir, targetDirExists: fs.existsSync(targetDir) };
   }
   try {
-    const srcIndex = path.join(activeDistDir, "index.html");
-    const destIndex = path.join(targetDir, "index.html");
-    if (fs.existsSync(srcIndex)) {
-      fs.copyFileSync(srcIndex, destIndex);
-    }
-
-    const srcAssets = path.join(activeDistDir, "assets");
-    const destAssets = path.join(targetDir, "assets");
-    let copiedAssetsCount = 0;
-    if (fs.existsSync(srcAssets)) {
-      if (!fs.existsSync(destAssets)) fs.mkdirSync(destAssets, { recursive: true });
-      const assetFiles = fs.readdirSync(srcAssets);
-      for (const file of assetFiles) {
-        fs.copyFileSync(path.join(srcAssets, file), path.join(destAssets, file));
-        copiedAssetsCount++;
-      }
-    }
-    console.log(`[DEPLOY] Successfully synced frontend build to ${targetDir} (${copiedAssetsCount} assets)`);
-    return { synced: true, copiedAssetsCount };
+    fs.cpSync(activeDistDir, targetDir, { recursive: true, force: true });
+    console.log(`[DEPLOY] Successfully synced full frontend build from ${activeDistDir} to ${targetDir}`);
+    return { synced: true, source: activeDistDir, target: targetDir };
   } catch (err) {
     console.error(`[DEPLOY] Failed syncing frontend build to ${targetDir}:`, err);
     return { synced: false, error: err.message };
   }
 }
+
+app.get("/api/sync-frontend", (_req, res) => {
+  res.json(syncFrontendToLive());
+});
 
 if (fs.existsSync(hostingerFrontendDir)) {
   syncFrontendToLive(hostingerFrontendDir);
