@@ -180,7 +180,7 @@ export default function Profile() {
                     onClick={() => navigate(`/${agencySlug}`)}
                     className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 mt-1 cursor-pointer w-fit"
                   >
-                    <ExternalLink size={13} /> View Public Agency Page ({window.location.origin}/{agencySlug})
+                    <ExternalLink size={13} /> View Public Agency Page
                   </button>
                 )}
               </div>
@@ -507,7 +507,7 @@ export default function Profile() {
               onClick={() => navigate(`/${agencySlug}`)}
               className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:underline mt-1.5 cursor-pointer"
             >
-              <ExternalLink size={12} /> View Agency Page (/{agencySlug})
+              <ExternalLink size={12} /> View Public Agency Page
             </button>
           )}
         </div>

@@ -248,7 +248,7 @@ export default function Settings() {
                   className="px-4 py-2.5 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
                 >
                   <ExternalLink size={14} />
-                  <span>View Public Page</span>
+                  <span>View Public Agency Page</span>
                 </button>
               )}
             </div>
