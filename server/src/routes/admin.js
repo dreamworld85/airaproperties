@@ -371,6 +371,15 @@ router.put("/settings/:key", upload.any(), async (req, res) => {
       }
     }
 
+    if (key.startsWith("custom_")) {
+      try {
+        const { injectCustomCodeIntoIndexHtml } = await import("../index.js");
+        await injectCustomCodeIntoIndexHtml();
+      } catch (injectErr) {
+        console.warn("Could not inject custom code into index.html:", injectErr.message);
+      }
+    }
+
     res.json({ message: "Setting updated successfully.", key, value });
   } catch (err) {
     res.status(500).json({ error: err.message });

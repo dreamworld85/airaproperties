@@ -17,7 +17,7 @@ export function applyCustomCodeSettings(settings: Record<string, string>) {
           document.head.appendChild(metaDesc);
         }
         metaDesc.setAttribute("content", settings.custom_meta_description.trim());
-      } else if (metaDesc) {
+      } else if (metaDesc && metaDesc.hasAttribute("data-injected")) {
         metaDesc.remove();
       }
     }
@@ -32,7 +32,7 @@ export function applyCustomCodeSettings(settings: Record<string, string>) {
           document.head.appendChild(metaKeywords);
         }
         metaKeywords.setAttribute("content", settings.custom_meta_keywords.trim());
-      } else if (metaKeywords) {
+      } else if (metaKeywords && metaKeywords.hasAttribute("data-injected")) {
         metaKeywords.remove();
       }
     }
@@ -40,7 +40,6 @@ export function applyCustomCodeSettings(settings: Record<string, string>) {
     // 3. Google Site Verification
     if (settings.custom_google_verification !== undefined) {
       let val = settings.custom_google_verification.trim();
-      // Handle if admin pasted the whole tag <meta name="google-site-verification" content="..." />
       const match = val.match(/content=["']([^"']+)["']/i);
       if (match) val = match[1];
 
@@ -52,7 +51,7 @@ export function applyCustomCodeSettings(settings: Record<string, string>) {
           document.head.appendChild(metaVerif);
         }
         metaVerif.setAttribute("content", val);
-      } else if (metaVerif) {
+      } else if (metaVerif && metaVerif.hasAttribute("data-injected")) {
         metaVerif.remove();
       }
     }
@@ -66,60 +65,69 @@ export function applyCustomCodeSettings(settings: Record<string, string>) {
         document.head.appendChild(styleEl);
       }
       styleEl.textContent = settings.custom_css;
-    } else if (styleEl) {
+    } else if (styleEl && styleEl.hasAttribute("data-injected")) {
       styleEl.remove();
     }
 
     // 5. Custom Header Code (Scripts / Meta / Link)
     document.querySelectorAll("[data-injected='aira-custom-head']").forEach((el) => el.remove());
     if (settings.custom_header_code && settings.custom_header_code.trim()) {
-      const parser = new DOMParser();
-      const parsedDoc = parser.parseFromString(settings.custom_header_code, "text/html");
-      const nodes = Array.from(parsedDoc.head.childNodes).concat(Array.from(parsedDoc.body.childNodes));
+      const snippet = settings.custom_header_code.trim();
+      const range = document.createRange();
+      range.selectNode(document.head);
+      const fragment = range.createContextualFragment(snippet);
 
-      for (const node of nodes) {
-        if (node.nodeType === Node.ELEMENT_NODE) {
-          const el = node as HTMLElement;
-          if (el.tagName.toLowerCase() === "script") {
-            const script = document.createElement("script");
-            Array.from(el.attributes).forEach((attr) => {
-              script.setAttribute(attr.name, attr.value);
-            });
-            script.text = el.textContent || "";
-            script.setAttribute("data-injected", "aira-custom-head");
-            document.head.appendChild(script);
-          } else {
-            const clone = el.cloneNode(true) as HTMLElement;
-            clone.setAttribute("data-injected", "aira-custom-head");
-            document.head.appendChild(clone);
+      const elements = Array.from(fragment.children);
+      for (const el of elements) {
+        if (el.tagName.toLowerCase() === "script") {
+          const scriptEl = el as HTMLScriptElement;
+          const src = scriptEl.getAttribute("src");
+          // If already rendered statically by server in head, do not duplicate
+          if (src && document.querySelector(`script[src="${src}"]:not([data-injected])`)) {
+            continue;
           }
+          const newScript = document.createElement("script");
+          Array.from(scriptEl.attributes).forEach((attr) => {
+            newScript.setAttribute(attr.name, attr.value);
+          });
+          newScript.text = scriptEl.textContent || "";
+          newScript.setAttribute("data-injected", "aira-custom-head");
+          document.head.appendChild(newScript);
+        } else {
+          const clone = el.cloneNode(true) as HTMLElement;
+          clone.setAttribute("data-injected", "aira-custom-head");
+          document.head.appendChild(clone);
         }
       }
     }
 
-    // 6. Custom Footer Code (Scripts / Elements before </body>)
+    // 6. Custom Footer Code (Scripts before </body>)
     document.querySelectorAll("[data-injected='aira-custom-footer']").forEach((el) => el.remove());
     if (settings.custom_footer_code && settings.custom_footer_code.trim()) {
-      const parser = new DOMParser();
-      const parsedDoc = parser.parseFromString(settings.custom_footer_code, "text/html");
-      const nodes = Array.from(parsedDoc.head.childNodes).concat(Array.from(parsedDoc.body.childNodes));
+      const snippet = settings.custom_footer_code.trim();
+      const range = document.createRange();
+      range.selectNode(document.body);
+      const fragment = range.createContextualFragment(snippet);
 
-      for (const node of nodes) {
-        if (node.nodeType === Node.ELEMENT_NODE) {
-          const el = node as HTMLElement;
-          if (el.tagName.toLowerCase() === "script") {
-            const script = document.createElement("script");
-            Array.from(el.attributes).forEach((attr) => {
-              script.setAttribute(attr.name, attr.value);
-            });
-            script.text = el.textContent || "";
-            script.setAttribute("data-injected", "aira-custom-footer");
-            document.body.appendChild(script);
-          } else {
-            const clone = el.cloneNode(true) as HTMLElement;
-            clone.setAttribute("data-injected", "aira-custom-footer");
-            document.body.appendChild(clone);
+      const elements = Array.from(fragment.children);
+      for (const el of elements) {
+        if (el.tagName.toLowerCase() === "script") {
+          const scriptEl = el as HTMLScriptElement;
+          const src = scriptEl.getAttribute("src");
+          if (src && document.querySelector(`script[src="${src}"]:not([data-injected])`)) {
+            continue;
           }
+          const newScript = document.createElement("script");
+          Array.from(scriptEl.attributes).forEach((attr) => {
+            newScript.setAttribute(attr.name, attr.value);
+          });
+          newScript.text = scriptEl.textContent || "";
+          newScript.setAttribute("data-injected", "aira-custom-footer");
+          document.body.appendChild(newScript);
+        } else {
+          const clone = el.cloneNode(true) as HTMLElement;
+          clone.setAttribute("data-injected", "aira-custom-footer");
+          document.body.appendChild(clone);
         }
       }
     }

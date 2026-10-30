@@ -1600,13 +1600,100 @@ export const activeDistDir = fs.existsSync(rootDistDir) ? rootDistDir : (fs.exis
 
 // Auto-sync frontend build to main domain document root on Hostinger
 export const hostingerFrontendDir = "/home/u859202671/domains/airaproperties.in/public_html";
-export function syncFrontendToLive(targetDir = hostingerFrontendDir) {
+
+export async function injectCustomCodeIntoIndexHtml(targetDir = hostingerFrontendDir) {
+  try {
+    const [rows] = await pool.query(
+      "SELECT `key`, `value` FROM settings WHERE `key` LIKE 'custom_%'"
+    );
+    const settings = {};
+    for (const r of rows) {
+      settings[r.key] = r.value;
+    }
+
+    let headCode = "";
+    if (settings.custom_google_verification && settings.custom_google_verification.trim()) {
+      let val = settings.custom_google_verification.trim();
+      const match = val.match(/content=["']([^"']+)["']/i);
+      if (match) val = match[1];
+      headCode += `    <meta name="google-site-verification" content="${val}" />\n`;
+    }
+    if (settings.custom_meta_description && settings.custom_meta_description.trim()) {
+      headCode += `    <meta name="description" content="${settings.custom_meta_description.trim().replace(/"/g, '&quot;')}" />\n`;
+    }
+    if (settings.custom_meta_keywords && settings.custom_meta_keywords.trim()) {
+      headCode += `    <meta name="keywords" content="${settings.custom_meta_keywords.trim().replace(/"/g, '&quot;')}" />\n`;
+    }
+    if (settings.custom_css && settings.custom_css.trim()) {
+      headCode += `    <style id="aira-custom-styles">\n${settings.custom_css}\n    </style>\n`;
+    }
+    if (settings.custom_header_code && settings.custom_header_code.trim()) {
+      headCode += `    ${settings.custom_header_code.trim()}\n`;
+    }
+
+    let footerCode = "";
+    if (settings.custom_footer_code && settings.custom_footer_code.trim()) {
+      footerCode += `    ${settings.custom_footer_code.trim()}\n`;
+    }
+
+    const headBlock = headCode
+      ? `<!-- BEGIN CUSTOM CODE: HEAD -->\n${headCode}    <!-- END CUSTOM CODE: HEAD -->`
+      : "";
+    const footerBlock = footerCode
+      ? `<!-- BEGIN CUSTOM CODE: FOOTER -->\n${footerCode}    <!-- END CUSTOM CODE: FOOTER -->`
+      : "";
+
+    const candidateFiles = [
+      targetDir ? path.join(targetDir, "index.html") : null,
+      activeDistDir ? path.join(activeDistDir, "index.html") : null,
+      path.resolve("dist/index.html"),
+      path.resolve("../dist/index.html")
+    ].filter(Boolean);
+
+    let updatedCount = 0;
+    for (const htmlPath of candidateFiles) {
+      if (!fs.existsSync(htmlPath)) continue;
+      let html = fs.readFileSync(htmlPath, "utf8");
+
+      // Replace or insert HEAD block
+      if (html.includes("<!-- BEGIN CUSTOM CODE: HEAD -->")) {
+        html = html.replace(
+          /<!-- BEGIN CUSTOM CODE: HEAD -->[\s\S]*?<!-- END CUSTOM CODE: HEAD -->/,
+          headBlock || "<!-- BEGIN CUSTOM CODE: HEAD -->\n    <!-- END CUSTOM CODE: HEAD -->"
+        );
+      } else if (headBlock && html.includes("</head>")) {
+        html = html.replace("</head>", `${headBlock}\n  </head>`);
+      }
+
+      // Replace or insert FOOTER block
+      if (html.includes("<!-- BEGIN CUSTOM CODE: FOOTER -->")) {
+        html = html.replace(
+          /<!-- BEGIN CUSTOM CODE: FOOTER -->[\s\S]*?<!-- END CUSTOM CODE: FOOTER -->/,
+          footerBlock || "<!-- BEGIN CUSTOM CODE: FOOTER -->\n    <!-- END CUSTOM CODE: FOOTER -->"
+        );
+      } else if (footerBlock && html.includes("</body>")) {
+        html = html.replace("</body>", `${footerBlock}\n  </body>`);
+      }
+
+      fs.writeFileSync(htmlPath, html, "utf8");
+      updatedCount++;
+      console.log(`[CUSTOM CODE] Injected custom code into: ${htmlPath}`);
+    }
+    return { success: true, updatedCount };
+  } catch (err) {
+    console.error("[CUSTOM CODE] Failed to inject custom code into index.html:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function syncFrontendToLive(targetDir = hostingerFrontendDir) {
   if (!activeDistDir || !fs.existsSync(targetDir)) {
     return { synced: false, reason: "activeDistDir or targetDir not found", activeDistDir, targetDirExists: fs.existsSync(targetDir) };
   }
   try {
     fs.cpSync(activeDistDir, targetDir, { recursive: true, force: true });
     console.log(`[DEPLOY] Successfully synced full frontend build from ${activeDistDir} to ${targetDir}`);
+    await injectCustomCodeIntoIndexHtml(targetDir);
     return { synced: true, source: activeDistDir, target: targetDir };
   } catch (err) {
     console.error(`[DEPLOY] Failed syncing frontend build to ${targetDir}:`, err);
@@ -1614,12 +1701,20 @@ export function syncFrontendToLive(targetDir = hostingerFrontendDir) {
   }
 }
 
-app.get("/api/sync-frontend", (_req, res) => {
-  res.json(syncFrontendToLive());
+app.get("/api/sync-frontend", async (_req, res) => {
+  const result = await syncFrontendToLive();
+  res.json(result);
+});
+
+app.get("/api/sync-custom-code", async (_req, res) => {
+  const result = await injectCustomCodeIntoIndexHtml();
+  res.json(result);
 });
 
 if (fs.existsSync(hostingerFrontendDir)) {
   syncFrontendToLive(hostingerFrontendDir);
+} else {
+  injectCustomCodeIntoIndexHtml();
 }
 
 if (activeDistDir) {
