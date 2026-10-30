@@ -212,11 +212,8 @@ export default function AgencyProfile() {
               }}
             />
 
-            {/* Dark & Glass Overlay Gradient */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-black/30 backdrop-blur-[1px]" />
-
             {/* Content Over Banner */}
-            <div className="relative z-10 p-6 sm:p-8 lg:p-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6 text-white">
+            <div className="relative z-10 p-6 sm:p-8 lg:p-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6 text-white drop-shadow-md">
               {/* Agency Logo & Core Info */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
                 <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-white/95 border-2 border-white/80 shadow-xl flex items-center justify-center shrink-0">
@@ -366,9 +363,8 @@ export default function AgencyProfile() {
               (e.target as HTMLImageElement).src = DEFAULT_AGENCY_BANNER;
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-black/25" />
 
-          <div className="relative z-10 p-4 flex flex-col gap-3 text-white">
+          <div className="relative z-10 p-4 flex flex-col gap-3 text-white drop-shadow-md">
             <div className="flex items-center gap-3">
               <div className="w-16 h-16 rounded-xl overflow-hidden bg-white/95 border border-white/60 shadow-md flex items-center justify-center shrink-0">
                 {logoImg ? (

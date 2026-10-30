@@ -280,11 +280,8 @@ export default function Settings() {
               }}
             />
 
-            {/* Subtle overlay gradient */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
-
             {/* Overlaid Banner Badge and Details */}
-            <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 z-10 flex items-center gap-3.5 text-white">
+            <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 z-10 flex items-center gap-3.5 text-white drop-shadow-md">
               <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden bg-white/95 border-2 border-white/80 shadow-md flex items-center justify-center shrink-0">
                 {user?.agencyLogoUrl ? (
                   <img src={mediaUrl(user.agencyLogoUrl)} alt={user.name} className="w-full h-full object-cover" />
