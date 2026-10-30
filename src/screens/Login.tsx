@@ -253,7 +253,7 @@ export default function Login() {
     const applyDesktopBg = () => {
       if (typeof window !== "undefined" && window.innerWidth >= 1000) {
         document.body.style.backgroundColor = "#FAF8F3";
-        document.body.style.backgroundImage = "url('/images/login-background.svg')";
+        document.body.style.backgroundImage = "";
         document.body.style.backgroundRepeat = "repeat-x";
         document.body.style.backgroundPosition = "bottom center";
         document.body.style.backgroundSize = "auto 240px";
@@ -709,13 +709,23 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-[#FAF8F3] login-desktop-bg flex items-center justify-center p-0 select-none overflow-x-hidden relative">
       <style>{`
+        @keyframes scrollLoginBg {
+          0% {
+            background-position: 0 bottom;
+          }
+          100% {
+            background-position: 2275.2px bottom;
+          }
+        }
         @media (min-width: 1000px) {
           .login-desktop-bg {
             background-color: #FAF8F3;
             background-image: url('/images/login-background.svg');
             background-repeat: repeat-x;
-            background-position: bottom center;
-            background-size: auto 240px;
+            background-position: 0 bottom;
+            background-size: 2275.2px 240px;
+            animation: scrollLoginBg 50s linear infinite;
+            will-change: background-position;
           }
         }
       `}</style>
