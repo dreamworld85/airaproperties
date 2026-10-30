@@ -29,6 +29,41 @@ export function toSlug(str: string): string {
     .replace(/(^-|-$)+/g, "");
 }
 
+export function cleanAgencyAddress(
+  rawAddr?: string | null,
+  agencyName?: string | null,
+  district?: string | null
+): string {
+  if (!rawAddr || !rawAddr.trim()) {
+    return district?.trim() || "Kerala, India";
+  }
+
+  let addr = rawAddr.trim();
+
+  // Strip agency name or close match from beginning of address
+  if (agencyName) {
+    const normName = agencyName.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const parts = addr.split(",");
+    if (parts.length > 1) {
+      const normFirst = parts[0].toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (
+        normFirst &&
+        normName &&
+        (normFirst === normName ||
+          normName.includes(normFirst) ||
+          normFirst.includes(normName))
+      ) {
+        addr = parts.slice(1).join(",").trim();
+      }
+    }
+  }
+
+  // Remove leading commas, dashes, dots, spaces
+  addr = addr.replace(/^[\s,.-]+/, "").trim();
+
+  return addr || district?.trim() || "Kerala, India";
+}
+
 const DEFAULT_AGENCY_BANNER =
   "https://images.unsplash.com/photo-1582407947304-fd86f028f716?w=1600&auto=format&fit=crop&q=80";
 
@@ -122,8 +157,11 @@ export default function AgencyProfile() {
     ? mediaUrl(profile.avatarUrl)
     : null;
 
-  const agencyAddressText = profile.agencyAddress || profile.location || "Kerala, India";
-  const agencyDistrictText = profile.agencyDistrict || profile.location || "";
+  const agencyAddressText = cleanAgencyAddress(
+    profile.agencyAddress || profile.location,
+    profile.name,
+    profile.agencyDistrict || profile.location
+  );
   const isOwnerAgency = user && user.id === profile.id;
 
   // DESKTOP LAYOUT (>= 1000px)
@@ -209,13 +247,10 @@ export default function AgencyProfile() {
                     {profile.name}
                   </h1>
 
-                  {/* Over Banner: Address Details */}
+                  {/* Over Banner: Address Details (Only clean address without duplicate agency name) */}
                   <p className="text-xs sm:text-sm text-white/90 flex items-center gap-1.5 font-medium drop-shadow-sm">
                     <MapPin size={15} className="text-emerald-400 shrink-0" />
                     <span>{agencyAddressText}</span>
-                    {agencyDistrictText && agencyDistrictText !== agencyAddressText && (
-                      <span className="text-white/60">({agencyDistrictText})</span>
-                    )}
                   </p>
                 </div>
               </div>

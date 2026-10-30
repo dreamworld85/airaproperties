@@ -24,7 +24,7 @@ import DesktopFooter from "@/components/DesktopFooter";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import StatusBadge from "@/components/StatusBadge";
-import { toSlug } from "./AgencyProfile";
+import { toSlug, cleanAgencyAddress } from "./AgencyProfile";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&q=80";
@@ -300,7 +300,7 @@ export default function Settings() {
                   {user?.name || "Your Agency"}
                 </h3>
                 <p className="text-[11px] sm:text-xs text-white/80">
-                  {user?.agencyAddress || user?.location || "Kerala, India"}
+                  {cleanAgencyAddress(user?.agencyAddress || user?.location, user?.name, user?.agencyDistrict || user?.location)}
                 </p>
               </div>
             </div>
