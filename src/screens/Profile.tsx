@@ -186,19 +186,27 @@ export default function Profile() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              {isAgency && agencySlug && (
+                <button
+                  onClick={() => navigate(`/${agencySlug}`)}
+                  className="px-4 sm:px-5 py-2.5 rounded-xl border border-charcoal/15 bg-white hover:bg-slate-50 text-charcoal text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <ExternalLink size={14} /> Preview Page
+                </button>
+              )}
               <button
                 onClick={() => navigate("/profile/edit")}
-                className="px-5 py-2.5 rounded-xl border border-charcoal/15 bg-white hover:bg-slate-50 text-charcoal text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
+                className="px-4 sm:px-5 py-2.5 rounded-xl border border-charcoal/15 bg-white hover:bg-slate-50 text-charcoal text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
               >
-                <Pencil size={14} /> Edit Profile
+                <Pencil size={14} /> Edit
               </button>
               <button
                 onClick={() => {
                   logout();
                   navigate("/login");
                 }}
-                className="px-5 py-2.5 rounded-xl border border-rose-200 bg-rose-50/50 hover:bg-rose-100/60 text-rose-600 text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
+                className="px-4 sm:px-5 py-2.5 rounded-xl border border-rose-200 bg-rose-50/50 hover:bg-rose-100/60 text-rose-600 text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
               >
                 <LogOut size={14} /> Logout
               </button>
@@ -207,70 +215,56 @@ export default function Profile() {
 
           {/* AGENCY BANNER MANAGEMENT (If Agency Role) */}
           {isAgency && (
-            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-emerald-600/15 shadow-sm flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700">
-                      <ImageIcon size={18} />
-                    </span>
-                    <h2 className="text-base font-bold text-gray-900 font-display">Agency Banner Setting</h2>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Upload your custom agency banner. This banner will be displayed on your independent agency page.
-                  </p>
-                </div>
+            <div className="bg-white rounded-3xl p-4 sm:p-6 border border-gray-200/80 shadow-sm flex flex-col">
+              <input
+                ref={bannerInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleBannerUpload}
+              />
 
-                <div className="flex items-center gap-3">
-                  <input
-                    ref={bannerInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleBannerUpload}
-                  />
-                  <button
-                    disabled={uploadingBanner}
-                    onClick={() => bannerInputRef.current?.click()}
-                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    <UploadCloud size={15} />
-                    <span>{uploadingBanner ? "Uploading..." : (user?.agencyBannerUrl ? "Change Banner" : "Add Banner")}</span>
-                  </button>
-
-                  {agencySlug && (
-                    <button
-                      onClick={() => navigate(`/${agencySlug}`)}
-                      className="px-4 py-2.5 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <ExternalLink size={14} />
-                      <span>Preview Page</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {bannerSuccess && (
-                <div className="p-3 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-xl flex items-center gap-2 border border-emerald-200">
-                  <Check size={16} /> Agency banner updated successfully!
-                </div>
-              )}
-
-              {/* Banner Live Preview */}
-              <div className="relative w-full h-44 sm:h-52 rounded-2xl overflow-hidden bg-gray-100 border border-gray-200 shadow-inner group">
+              {/* Banner Live Preview with Overlaid Controls */}
+              <div className="relative w-full h-48 sm:h-64 rounded-2xl overflow-hidden bg-gray-100 border border-gray-200/90 shadow-inner group">
                 {user?.agencyBannerUrl ? (
                   <img
                     src={mediaUrl(user.agencyBannerUrl)}
                     alt="Agency Banner"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102"
                   />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-r from-slate-100 to-emerald-50/40 text-gray-500">
                     <ImageIcon size={32} className="text-gray-400" />
-                    <p className="text-xs font-medium">No custom banner uploaded yet. Click "Add Banner" above.</p>
+                    <p className="text-xs font-medium">No custom banner uploaded yet. Click the edit button to add one.</p>
                   </div>
                 )}
-                <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-xs text-white text-[11px] font-semibold px-3 py-1 rounded-lg">
+
+                {/* Over Banner: Top-Left Description Text */}
+                <div className="absolute top-3.5 left-4 sm:top-5 sm:left-6 max-w-xl z-10 pointer-events-none">
+                  <p className="text-xs sm:text-sm text-white font-medium drop-shadow-md select-none">
+                    Upload your custom agency banner. This banner will be displayed on your independent agency page.
+                  </p>
+                </div>
+
+                {/* Over Banner: Top-Right Edit / Change Banner Button */}
+                <button
+                  disabled={uploadingBanner}
+                  onClick={() => bannerInputRef.current?.click()}
+                  title={uploadingBanner ? "Uploading..." : (user?.agencyBannerUrl ? "Change Banner" : "Add Banner")}
+                  className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 z-10 p-2 sm:p-2.5 bg-white/95 hover:bg-white text-gray-800 rounded-xl shadow-lg border border-gray-200/80 backdrop-blur-sm cursor-pointer transition active:scale-95 flex items-center justify-center"
+                >
+                  <Pencil size={18} className="text-gray-700" />
+                </button>
+
+                {/* Feedback message */}
+                {bannerSuccess && (
+                  <div className="absolute top-14 right-3.5 sm:top-16 sm:right-4 z-20 px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-lg animate-fade-in">
+                    <Check size={14} /> Banner updated!
+                  </div>
+                )}
+
+                {/* Over Banner: Bottom-Left Public URL Pill */}
+                <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-10 bg-black/75 backdrop-blur-xs text-white text-[11px] sm:text-xs font-semibold px-3 py-1 rounded-xl shadow-sm select-none">
                   Public URL: {window.location.origin}/{agencySlug || "your-agency-name"}
                 </div>
               </div>
@@ -515,36 +509,16 @@ export default function Profile() {
 
       {/* AGENCY BANNER OPTION (Mobile) */}
       {isAgency && (
-        <div className="mx-4 mt-4 bg-white rounded-3xl p-4 border border-emerald-600/15 shadow-sm flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ImageIcon size={16} className="text-emerald-600" />
-              <span className="font-display font-bold text-sm text-ink">Agency Banner</span>
-            </div>
-            <input
-              ref={bannerInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleBannerUpload}
-            />
-            <button
-              disabled={uploadingBanner}
-              onClick={() => bannerInputRef.current?.click()}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-1"
-            >
-              <UploadCloud size={13} />
-              <span>{uploadingBanner ? "Uploading..." : (user?.agencyBannerUrl ? "Change Banner" : "Add Banner")}</span>
-            </button>
-          </div>
+        <div className="mx-4 mt-4 bg-white rounded-3xl p-3 border border-gray-200/80 shadow-sm flex flex-col">
+          <input
+            ref={bannerInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleBannerUpload}
+          />
 
-          {bannerSuccess && (
-            <div className="p-2.5 bg-emerald-50 text-emerald-700 text-[11px] font-semibold rounded-xl flex items-center gap-1.5 border border-emerald-200">
-              <Check size={14} /> Banner updated successfully!
-            </div>
-          )}
-
-          <div className="relative w-full h-28 rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
+          <div className="relative w-full h-36 rounded-2xl overflow-hidden bg-gray-100 border border-gray-200">
             {user?.agencyBannerUrl ? (
               <img
                 src={mediaUrl(user.agencyBannerUrl)}
@@ -553,10 +527,38 @@ export default function Profile() {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-[11px] text-gray-400">
-                Tap "Add Banner" to upload
+                Tap edit icon to upload banner
               </div>
             )}
+
+            {/* Top-Left text */}
+            <div className="absolute top-2.5 left-3 right-12 z-10 pointer-events-none">
+              <p className="text-[10px] text-white font-medium drop-shadow-md line-clamp-2">
+                Upload your custom agency banner. This banner will be displayed on your independent agency page.
+              </p>
+            </div>
+
+            {/* Top-Right button */}
+            <button
+              disabled={uploadingBanner}
+              onClick={() => bannerInputRef.current?.click()}
+              title="Change Banner"
+              className="absolute top-2 right-2 z-10 p-1.5 bg-white/95 hover:bg-white text-gray-800 rounded-lg shadow-md border border-gray-200 cursor-pointer"
+            >
+              <Pencil size={15} className="text-gray-700" />
+            </button>
+
+            {/* Bottom-Left Public URL */}
+            <div className="absolute bottom-2 left-2 z-10 bg-black/75 text-white text-[9px] font-semibold px-2 py-0.5 rounded-md shadow-sm">
+              Public URL: {window.location.origin}/{agencySlug || "your-agency-name"}
+            </div>
           </div>
+
+          {bannerSuccess && (
+            <div className="mt-2 p-2 bg-emerald-50 text-emerald-700 text-[11px] font-semibold rounded-xl flex items-center gap-1.5 border border-emerald-200">
+              <Check size={14} /> Banner updated successfully!
+            </div>
+          )}
         </div>
       )}
 
