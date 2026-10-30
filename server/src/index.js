@@ -287,9 +287,15 @@ async function checkDbMigration() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS settings (
         \`key\` VARCHAR(120) PRIMARY KEY,
-        \`value\` TEXT NOT NULL
+        \`value\` LONGTEXT NOT NULL
       )
     `);
+
+    try {
+      await pool.query("ALTER TABLE settings MODIFY COLUMN `value` LONGTEXT NOT NULL");
+    } catch (_ignoreErr) {
+      // Column may already be LONGTEXT
+    }
 
     // Verify social_accounts table exists
     await pool.query(`

@@ -22,14 +22,16 @@ import {
   EyeOff,
   Lock,
   ExternalLink,
-  Key
+  Key,
+  Code,
+  Sparkles
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { api, mediaUrl, getApiUrl } from "@/lib/api";
 
 export default function Settings() {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<"menu" | "site" | "logos" | "payment" | "trials" | "profile" | "database" | "landing" | "interstitial" | "locations" | "pages">("menu");
+  const [activeTab, setActiveTab] = useState<"menu" | "site" | "logos" | "payment" | "trials" | "profile" | "database" | "landing" | "interstitial" | "locations" | "pages" | "custom-code">("menu");
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -48,6 +50,8 @@ export default function Settings() {
       setActiveTab("pages");
     } else if (tabParam === "payment") {
       setActiveTab("payment");
+    } else if (tabParam === "custom-code") {
+      setActiveTab("custom-code");
     } else {
       setActiveTab("menu");
     }
@@ -138,6 +142,18 @@ export default function Settings() {
   const [pageContactAddress, setPageContactAddress] = useState("");
   const [loadingPageSetting, setLoadingPageSetting] = useState(false);
 
+  // Custom Code & SEO Meta States
+  const [customMetaDescription, setCustomMetaDescription] = useState("");
+  const [customMetaKeywords, setCustomMetaKeywords] = useState("");
+  const [customGoogleVerification, setCustomGoogleVerification] = useState("");
+  const [customHeaderCode, setCustomHeaderCode] = useState("");
+  const [customCss, setCustomCss] = useState("");
+  const [customFooterCode, setCustomFooterCode] = useState("");
+  const [loadingCustomCode, setLoadingCustomCode] = useState(false);
+  const [savingCustomCode, setSavingCustomCode] = useState(false);
+  const [customCodeNotice, setCustomCodeNotice] = useState<string | null>(null);
+  const [customCodeFilter, setCustomCodeFilter] = useState<"all" | "seo" | "head" | "css" | "footer">("all");
+
   // Payment Gateway Configuration States
   const [razorpayKeyId, setRazorpayKeyId] = useState("");
   const [razorpayKeySecret, setRazorpayKeySecret] = useState("");
@@ -224,6 +240,77 @@ export default function Settings() {
       loadPageSetting(selectedPageId);
     }
   }, [activeTab, selectedPageId]);
+
+  const loadCustomCodeSettings = async () => {
+    setLoadingCustomCode(true);
+    try {
+      const data = await adminApi.getSettings();
+      setCustomMetaDescription(data.custom_meta_description || "");
+      setCustomMetaKeywords(data.custom_meta_keywords || "");
+      setCustomGoogleVerification(data.custom_google_verification || "");
+      setCustomHeaderCode(data.custom_header_code || "");
+      setCustomCss(data.custom_css || "");
+      setCustomFooterCode(data.custom_footer_code || "");
+    } catch (err) {
+      console.error("Error loading custom code settings:", err);
+    } finally {
+      setLoadingCustomCode(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "custom-code") {
+      loadCustomCodeSettings();
+    }
+  }, [activeTab]);
+
+  const handleSaveCustomCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingCustomCode(true);
+    setCustomCodeNotice(null);
+    try {
+      await adminApi.updateSetting("custom_meta_description", customMetaDescription);
+      await adminApi.updateSetting("custom_meta_keywords", customMetaKeywords);
+      await adminApi.updateSetting("custom_google_verification", customGoogleVerification);
+      await adminApi.updateSetting("custom_header_code", customHeaderCode);
+      await adminApi.updateSetting("custom_css", customCss);
+      await adminApi.updateSetting("custom_footer_code", customFooterCode);
+
+      window.dispatchEvent(new Event("aira-custom-code-updated"));
+      setCustomCodeNotice("Custom Code & SEO Meta Tags saved and deployed live successfully!");
+      setTimeout(() => setCustomCodeNotice(null), 5000);
+    } catch (err: any) {
+      alert(err.message || "Failed to save custom code settings.");
+    } finally {
+      setSavingCustomCode(false);
+    }
+  };
+
+  const handleInsertGaTemplate = () => {
+    const template = '<!-- Google tag (gtag.js) -->\n<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>\n<script>\n  window.dataLayer = window.dataLayer || [];\n  function gtag(){dataLayer.push(arguments);}\n  gtag(\'js\', new Date());\n\n  gtag(\'config\', \'G-XXXXXXXXXX\');\n</script>';
+    if (customHeaderCode.trim() && !window.confirm("Append Google Analytics template to your existing header code?")) {
+      return;
+    }
+    setCustomHeaderCode((prev) => (prev ? prev + "\n\n" + template : template));
+  };
+
+  const handleInsertMetaPixelTemplate = () => {
+    const template = '<!-- Meta Pixel Code -->\n<script>\n!function(f,b,e,v,n,t,s)\n{if(f.fbq)return;n=f.fbq=function(){n.callMethod?\nn.callMethod.apply(n,arguments):n.queue.push(arguments)};\nif(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version=\'2.0\';\nn.queue=[];t=b.createElement(e);t.async=!0;\nt.src=v;s=b.getElementsByTagName(e)[0];\ns.parentNode.insertBefore(t,s)}(window, document,\'script\',\n\'https://connect.facebook.net/en_US/fbevents.js\');\nfbq(\'init\', \'YOUR_PIXEL_ID\');\nfbq(\'track\', \'PageView\');\n</script>';
+    if (customHeaderCode.trim() && !window.confirm("Append Meta Pixel template to your existing header code?")) {
+      return;
+    }
+    setCustomHeaderCode((prev) => (prev ? prev + "\n\n" + template : template));
+  };
+
+  const handleInsertCssTemplate = () => {
+    const template = '/* Custom Aira Styling Overrides */\n:root {\n  --aira-brand-accent: #059669;\n}\n\n/* Example custom element styling */\n.custom-highlight {\n  border-radius: 12px;\n  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);\n}';
+    setCustomCss((prev) => (prev ? prev + "\n\n" + template : template));
+  };
+
+  const handleInsertChatTemplate = () => {
+    const template = '<!-- Live Chat or WhatsApp floating widget script -->\n<script>\n  console.log("Aira Properties custom body script initialized.");\n</script>';
+    setCustomFooterCode((prev) => (prev ? prev + "\n\n" + template : template));
+  };
 
   const handleSavePageSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -914,6 +1001,7 @@ export default function Settings() {
         { key: "interstitial", label: "Share Interstitial Settings", desc: "Manage logo, store links, headlines and footers for shared links", icon: Sliders, color: "text-teal-600 bg-teal-50" },
         { key: "locations", label: "Top Locations", desc: "Manage popular top locations and preview graphics", icon: MapPin, color: "text-indigo-600 bg-indigo-50" },
         { key: "pages", label: "Page Settings", desc: "Manage legal and public page titles, contents, and contact info", icon: FileText, color: "text-purple-600 bg-purple-50" },
+        { key: "custom-code", label: "Custom Code", desc: "Inject Google Analytics, Search Console meta tags, custom CSS & JS", icon: Code, color: "text-violet-600 bg-violet-50" },
       ],
     },
     {
@@ -2782,6 +2870,313 @@ export default function Settings() {
       </div>
     );
   }
+  function renderCustomCodeTab() {
+    return (
+      <div className="flex flex-col gap-4 text-left">
+        <div className="flex items-center gap-2 lg:hidden px-1">
+          <button 
+            onClick={() => setActiveTab("menu")}
+            className="p-1 hover:bg-slate-100 rounded-full transition-all text-slate cursor-pointer"
+            aria-label="Back"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <h3 className="font-display font-bold text-sm text-ink">Back to Menu</h3>
+        </div>
+
+        <div className="bg-white border border-charcoal/5 rounded-3xl p-5 sm:p-7 shadow-sm flex flex-col gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-charcoal/5 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-violet-50 text-violet-600 rounded-xl">
+                  <Code size={18} />
+                </div>
+                <h2 className="font-display font-extrabold text-base text-black">Custom Code & Analytics</h2>
+              </div>
+              <p className="text-[11px] text-slate mt-1">
+                Inject custom CSS, JavaScript, Google Analytics (gtag.js), Google Search Console verification, and SEO meta tags across all public website pages.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Site-Wide Injection Active
+              </span>
+            </div>
+          </div>
+
+          {customCodeNotice && (
+            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs font-semibold flex items-center gap-2.5 animate-in fade-in duration-200">
+              <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+              <span>{customCodeNotice}</span>
+            </div>
+          )}
+
+          {loadingCustomCode ? (
+            <div className="py-12 flex flex-col items-center justify-center gap-2">
+              <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-violet-600" />
+              <span className="text-xs text-slate font-medium">Loading custom code configurations...</span>
+            </div>
+          ) : (
+            <form onSubmit={handleSaveCustomCode} className="flex flex-col gap-6">
+              {/* Filter Tabs */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-charcoal/5">
+                {[
+                  { id: "all", label: "All Settings" },
+                  { id: "seo", label: "SEO & Search Console" },
+                  { id: "head", label: "Header Scripts (<head>)" },
+                  { id: "css", label: "Custom CSS (<style>)" },
+                  { id: "footer", label: "Footer Scripts (</body>)" },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setCustomCodeFilter(tab.id as any)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                      customCodeFilter === tab.id
+                        ? "bg-violet-600 text-white shadow-sm"
+                        : "bg-slate-100/70 text-slate hover:bg-slate-200/70"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* SECTION 1: Google Search Console & SEO Meta */}
+              {(customCodeFilter === "all" || customCodeFilter === "seo") && (
+                <div className="flex flex-col gap-4 p-4 sm:p-5 rounded-2xl bg-[#FAF8F3]/60 border border-charcoal/5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-display font-bold text-xs text-ink uppercase tracking-wider flex items-center gap-1.5">
+                        <Sparkles size={14} className="text-amber-500" />
+                        Google Search Console & Meta Tags
+                      </h3>
+                      <p className="text-[10px] text-slate mt-0.5">
+                        Define search engine verification and default metadata for Google, Bing, and web crawlers.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Google Verification */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-ink flex items-center justify-between">
+                      <span>Google Search Console Verification Token</span>
+                      <span className="text-[10px] text-slate font-normal font-mono">meta[name="google-site-verification"]</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={customGoogleVerification}
+                      onChange={(e) => setCustomGoogleVerification(e.target.value)}
+                      placeholder='e.g. 4x8Z9q... or <meta name="google-site-verification" content="..." />'
+                      className="w-full rounded-xl border border-charcoal/10 bg-white px-3.5 py-2.5 text-xs text-charcoal outline-none focus:border-violet-600 shadow-sm font-mono"
+                    />
+                    <p className="text-[10px] text-slate">
+                      Paste your HTML verification tag code or verification token string. Automatically inserted in &lt;head&gt;.
+                    </p>
+                  </div>
+
+                  {/* Meta Description */}
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-ink">
+                        Global Meta Description (&lt;meta name="description" content="..." /&gt;)
+                      </label>
+                      <span className={`text-[10px] font-mono font-medium ${
+                        customMetaDescription.length > 160 ? "text-amber-600" : "text-slate"
+                      }`}>
+                        {customMetaDescription.length} / 160 chars recommended
+                      </span>
+                    </div>
+                    <textarea
+                      rows={3}
+                      value={customMetaDescription}
+                      onChange={(e) => setCustomMetaDescription(e.target.value)}
+                      placeholder="e.g. Find verified houses, villas, apartments, and land plots for sale and rent across Kerala on Aira Properties. Direct owner, broker, and agency contacts."
+                      className="w-full rounded-xl border border-charcoal/10 bg-white p-3 text-xs text-charcoal outline-none focus:border-violet-600 shadow-sm font-medium leading-relaxed"
+                    />
+                    <p className="text-[10px] text-slate">
+                      This summary appears under your site title in Google search results across all public pages.
+                    </p>
+                  </div>
+
+                  {/* Meta Keywords */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-ink">
+                      Global Meta Keywords (&lt;meta name="keywords" content="..." /&gt;)
+                    </label>
+                    <input
+                      type="text"
+                      value={customMetaKeywords}
+                      onChange={(e) => setCustomMetaKeywords(e.target.value)}
+                      placeholder="e.g. kerala properties, buy house in wayanad, villas in kochi, plots for sale kerala, aira properties"
+                      className="w-full rounded-xl border border-charcoal/10 bg-white px-3.5 py-2.5 text-xs text-charcoal outline-none focus:border-violet-600 shadow-sm font-medium"
+                    />
+                    <p className="text-[10px] text-slate">
+                      Comma-separated list of keywords that describe your website for search engines.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION 2: Header Custom Code (<head>) */}
+              {(customCodeFilter === "all" || customCodeFilter === "head") && (
+                <div className="flex flex-col gap-3 p-4 sm:p-5 rounded-2xl bg-[#FAF8F3]/60 border border-charcoal/5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h3 className="font-display font-bold text-xs text-ink uppercase tracking-wider flex items-center gap-1.5">
+                        <Code size={14} className="text-emerald-600" />
+                        Header Custom Code (&lt;head&gt;)
+                      </h3>
+                      <p className="text-[10px] text-slate mt-0.5">
+                        Inserted into &lt;head&gt; of all pages. Perfect for Google Analytics 4 (gtag.js), Google Tag Manager, Meta Pixel, or custom scripts.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={handleInsertGaTemplate}
+                        className="px-2.5 py-1 text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg border border-emerald-200/70 transition-all cursor-pointer"
+                      >
+                        + GA4 Template
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleInsertMetaPixelTemplate}
+                        className="px-2.5 py-1 text-[10px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200/70 transition-all cursor-pointer"
+                      >
+                        + Meta Pixel
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="relative rounded-2xl overflow-hidden border border-slate-800 bg-[#0F172A] shadow-inner">
+                    <div className="flex items-center justify-between px-3 py-1.5 bg-[#1E293B] border-b border-slate-700 text-[10px] font-mono text-slate-400">
+                      <span>HTML / JavaScript (&lt;head&gt;)</span>
+                      <span>Scripts execute automatically</span>
+                    </div>
+                    <textarea
+                      rows={8}
+                      value={customHeaderCode}
+                      onChange={(e) => setCustomHeaderCode(e.target.value)}
+                      placeholder='<!-- Paste your Google Analytics (gtag.js) or GTM tag here -->&#10;<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>&#10;<script>&#10;  window.dataLayer = window.dataLayer || [];&#10;  function gtag(){dataLayer.push(arguments);}&#10;  gtag("js", new Date());&#10;  gtag("config", "G-XXXXXXXXXX");&#10;</script>'
+                      className="w-full bg-[#0F172A] text-emerald-400 font-mono text-xs p-3.5 outline-none leading-relaxed resize-y placeholder:text-slate-600"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION 3: Custom CSS (<style>) */}
+              {(customCodeFilter === "all" || customCodeFilter === "css") && (
+                <div className="flex flex-col gap-3 p-4 sm:p-5 rounded-2xl bg-[#FAF8F3]/60 border border-charcoal/5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h3 className="font-display font-bold text-xs text-ink uppercase tracking-wider flex items-center gap-1.5">
+                        <Code size={14} className="text-sky-600" />
+                        Custom CSS Styles (&lt;style&gt;)
+                      </h3>
+                      <p className="text-[10px] text-slate mt-0.5">
+                        Write raw CSS styles to customize typography, colors, branding or layout site-wide. No &lt;style&gt; tags needed.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleInsertCssTemplate}
+                      className="px-2.5 py-1 text-[10px] font-bold bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg border border-sky-200/70 transition-all cursor-pointer self-start sm:self-auto"
+                    >
+                      + Sample CSS
+                    </button>
+                  </div>
+
+                  <div className="relative rounded-2xl overflow-hidden border border-slate-800 bg-[#0F172A] shadow-inner">
+                    <div className="flex items-center justify-between px-3 py-1.5 bg-[#1E293B] border-b border-slate-700 text-[10px] font-mono text-slate-400">
+                      <span>CSS Stylesheet</span>
+                      <span>Applies site-wide</span>
+                    </div>
+                    <textarea
+                      rows={7}
+                      value={customCss}
+                      onChange={(e) => setCustomCss(e.target.value)}
+                      placeholder='/* Custom CSS rules */&#10;:root {&#10;  --brand-primary: #059669;&#10;}&#10;&#10;/* Example: Customize badge styles */&#10;.property-card {&#10;  transition: transform 0.2s ease;&#10;}'
+                      className="w-full bg-[#0F172A] text-sky-300 font-mono text-xs p-3.5 outline-none leading-relaxed resize-y placeholder:text-slate-600"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION 4: Footer / Body End Code (</body>) */}
+              {(customCodeFilter === "all" || customCodeFilter === "footer") && (
+                <div className="flex flex-col gap-3 p-4 sm:p-5 rounded-2xl bg-[#FAF8F3]/60 border border-charcoal/5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h3 className="font-display font-bold text-xs text-ink uppercase tracking-wider flex items-center gap-1.5">
+                        <Code size={14} className="text-amber-600" />
+                        Body-End / Footer Scripts (&lt;/body&gt;)
+                      </h3>
+                      <p className="text-[10px] text-slate mt-0.5">
+                        Inserted right before the closing &lt;/body&gt; tag. Ideal for live chat widgets (Tawk.to, Crisp), WhatsApp widgets, or conversion tracking.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleInsertChatTemplate}
+                      className="px-2.5 py-1 text-[10px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg border border-amber-200/70 transition-all cursor-pointer self-start sm:self-auto"
+                    >
+                      + Sample Script
+                    </button>
+                  </div>
+
+                  <div className="relative rounded-2xl overflow-hidden border border-slate-800 bg-[#0F172A] shadow-inner">
+                    <div className="flex items-center justify-between px-3 py-1.5 bg-[#1E293B] border-b border-slate-700 text-[10px] font-mono text-slate-400">
+                      <span>HTML / JavaScript (&lt;/body&gt;)</span>
+                      <span>Loads at end of DOM</span>
+                    </div>
+                    <textarea
+                      rows={6}
+                      value={customFooterCode}
+                      onChange={(e) => setCustomFooterCode(e.target.value)}
+                      placeholder='<!-- Chat widget, WhatsApp floating button, or conversion scripts -->&#10;<script>&#10;  console.log("Aira Properties custom body script initialized.");&#10;</script>'
+                      className="w-full bg-[#0F172A] text-amber-300 font-mono text-xs p-3.5 outline-none leading-relaxed resize-y placeholder:text-slate-600"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Action Bar */}
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-charcoal/5">
+                <button
+                  type="button"
+                  onClick={loadCustomCodeSettings}
+                  disabled={loadingCustomCode || savingCustomCode}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-charcoal/10 hover:bg-slate-50 text-slate text-xs font-bold transition-all cursor-pointer"
+                >
+                  Reload from Database
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingCustomCode}
+                  className="w-full sm:w-auto px-6 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {savingCustomCode ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                      <span>Saving & Deploying...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={16} />
+                      <span>Save & Deploy Custom Code</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="px-4 py-5 flex flex-col gap-5">
@@ -2816,6 +3211,8 @@ export default function Settings() {
                           setActiveTab("profile");
                         } else if (item.key === "payment") {
                           setActiveTab("payment");
+                        } else if (item.key === "custom-code") {
+                          setActiveTab("custom-code");
                         } else if (item.key === "database") {
                           setActiveTab("database");
                         } else if (item.key === "landing") {
@@ -2876,6 +3273,7 @@ export default function Settings() {
           {activeTab === "interstitial" && renderInterstitialTab()}
           {activeTab === "locations" && renderLocationsTab()}
           {activeTab === "pages" && renderPagesTab()}
+          {activeTab === "custom-code" && renderCustomCodeTab()}
         </div>
       </div>
     </div>

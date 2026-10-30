@@ -21,7 +21,8 @@ import {
   Sliders,
   PhoneCall,
   Briefcase,
-  Rocket
+  Rocket,
+  Code
 } from "lucide-react";
 import { adminApi, AdminUser } from "@/lib/adminApi";
 import { useBrand } from "@/lib/BrandContext";
@@ -264,6 +265,17 @@ export default function AdminLayout() {
             <Sliders size={16} />
             <span>Trial Settings</span>
           </Link>
+          <Link
+            to="/admin/settings?tab=custom-code"
+            className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all ${
+              currentPath === "/admin/settings" && new URLSearchParams(location.search).get("tab") === "custom-code"
+                ? "bg-emerald-50 text-emerald-700 shadow-sm"
+                : "text-slate hover:bg-slate-50 hover:text-black"
+            }`}
+          >
+            <Code size={16} />
+            <span>Custom Code</span>
+          </Link>
         </nav>
 
         {/* Sidebar Footer */}
@@ -495,6 +507,14 @@ export default function AdminLayout() {
               >
                 <CreditCard size={20} className="text-emerald-600" />
                 <span className="text-[10px] font-bold text-ink">Pricing</span>
+              </Link>
+              <Link
+                to="/admin/settings?tab=custom-code"
+                onClick={() => setShowMoreMenu(false)}
+                className="flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 border border-charcoal/5 hover:border-emerald-600/30 transition-all gap-1.5"
+              >
+                <Code size={20} className="text-violet-600" />
+                <span className="text-[10px] font-bold text-ink">Custom Code</span>
               </Link>
             </div>
 
