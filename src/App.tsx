@@ -28,6 +28,7 @@ import MapPickerStep from "@/screens/AddProperty/MapPickerStep";
 import Success from "@/screens/AddProperty/Success";
 import AddPropertyDesktopHeader from "@/components/AddPropertyDesktopHeader";
 import ComingSoon from "@/screens/ComingSoon";
+import Settings from "@/screens/Settings";
 import PrivacyPolicy from "@/screens/Legal/PrivacyPolicy";
 import TermsConditions from "@/screens/Legal/TermsConditions";
 import RefundPolicy from "@/screens/Legal/RefundPolicy";
@@ -120,7 +121,7 @@ export default function App() {
         <Route path="/enquiries" element={<ProtectedRoute><VisitorsEnquiries /></ProtectedRoute>} />
         <Route path="/subscription" element={<ProtectedRoute><SubscriptionDetails /></ProtectedRoute>} />
         <Route path="/services" element={<Services />} />
-        <Route path="/settings" element={<ProtectedRoute><ComingSoon title="Settings" /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
         <Route path="/my-properties" element={<ProtectedRoute><MyProperties /></ProtectedRoute>} />
         <Route path="/my-properties/:id" element={<ProtectedRoute><OwnerPropertyDetails /></ProtectedRoute>} />
