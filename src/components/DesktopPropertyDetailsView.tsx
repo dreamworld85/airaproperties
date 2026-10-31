@@ -855,7 +855,7 @@ export default function DesktopPropertyDetailsView({
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleContactAction("Call")}
-                        className="flex-1 py-3 px-4 bg-[#1B5E4F] hover:bg-[#14483d] text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+                        className="flex-1 py-3 px-4 bg-[#1B5E4F] hover:bg-[#14483d] text-white font-normal text-xs sm:text-sm rounded-xl shadow-xs transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2" style={{ fontWeight: 400 }}
                       >
                         <Phone size={16} />
                         <span>Call: {localProperty.contactNumber || localProperty.ownerPhone}</span>
@@ -872,9 +872,10 @@ export default function DesktopPropertyDetailsView({
                     {/* WhatsApp Button */}
                     <button
                       onClick={() => handleContactAction("WhatsApp")}
-                      className="w-full py-3 px-4 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full py-3.5 px-5 bg-[#25D366] hover:bg-[#20bd5a] text-white font-normal text-sm sm:text-base rounded-xl shadow-xs transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5 min-h-[48px]"
+                      style={{ fontWeight: 400 }}
                     >
-                      <img src="/images/whatsapp.svg" alt="WhatsApp" className="w-[18px] h-[18px] object-contain shrink-0" />
+                      <img src="/images/whatsapp.svg" alt="WhatsApp" className="w-[28px] h-[28px] object-contain shrink-0" />
                       <span>Chat on WhatsApp</span>
                     </button>
                     <p className="text-[11px] text-gray-500 text-center font-medium">
@@ -888,7 +889,7 @@ export default function DesktopPropertyDetailsView({
                       <button
                         onClick={() => handleContactAction("Call")}
                         disabled={unlocking}
-                        className="py-3 px-3 bg-[#1B5E4F] hover:bg-[#14483d] text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5"
+                        className="py-3 px-3 bg-[#1B5E4F] hover:bg-[#14483d] text-white font-normal text-xs sm:text-sm rounded-xl shadow-xs transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5" style={{ fontWeight: 400 }}
                       >
                         <Phone size={15} />
                         <span>Call (1 Token)</span>
@@ -896,9 +897,8 @@ export default function DesktopPropertyDetailsView({
                       <button
                         onClick={() => handleContactAction("WhatsApp")}
                         disabled={unlocking}
-                        className="py-3 px-3 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5"
-                      >
-                        <img src="/images/whatsapp.svg" alt="WhatsApp" className="w-[15px] h-[15px] object-contain shrink-0" />
+                        className="py-3 px-3 bg-[#25D366] hover:bg-[#20bd5a] text-white font-normal text-xs sm:text-sm rounded-xl shadow-xs transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2" style={{ fontWeight: 400 }}>
+                        <img src="/images/whatsapp.svg" alt="WhatsApp" className="w-[22px] h-[22px] object-contain shrink-0" />
                         <span>WhatsApp (1 Token)</span>
                       </button>
                     </div>

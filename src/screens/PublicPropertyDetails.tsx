@@ -905,7 +905,7 @@ View Details: ${window.location.origin}/property/${property.id}`;
                   className="w-10 h-10 agent-contact-btn flex items-center justify-center bg-white text-[#25D366] rounded-full shadow-md hover:bg-slate-50 transition-all active:scale-95 cursor-pointer border border-[#25D366]/20"
                   aria-label="WhatsApp agent"
                 >
-                  <img src="/images/whatsapp.svg" alt="WhatsApp" className="w-[18px] h-[18px] object-contain shrink-0 agent-contact-icon-wa" />
+                  <img src="/images/whatsapp.svg" alt="WhatsApp" className="w-[22px] h-[22px] object-contain shrink-0 agent-contact-icon-wa" />
                 </a>
                 <a
                   href={hasAccess && (property.contactNumber || property.ownerPhone) ? `tel:${property.contactNumber || property.ownerPhone}` : undefined}
@@ -1102,7 +1102,7 @@ View Details: ${window.location.origin}/property/${property.id}`;
                 <a
                   href={hasAccess ? `tel:${property.contactNumber || property.ownerPhone}` : undefined}
                   onClick={(e) => handleContactClick(e, "Call")}
-                  className="w-full py-3 px-4 rounded-xl bg-ink hover:bg-black text-cream text-xs font-bold font-display flex items-center justify-center gap-2.5 shadow-md transition-all active:scale-[0.98] cursor-pointer"
+                  className="w-full py-3 px-4 rounded-xl bg-ink hover:bg-black text-cream text-xs sm:text-sm font-normal font-display flex items-center justify-center gap-2.5 shadow-md transition-all active:scale-[0.98] cursor-pointer" style={{ fontWeight: 400 }}
                 >
                   <Phone size={14} />
                   <span>
@@ -1123,9 +1123,8 @@ View Details: ${window.location.origin}/property/${property.id}`;
                   target={hasAccess ? "_blank" : undefined}
                   rel="noreferrer"
                   onClick={(e) => handleContactClick(e, "WhatsApp")}
-                  className="w-full py-3 px-4 rounded-xl border border-forest hover:bg-forest/5 text-forest text-xs font-bold font-display flex items-center justify-center gap-2.5 transition-all active:scale-[0.98] cursor-pointer"
-                >
-                  <img src="/images/whatsapp.svg" alt="WhatsApp" className="w-[16px] h-[16px] object-contain shrink-0" />
+                  className="w-full py-3 px-4 rounded-xl border border-forest hover:bg-forest/5 text-forest text-xs sm:text-sm font-normal font-display flex items-center justify-center gap-2.5 transition-all active:scale-[0.98] cursor-pointer" style={{ fontWeight: 400 }}>
+                  <img src="/images/whatsapp.svg" alt="WhatsApp" className="w-[22px] h-[22px] object-contain shrink-0" />
                   <span>
                     {hasAccess || isOwner 
                       ? `WhatsApp` 
