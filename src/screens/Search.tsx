@@ -177,7 +177,7 @@ export default function Search() {
             aria-label="Map Search"
             title="Map Search"
           >
-            <img src="/google_maps_icon.png" alt="Google Maps" className="w-6 h-6 object-contain" />
+            <img src="/gmap.svg" alt="Google Maps" className="w-6 h-6 object-contain" />
           </button>
 
           <button

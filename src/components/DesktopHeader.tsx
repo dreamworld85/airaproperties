@@ -391,7 +391,7 @@ export default function DesktopHeader({
             }`}
           >
             <img 
-              src="/google_maps_icon.png" 
+              src="/gmap.svg" 
               alt="Google Maps" 
               className="w-7 h-7 object-contain pointer-events-none rounded-none"
             />
