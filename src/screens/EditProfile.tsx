@@ -144,7 +144,7 @@ export default function EditProfile() {
 
         {/* Form Inputs */}
         {isNewSignup && (
-          <div className="bg-emerald-50 border border-emerald-500/20 text-emerald-800 text-xs font-semibold px-4 py-3 rounded-xl flex items-center gap-2.5">
+          <div className="bg-emerald-50 border border-emerald-500/20 text-emerald-800 text-xs font-semibold px-4 py-3 rounded-none flex items-center gap-2.5">
             <ShieldCheck size={18} className="text-emerald-600 shrink-0" />
             <span>Mobile verified successfully! Please enter your name, email, and set your password to finish.</span>
           </div>
@@ -159,7 +159,7 @@ export default function EditProfile() {
                 placeholder="e.g. John Doe"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full h-11 rounded-xl border border-slate-200/80 bg-white px-4 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
+                className="w-full h-11 rounded-none border border-slate-200/80 bg-white px-4 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
               />
             </div>
 
@@ -170,7 +170,7 @@ export default function EditProfile() {
                 placeholder="e.g. +91 9876543210"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full h-11 rounded-xl border border-slate-200/80 bg-white px-4 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
+                className="w-full h-11 rounded-none border border-slate-200/80 bg-white px-4 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
               />
             </div>
           </div>
@@ -183,7 +183,7 @@ export default function EditProfile() {
               placeholder="e.g. john@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full h-11 rounded-xl border border-slate-200/80 bg-white px-4 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
+              className="w-full h-11 rounded-none border border-slate-200/80 bg-white px-4 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
             />
           </div>
 
@@ -195,7 +195,7 @@ export default function EditProfile() {
               placeholder="e.g. Location"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              className="w-full h-11 rounded-xl border border-slate-200/80 bg-white px-4 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
+              className="w-full h-11 rounded-none border border-slate-200/80 bg-white px-4 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
             />
           </div>
 
@@ -212,7 +212,7 @@ export default function EditProfile() {
                   placeholder={isNewSignup ? "Create password (min 6 chars)" : "Enter new password (optional)"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-11 rounded-xl border border-slate-200/80 bg-white px-4 pr-11 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
+                  className="w-full h-11 rounded-none border border-slate-200/80 bg-white px-4 pr-11 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
                 />
                 <button
                   type="button"
@@ -235,7 +235,7 @@ export default function EditProfile() {
                   placeholder="Repeat password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full h-11 rounded-xl border border-slate-200/80 bg-white px-4 pr-11 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
+                  className="w-full h-11 rounded-none border border-slate-200/80 bg-white px-4 pr-11 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
                 />
                 <button
                   type="button"
@@ -249,7 +249,7 @@ export default function EditProfile() {
           </div>
         </div>
 
-        {successMsg && <p className="text-sm text-emerald-600 font-semibold pl-0.5 bg-emerald-50 p-2.5 rounded-lg border border-emerald-500/20">{successMsg}</p>}
+        {successMsg && <p className="text-sm text-emerald-600 font-semibold pl-0.5 bg-emerald-50 p-2.5 rounded-none border border-emerald-500/20">{successMsg}</p>}
         {error && <p className="text-sm text-coral pl-0.5">{error}</p>}
 
         {/* Row 4: Buttons (Save & Cancel) */}
@@ -258,7 +258,7 @@ export default function EditProfile() {
             type="button"
             disabled={saving || deleting}
             onClick={handleSave}
-            className="w-full h-11 bg-[#59AD63] hover:bg-[#3F8F4B] text-white rounded-xl text-[14px] font-medium transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center shadow-sm disabled:opacity-50"
+            className="w-full h-11 bg-[#59AD63] hover:bg-[#3F8F4B] text-white rounded-none text-[14px] font-medium transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center shadow-sm disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save"}
           </button>
@@ -266,7 +266,7 @@ export default function EditProfile() {
           <button
             type="button"
             onClick={() => navigate("/home")}
-            className="w-full h-11 bg-white hover:bg-slate-50 border border-slate-300 text-charcoal rounded-xl text-[14px] font-medium transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center shadow-sm"
+            className="w-full h-11 bg-white hover:bg-slate-50 border border-slate-300 text-charcoal rounded-none text-[14px] font-medium transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center shadow-sm"
           >
             Skip to Home
           </button>
@@ -278,7 +278,7 @@ export default function EditProfile() {
             type="button"
             disabled={saving || deleting} 
             onClick={handleDeleteAccount}
-            className="w-[260px] h-10 bg-white hover:bg-rose-50 border border-rose-400 text-rose-600 rounded-xl text-[13.5px] font-medium transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
+            className="w-[260px] h-10 bg-white hover:bg-rose-50 border border-rose-400 text-rose-600 rounded-none text-[13.5px] font-medium transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
           >
             <span>Delete Account</span>
             <span className="text-[15px] font-medium">→</span>
