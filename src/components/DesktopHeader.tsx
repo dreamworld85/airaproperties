@@ -393,7 +393,8 @@ export default function DesktopHeader({
             <img 
               src="/gmap.svg" 
               alt="Google Maps" 
-              className="w-7 h-7 object-contain pointer-events-none rounded-none"
+              style={{ width: '1.40rem', height: '1.40rem' }}
+              className="w-[1.40rem] h-[1.40rem] object-contain pointer-events-none rounded-none" 
             />
           </button>
 
