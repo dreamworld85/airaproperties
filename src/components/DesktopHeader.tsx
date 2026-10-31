@@ -286,7 +286,7 @@ export default function DesktopHeader({
       >
         <div className="max-w-7xl mx-auto flex flex-wrap items-center gap-3 justify-between">
           {/* Purpose Tabs (All / Buy / Rent / Lease) */}
-          <div className="flex items-center bg-white/95 p-1 rounded-full border border-white/40 shadow-xs shrink-0">
+          <div className="flex items-center bg-white/95 p-1 rounded-none border border-white/40 shadow-xs shrink-0">
             {["All", "For Sale", "For Rent", "For Lease"].map((p) => {
               const isActive = (p === "All" && !purpose) || purpose === p;
               return (
@@ -294,7 +294,7 @@ export default function DesktopHeader({
                   key={p}
                   type="button"
                   onClick={() => handlePurposeClick(p)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-4 py-1.5 rounded-none text-xs font-bold transition-all cursor-pointer ${
                     isActive
                       ? "bg-white text-gray-900 shadow-xs"
                       : "text-gray-600 hover:text-gray-900"
@@ -307,7 +307,7 @@ export default function DesktopHeader({
           </div>
 
           {/* Location Input */}
-          <div className="flex-1 min-w-[200px] flex items-center bg-white border border-gray-300 rounded-full px-4 py-2 text-sm shadow-xs focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500">
+          <div className="flex-1 min-w-[200px] flex items-center bg-white border border-gray-300 rounded-none px-4 py-2 text-sm shadow-xs focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500">
             <MapPin className="w-4 h-4 text-gray-400 mr-2 shrink-0" />
             <input
               type="text"
@@ -384,7 +384,7 @@ export default function DesktopHeader({
               }
             }}
             title={isMapOpen ? "Hide Google Map" : "Show Google Map"}
-            className={`flex items-center justify-center p-1.5 rounded-full border transition-all duration-300 shadow-xs cursor-pointer shrink-0 active:scale-95 ${
+            className={`flex items-center justify-center p-1.5 rounded-none border transition-all duration-300 shadow-xs cursor-pointer shrink-0 active:scale-95 ${
               isMapOpen
                 ? "bg-blue-50 border-blue-500 ring-4 ring-blue-400/30 scale-105 shadow-md"
                 : "bg-white border-gray-300 hover:border-blue-400 hover:bg-blue-50/50"
@@ -393,7 +393,7 @@ export default function DesktopHeader({
             <img 
               src="/google_maps_icon.png" 
               alt="Google Maps" 
-              className="w-7 h-7 object-contain pointer-events-none rounded-full"
+              className="w-7 h-7 object-contain pointer-events-none rounded-none"
             />
           </button>
 
@@ -401,7 +401,7 @@ export default function DesktopHeader({
           <button
             type="button"
             onClick={() => handleSearch()}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-sm font-semibold shadow-md transition"
+            className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-none text-sm font-semibold shadow-md transition"
           >
             <Search className="w-4 h-4" />
             <span>Search</span>

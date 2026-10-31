@@ -120,7 +120,7 @@ export default function CustomFilterDropdown({
       {/* Outer Input Box matching reference design */}
       <div
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`flex items-center justify-between gap-2 bg-white border rounded-xl px-3 py-1.5 min-h-[38px] text-xs font-semibold cursor-pointer shadow-xs transition-all duration-200 select-none ${
+        className={`flex items-center justify-between gap-2 bg-white border rounded-none px-3 py-1.5 min-h-[38px] text-xs font-semibold cursor-pointer shadow-xs transition-all duration-200 select-none ${
           isOpen
             ? "border-blue-400 ring-2 ring-blue-400/30 shadow-md"
             : "border-blue-300/80 hover:border-blue-400"
@@ -133,13 +133,13 @@ export default function CustomFilterDropdown({
               /* Individual Tag Pill matching reference image */
               <span
                 key={tag}
-                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-white border border-gray-300 text-gray-800 text-xs font-medium shadow-2xs animate-in fade-in zoom-in-95 duration-150"
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none bg-white border border-gray-300 text-gray-800 text-xs font-medium shadow-2xs animate-in fade-in zoom-in-95 duration-150"
               >
                 <span className="truncate max-w-[130px]">{tag}</span>
                 <button
                   type="button"
                   onClick={(e) => handleRemoveTag(e, tag)}
-                  className="hover:bg-gray-100 p-0.5 rounded text-gray-400 hover:text-gray-700 transition-colors"
+                  className="hover:bg-gray-100 p-0.5 rounded-none text-gray-400 hover:text-gray-700 transition-colors"
                   title="Remove"
                 >
                   <X className="w-3 h-3" />
@@ -160,7 +160,7 @@ export default function CustomFilterDropdown({
 
       {/* Floating Dropdown Popup List with Height & Scrollbar */}
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1.5 w-60 bg-white border border-gray-200 rounded-2xl shadow-2xl z-[99999] overflow-hidden py-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute left-0 top-full mt-1.5 w-60 bg-white border border-gray-200 rounded-none shadow-2xl z-[99999] overflow-hidden py-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
           {shouldShowSearch && (
             <div 
               className="px-2.5 py-1.5 mb-1 border-b border-gray-100 flex items-center gap-2 bg-gray-50/80"
@@ -183,7 +183,7 @@ export default function CustomFilterDropdown({
                     setSearchQuery("");
                     searchInputRef.current?.focus();
                   }}
-                  className="p-0.5 text-gray-400 hover:text-gray-700 rounded-full shrink-0"
+                  className="p-0.5 text-gray-400 hover:text-gray-700 rounded-none shrink-0"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -206,7 +206,7 @@ export default function CustomFilterDropdown({
                   <div
                     key={idx}
                     onClick={() => handleSelectOption(opt)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-medium cursor-pointer transition-all flex items-center justify-between ${
+                    className={`px-3.5 py-2 rounded-none text-xs font-medium cursor-pointer transition-all flex items-center justify-between ${
                       isSelected
                         ? "bg-blue-50/80 text-blue-700 font-bold"
                         : "text-gray-700 hover:bg-gray-100/70 hover:text-gray-900"
