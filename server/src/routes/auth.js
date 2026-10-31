@@ -6,7 +6,7 @@ import { pool } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { sendOtpEmail } from "../utils/mailer.js";
 import { sendOtpSms } from "../utils/sms.js";
-import { getStarterPackConfig } from "../utils/starterPack.js";
+import { getStarterPackConfig, getStarterPackForRole, activateStarterPlanForUser } from "../utils/starterPack.js";
 
 const router = Router();
 

@@ -166,8 +166,8 @@ export default function Profile() {
                     {user?.role?.toLowerCase() === "user" || user?.role?.toLowerCase() === "buyer" ? "Buyer" : user?.role || "Buyer"}
                   </span>
                   {user?.subscriptionStatus === "active" && (
-                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-600/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                      Premium
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-600/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                      Active Plan
                     </span>
                   )}
                 </div>
@@ -491,8 +491,8 @@ export default function Profile() {
               {user?.role?.toLowerCase() === "user" || user?.role?.toLowerCase() === "buyer" ? "Buyer" : user?.role || "Buyer"}
             </span>
             {user?.subscriptionStatus === "active" && (
-              <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-600/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                Premium
+              <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-600/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                Active Plan
               </span>
             )}
           </div>

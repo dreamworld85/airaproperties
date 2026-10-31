@@ -24,6 +24,7 @@ if (!fs.existsSync(serverUploadsDir)) {
 }
 
 import { seedPlans } from "./seedPlans.js";
+import { getStarterPackForRole } from "./utils/starterPack.js";
 
 import authRoutes from "./routes/auth.js";
 import propertyRoutes from "./routes/properties.js";
@@ -980,24 +981,30 @@ async function checkDbMigration() {
     // Synchronize pricing & feature plans catalog
     await seedPlans();
 
-    // Ensure default role is 'Buyer' and users have starter tokens from subscription_plans
+    // Ensure starter plans are activated for ALL users based on their role:
+    // Buyer -> Starter Pack, Owner -> Owner Starter, Broker -> Broker Starter, Agency -> Agency Starter
     try {
       await pool.query("UPDATE users SET role = 'Buyer' WHERE role = 'user' OR role IS NULL OR role = ''");
-      const [starterRow] = await pool.query(
-        "SELECT enquiry_tokens, listing_slots, credits FROM subscription_plans WHERE plan_id = 'user_starter_pack' OR LOWER(name) LIKE '%starter%' ORDER BY (plan_id = 'user_starter_pack') DESC, id ASC LIMIT 1"
-      );
-      if (starterRow.length > 0) {
-        const tokens = Number(starterRow[0].enquiry_tokens ?? starterRow[0].credits ?? 10);
-        const slots = Number(starterRow[0].listing_slots ?? 2);
+
+      const roleConfigs = [
+        { role: "Buyer", match: "(role = 'Buyer' OR role = 'user' OR role IS NULL OR role = '')" },
+        { role: "Owner", match: "LOWER(role) = 'owner'" },
+        { role: "Broker", match: "LOWER(role) = 'broker'" },
+        { role: "Agency", match: "LOWER(role) = 'agency'" },
+      ];
+
+      for (const item of roleConfigs) {
+        const starter = await getStarterPackForRole(item.role);
         await pool.query(
-          "UPDATE users SET enquiry_credits_left = ? WHERE enquiry_credits_left IS NULL OR (role = 'Buyer' AND enquiry_credits_left <= 3)",
-          [tokens]
-        );
-        await pool.query(
-          "UPDATE users SET listing_slots_left = ? WHERE listing_slots_left IS NULL",
-          [slots]
+          `UPDATE users 
+           SET subscription_status = 'active',
+               enquiry_credits_left = GREATEST(COALESCE(enquiry_credits_left, 0), ?),
+               listing_slots_left = GREATEST(COALESCE(listing_slots_left, 0), ?)
+           WHERE ${item.match}`,
+          [starter.enquiryTokens, starter.listingSlots]
         );
       }
+      console.log("Synchronized and activated role starter plans for all users successfully.");
     } catch (starterErr) {
       console.warn("Could not synchronize starter pack defaults to users:", starterErr.message);
     }

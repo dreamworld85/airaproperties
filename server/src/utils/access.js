@@ -1,5 +1,5 @@
 import { pool } from "../db.js";
-import { getStarterPackConfig } from "./starterPack.js";
+import { getStarterPackForRole } from "./starterPack.js";
 
 export async function checkUserAccess(userId) {
   if (!userId) {
@@ -46,7 +46,7 @@ export async function checkUserAccess(userId) {
     : null;
 
   if (enquiryCreditsLeft === null || listingSlotsLeft === null) {
-    const starter = await getStarterPackConfig();
+    const starter = await getStarterPackForRole(user.role);
     if (enquiryCreditsLeft === null) enquiryCreditsLeft = starter.enquiryTokens;
     if (listingSlotsLeft === null) listingSlotsLeft = starter.listingSlots;
   }
