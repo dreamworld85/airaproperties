@@ -4,6 +4,7 @@ import { pool } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { checkUserAccess } from "../utils/access.js";
 import { deleteUploadedFile } from "../utils/fileHelper.js";
+import { deleteUserCompletely } from "../utils/userCleanup.js";
 import { getUploadDir } from "../middleware/upload.js";
 import multer from "multer";
 import path from "path";
@@ -616,83 +617,19 @@ router.delete("/me", requireAuth, async (req, res) => {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    
     const userId = req.userId;
-    
-    // 1. Fetch user avatar & logo
-    const [[user]] = await conn.query("SELECT name, email, avatar_url, agency_logo_url FROM users WHERE id = ?", [userId]);
-    
-    // 2. Fetch properties owned by this user
-    const [properties] = await conn.query("SELECT id, agency_logo_url FROM properties WHERE owner_id = ?", [userId]);
-    
-    // 3. Fetch media files associated with these properties
-    const propIds = properties.map(p => p.id);
-    let mediaFiles = [];
-    if (propIds.length > 0) {
-      [mediaFiles] = await conn.query(
-        `SELECT url FROM property_media WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
-        propIds
-      );
-    }
 
-    // Collect all media paths to delete
-    const pathsToDelete = [];
-    if (user) {
-      if (user.avatar_url) pathsToDelete.push(user.avatar_url);
-      if (user.agency_logo_url) pathsToDelete.push(user.agency_logo_url);
+    const result = await deleteUserCompletely(conn, userId, { deletedBy: "Self" });
+    if (!result.success) {
+      await conn.rollback();
+      return res.status(404).json({ error: result.error || "User not found" });
     }
-    for (const p of properties) {
-      if (p.agency_logo_url) pathsToDelete.push(p.agency_logo_url);
-    }
-    for (const m of mediaFiles) {
-      if (m.url) pathsToDelete.push(m.url);
-    }
-
-    // 4. Perform permanent deletion in database tables
-    // Clear notifications referencing this user
-    await conn.query("DELETE FROM notifications WHERE user_id = ? OR sender_id = ?", [userId, userId]);
-    // Clear activity logs referencing this user
-    await conn.query("DELETE FROM activity_logs WHERE user_id = ?", [userId]);
-    // Clear role switch requests
-    await conn.query("DELETE FROM role_switch_requests WHERE user_id = ?", [userId]);
-    // Clear enquiries where this user is visitor
-    await conn.query("DELETE FROM enquiries WHERE visitor_id = ?", [userId]);
-    // Clear saved properties
-    await conn.query("DELETE FROM saved_properties WHERE user_id = ?", [userId]);
-    // Clear contact clicks
-    await conn.query("DELETE FROM contact_clicks WHERE user_id = ?", [userId]);
-    // Clear property reviews
-    await conn.query("DELETE FROM property_reviews WHERE user_id = ?", [userId]);
-
-    // Now delete properties (which will cascade to property_media and enquiries)
-    if (propIds.length > 0) {
-      await conn.query(`DELETE FROM properties WHERE owner_id = ?`, [userId]);
-    }
-
-    // Insert persistent activity log of self-deletion (user_id is null so it's not cascaded out)
-    if (user) {
-      await conn.query(
-        "INSERT INTO activity_logs (user_id, action, category) VALUES (null, ?, 'Users')",
-        [`User "${user.name}" (email: ${user.email || 'N/A'}) self-deleted their account.`]
-      );
-    }
-
-    // Finally delete the user account
-    await conn.query("DELETE FROM users WHERE id = ?", [userId]);
 
     await conn.commit();
-
-    // 5. Delete physical files from disk
-    for (const relativePath of pathsToDelete) {
-      if (relativePath) {
-        await deleteUploadedFile(relativePath);
-      }
-    }
-
-    res.json({ success: true, message: "Account and all associated data permanently deleted." });
+    res.json({ success: true, message: "Account and all associated data permanently deleted.", ...result });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    console.error("[SELF DELETE USER ERROR]", err);
     res.status(500).json({ error: "Failed to delete account" });
   } finally {
     conn.release();

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { pool } from "../db.js";
 import { upload } from "../middleware/upload.js";
 import { deleteUploadedFile } from "../utils/fileHelper.js";
+import { deleteUserCompletely } from "../utils/userCleanup.js";
 import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
@@ -673,74 +674,24 @@ router.put("/users/:id/subscription-override", async (req, res) => {
   }
 });
 
-// DELETE /api/admin/users/:id
+// DELETE /api/admin/users/:id - Completely delete user, uploaded properties, tokens, and all data
 router.delete("/users/:id", async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const { id } = req.params;
     await conn.beginTransaction();
 
-    // 1. Fetch user avatar & logo
-    const [[user]] = await conn.query("SELECT avatar_url, agency_logo_url FROM users WHERE id = ?", [id]);
-    
-    // 2. Fetch properties owned by this user
-    const [properties] = await conn.query("SELECT id, agency_logo_url FROM properties WHERE owner_id = ?", [id]);
-    
-    // 3. Fetch media files associated with these properties
-    const propIds = properties.map(p => p.id);
-    let mediaFiles = [];
-    if (propIds.length > 0) {
-      [mediaFiles] = await conn.query(
-        `SELECT url FROM property_media WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
-        propIds
-      );
+    const result = await deleteUserCompletely(conn, id, { deletedBy: "Admin" });
+    if (!result.success) {
+      await conn.rollback();
+      return res.status(404).json({ error: result.error || "User not found" });
     }
-
-    // Collect all media paths to delete
-    const pathsToDelete = [];
-    if (user) {
-      if (user.avatar_url) pathsToDelete.push(user.avatar_url);
-      if (user.agency_logo_url) pathsToDelete.push(user.agency_logo_url);
-    }
-    for (const p of properties) {
-      if (p.agency_logo_url) pathsToDelete.push(p.agency_logo_url);
-    }
-    for (const m of mediaFiles) {
-      if (m.url) pathsToDelete.push(m.url);
-    }
-
-    // 4. Perform permanent deletion in database tables
-    await conn.query("DELETE FROM notifications WHERE user_id = ? OR sender_id = ?", [id, id]);
-    await conn.query("DELETE FROM activity_logs WHERE user_id = ?", [id]);
-    await conn.query("DELETE FROM role_switch_requests WHERE user_id = ?", [id]);
-    await conn.query("DELETE FROM enquiries WHERE visitor_id = ?", [id]);
-    await conn.query("DELETE FROM saved_properties WHERE user_id = ?", [id]);
-    await conn.query("DELETE FROM contact_clicks WHERE user_id = ?", [id]);
-    await conn.query("DELETE FROM property_reviews WHERE user_id = ?", [id]);
-
-    if (propIds.length > 0) {
-      await conn.query(`DELETE FROM properties WHERE owner_id = ?`, [id]);
-    }
-
-    await conn.query("DELETE FROM users WHERE id = ?", [id]);
-
-    // Log admin activity
-    const actionMsg = `User ID #${id} completely deleted by Admin`;
-    await conn.query("INSERT INTO activity_logs (user_id, action, category) VALUES (null, ?, 'Users')", [actionMsg]);
 
     await conn.commit();
-
-    // 5. Delete physical files from disk
-    for (const relativePath of pathsToDelete) {
-      if (relativePath) {
-        await deleteUploadedFile(relativePath);
-      }
-    }
-
-    res.json({ success: true, message: "User and all associated data permanently deleted." });
+    res.json({ success: true, message: "User and all associated data permanently deleted.", ...result });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    console.error("[ADMIN DELETE USER ERROR]", err);
     res.status(500).json({ error: err.message });
   } finally {
     conn.release();
