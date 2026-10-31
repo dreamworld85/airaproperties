@@ -5,6 +5,7 @@ import { adminApi, AdminUser } from "@/lib/adminApi";
 
 const filterTabs = [
   { label: "All Users", value: "All" },
+  { label: "Buyers Only", value: "Buyer" },
   { label: "Owners Only", value: "Owner" },
   { label: "Brokers Only", value: "Broker" },
   { label: "Agencies Only", value: "Agency" },
@@ -97,9 +98,11 @@ export default function Users() {
                         ? "bg-purple-50 text-purple-600 border border-purple-100"
                         : user.role === "Broker"
                         ? "bg-teal-50 text-teal-600 border border-teal-100"
+                        : user.role === "Owner"
+                        ? "bg-amber-50 text-amber-700 border border-amber-200"
                         : "bg-emerald-50 text-emerald-600 border border-emerald-100"
                     }`}>
-                      {user.role || "Owner"}
+                      {user.role || "Buyer"}
                     </span>
                     {user.is_disabled === 1 && (
                       <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-rose-50 text-rose-600 border border-rose-100">

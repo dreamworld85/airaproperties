@@ -979,6 +979,28 @@ async function checkDbMigration() {
 
     // Synchronize pricing & feature plans catalog
     await seedPlans();
+
+    // Ensure default role is 'Buyer' and users have starter tokens from subscription_plans
+    try {
+      await pool.query("UPDATE users SET role = 'Buyer' WHERE role = 'user' OR role IS NULL OR role = ''");
+      const [starterRow] = await pool.query(
+        "SELECT enquiry_tokens, listing_slots, credits FROM subscription_plans WHERE plan_id = 'user_starter_pack' OR LOWER(name) LIKE '%starter%' ORDER BY (plan_id = 'user_starter_pack') DESC, id ASC LIMIT 1"
+      );
+      if (starterRow.length > 0) {
+        const tokens = Number(starterRow[0].enquiry_tokens ?? starterRow[0].credits ?? 10);
+        const slots = Number(starterRow[0].listing_slots ?? 2);
+        await pool.query(
+          "UPDATE users SET enquiry_credits_left = ? WHERE enquiry_credits_left IS NULL OR (role = 'Buyer' AND enquiry_credits_left <= 3)",
+          [tokens]
+        );
+        await pool.query(
+          "UPDATE users SET listing_slots_left = ? WHERE listing_slots_left IS NULL",
+          [slots]
+        );
+      }
+    } catch (starterErr) {
+      console.warn("Could not synchronize starter pack defaults to users:", starterErr.message);
+    }
   } catch (err) {
     console.error("Database migration check failed:", err);
   }

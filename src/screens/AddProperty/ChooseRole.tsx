@@ -76,7 +76,7 @@ export default function ChooseRole() {
     }
   })();
 
-  const isRoleAlreadyLocked = Boolean(user?.role && user.role.toLowerCase() !== "user");
+  const isRoleAlreadyLocked = Boolean(user?.role && user.role.toLowerCase() !== "user" && user.role.toLowerCase() !== "buyer");
 
   // Pre-populate data from profile
   useEffect(() => {

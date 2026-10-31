@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { pool } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { checkUserAccess } from "../utils/access.js";
+import { getStarterPackConfig } from "../utils/starterPack.js";
 import { deleteUploadedFile } from "../utils/fileHelper.js";
 import { deleteUserCompletely } from "../utils/userCleanup.js";
 import { getUploadDir } from "../middleware/upload.js";
@@ -29,6 +30,7 @@ const upload = multer({ storage });
 const router = Router();
 
 function toPublicUser(row) {
+  const roleName = (!row.role || row.role.toLowerCase() === "user") ? "Buyer" : row.role;
   return {
     id: row.id,
     name: row.name,
@@ -40,15 +42,15 @@ function toPublicUser(row) {
     trialEndsAt: row.custom_trial_expiry || row.trial_ends_at,
     subscriptionStatus: row.is_free_subscription_granted === 1 ? "active" : row.subscription_status,
     razorpaySubscriptionId: row.razorpay_subscription_id,
-    role: row.role,
+    role: roleName,
     createdAt: row.created_at,
     subscriptionDurationMonths: row.subscription_duration_months,
     agencyLogoUrl: row.agency_logo_url,
     agencyAddress: row.agency_address,
     agencyDistrict: row.agency_district,
     agencyBannerUrl: row.agency_banner_url || null,
-    enquiryCreditsLeft: row.enquiry_credits_left !== null && row.enquiry_credits_left !== undefined ? Number(row.enquiry_credits_left) : 3,
-    listingSlotsLeft: row.listing_slots_left !== null && row.listing_slots_left !== undefined ? Number(row.listing_slots_left) : 2,
+    enquiryCreditsLeft: row.enquiry_credits_left !== null && row.enquiry_credits_left !== undefined ? Number(row.enquiry_credits_left) : 0,
+    listingSlotsLeft: row.listing_slots_left !== null && row.listing_slots_left !== undefined ? Number(row.listing_slots_left) : 0,
   };
 }
 
@@ -57,6 +59,20 @@ router.get("/me", requireAuth, async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [req.userId]);
     if (rows.length === 0) return res.status(404).json({ error: "User not found" });
+    const userRow = rows[0];
+    if (!userRow.role || userRow.role.toLowerCase() === "user") {
+      await pool.query("UPDATE users SET role = 'Buyer' WHERE id = ?", [req.userId]);
+      userRow.role = "Buyer";
+    }
+    if (userRow.enquiry_credits_left === null || userRow.listing_slots_left === null) {
+      const starter = await getStarterPackConfig();
+      await pool.query(
+        "UPDATE users SET enquiry_credits_left = COALESCE(enquiry_credits_left, ?), listing_slots_left = COALESCE(listing_slots_left, ?) WHERE id = ?",
+        [starter.enquiryTokens, starter.listingSlots, req.userId]
+      );
+      if (userRow.enquiry_credits_left === null) userRow.enquiry_credits_left = starter.enquiryTokens;
+      if (userRow.listing_slots_left === null) userRow.listing_slots_left = starter.listingSlots;
+    }
     const accessCheck = await checkUserAccess(req.userId);
     const [countRows] = await pool.query("SELECT COUNT(*) AS count FROM properties WHERE owner_id = ?", [req.userId]);
     res.json({
@@ -436,7 +452,7 @@ router.post("/me/role-switch", requireAuth, async (req, res) => {
     if (userRows.length === 0) return res.status(404).json({ error: "User not found" });
     const userRole = userRows[0].role;
 
-    if (userRole === "user") {
+    if (userRole === "user" || userRole === "Buyer" || userRole === "buyer") {
       return res.status(400).json({ error: "You can select your role directly when posting your first property." });
     }
 
@@ -549,7 +565,7 @@ router.post("/setup-role", requireAuth, upload.single("agencyLogo"), async (req,
 
     // Check if user is already locked
     const [[user]] = await pool.query("SELECT role FROM users WHERE id = ?", [req.userId]);
-    if (user && user.role !== "user") {
+    if (user && user.role && user.role.toLowerCase() !== "user" && user.role.toLowerCase() !== "buyer") {
       return res.status(400).json({ error: "Your account role is already locked. Contact Admin to switch." });
     }
 

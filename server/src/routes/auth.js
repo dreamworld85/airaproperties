@@ -6,6 +6,7 @@ import { pool } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { sendOtpEmail } from "../utils/mailer.js";
 import { sendOtpSms } from "../utils/sms.js";
+import { getStarterPackConfig } from "../utils/starterPack.js";
 
 const router = Router();
 
@@ -49,31 +50,63 @@ async function resolveSocialUser(provider, providerUserId, profileName, profileE
       if (!existingUsers[0].avatar_url && profilePicture) {
         await pool.query("UPDATE users SET avatar_url = ? WHERE id = ?", [profilePicture, userId]);
       }
+      if (!existingUsers[0].role || existingUsers[0].role.toLowerCase() === "user") {
+        await pool.query("UPDATE users SET role = 'Buyer' WHERE id = ?", [userId]);
+      }
+      if (existingUsers[0].enquiry_credits_left === null || existingUsers[0].listing_slots_left === null) {
+        const starter = await getStarterPackConfig();
+        await pool.query(
+          "UPDATE users SET enquiry_credits_left = COALESCE(enquiry_credits_left, ?), listing_slots_left = COALESCE(listing_slots_left, ?) WHERE id = ?",
+          [starter.enquiryTokens, starter.listingSlots, userId]
+        );
+      }
     } else {
       // Create new user in users table
+      const starter = await getStarterPackConfig();
       const randomPassword = await bcrypt.hash(crypto.randomBytes(16).toString("hex"), 10);
       const [insertRes] = await pool.query(
-        "INSERT INTO users (name, email, password_hash, role, avatar_url) VALUES (?, ?, ?, 'user', ?)",
-        [profileName || `${provider} User`, trimmedEmail, randomPassword, profilePicture || null]
+        "INSERT INTO users (name, email, password_hash, role, avatar_url, enquiry_credits_left, listing_slots_left) VALUES (?, ?, ?, 'Buyer', ?, ?, ?)",
+        [profileName || `${provider} User`, trimmedEmail, randomPassword, profilePicture || null, starter.enquiryTokens, starter.listingSlots]
       );
       userId = insertRes.insertId;
       await pool.query(
         "INSERT INTO social_accounts (user_id, provider, provider_user_id) VALUES (?, ?, ?)",
         [userId, provider, String(providerUserId)]
       );
+      await pool.query(
+        `INSERT INTO credit_transactions (user_id, credit_type, transaction_type, amount_credits, balance_after, notes)
+         VALUES (?, 'enquiry', 'bonus', ?, ?, 'Welcome free starter enquiry tokens')`,
+        [userId, starter.enquiryTokens, starter.enquiryTokens]
+      );
+      await pool.query(
+        `INSERT INTO credit_transactions (user_id, credit_type, transaction_type, amount_credits, balance_after, notes)
+         VALUES (?, 'listing_slot', 'bonus', ?, ?, 'Welcome free starter listing slots')`,
+        [userId, starter.listingSlots, starter.listingSlots]
+      );
     }
   } else {
     // Fallback if no email provided by provider
+    const starter = await getStarterPackConfig();
     const placeholderEmail = `${provider}_${providerUserId}@social.auth`;
     const randomPassword = await bcrypt.hash(crypto.randomBytes(16).toString("hex"), 10);
     const [insertRes] = await pool.query(
-      "INSERT INTO users (name, email, password_hash, role, avatar_url) VALUES (?, ?, ?, 'user', ?)",
-      [profileName || `${provider} User`, placeholderEmail, randomPassword, profilePicture || null]
+      "INSERT INTO users (name, email, password_hash, role, avatar_url, enquiry_credits_left, listing_slots_left) VALUES (?, ?, ?, 'Buyer', ?, ?, ?)",
+      [profileName || `${provider} User`, placeholderEmail, randomPassword, profilePicture || null, starter.enquiryTokens, starter.listingSlots]
     );
     userId = insertRes.insertId;
     await pool.query(
       "INSERT INTO social_accounts (user_id, provider, provider_user_id) VALUES (?, ?, ?)",
       [userId, provider, String(providerUserId)]
+    );
+    await pool.query(
+      `INSERT INTO credit_transactions (user_id, credit_type, transaction_type, amount_credits, balance_after, notes)
+       VALUES (?, 'enquiry', 'bonus', ?, ?, 'Welcome free starter enquiry tokens')`,
+      [userId, starter.enquiryTokens, starter.enquiryTokens]
+    );
+    await pool.query(
+      `INSERT INTO credit_transactions (user_id, credit_type, transaction_type, amount_credits, balance_after, notes)
+       VALUES (?, 'listing_slot', 'bonus', ?, ?, 'Welcome free starter listing slots')`,
+      [userId, starter.listingSlots, starter.listingSlots]
     );
   }
 
@@ -87,6 +120,7 @@ function signToken(userId) {
 }
 
 function toPublicUser(row) {
+  const roleName = (!row.role || row.role.toLowerCase() === "user") ? "Buyer" : row.role;
   return {
     id: row.id,
     name: row.name,
@@ -97,12 +131,12 @@ function toPublicUser(row) {
     trialEndsAt: row.trial_ends_at,
     subscriptionStatus: row.is_free_subscription_granted === 1 ? "active" : row.subscription_status,
     razorpaySubscriptionId: row.razorpay_subscription_id,
-    role: row.role,
+    role: roleName,
     agencyLogoUrl: row.agency_logo_url,
     agencyAddress: row.agency_address,
     agencyDistrict: row.agency_district,
-    enquiryCreditsLeft: row.enquiry_credits_left !== null && row.enquiry_credits_left !== undefined ? Number(row.enquiry_credits_left) : 3,
-    listingSlotsLeft: row.listing_slots_left !== null && row.listing_slots_left !== undefined ? Number(row.listing_slots_left) : 2,
+    enquiryCreditsLeft: row.enquiry_credits_left !== null && row.enquiry_credits_left !== undefined ? Number(row.enquiry_credits_left) : 0,
+    listingSlotsLeft: row.listing_slots_left !== null && row.listing_slots_left !== undefined ? Number(row.listing_slots_left) : 0,
   };
 }
 
@@ -124,7 +158,21 @@ router.get("/me", requireAuth, async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ error: "User not found" });
     }
-    res.json({ user: toPublicUser(rows[0]) });
+    const userRow = rows[0];
+    if (!userRow.role || userRow.role.toLowerCase() === "user") {
+      await pool.query("UPDATE users SET role = 'Buyer' WHERE id = ?", [req.userId]);
+      userRow.role = "Buyer";
+    }
+    if (userRow.enquiry_credits_left === null || userRow.listing_slots_left === null) {
+      const starter = await getStarterPackConfig();
+      await pool.query(
+        "UPDATE users SET enquiry_credits_left = COALESCE(enquiry_credits_left, ?), listing_slots_left = COALESCE(listing_slots_left, ?) WHERE id = ?",
+        [starter.enquiryTokens, starter.listingSlots, req.userId]
+      );
+      if (userRow.enquiry_credits_left === null) userRow.enquiry_credits_left = starter.enquiryTokens;
+      if (userRow.listing_slots_left === null) userRow.listing_slots_left = starter.listingSlots;
+    }
+    res.json({ user: toPublicUser(userRow) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch session user" });
@@ -155,7 +203,8 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: "Full Name, mobile number, and password are required" });
     }
 
-    const userRole = "user";
+    const starter = await getStarterPackConfig();
+    const userRole = (role && String(role).trim() && String(role).toLowerCase() !== "user") ? String(role).trim() : "Buyer";
 
     let existingQuery = "SELECT id, phone, email FROM users WHERE phone = ?";
     let queryParams = [trimmedPhone];
@@ -186,20 +235,20 @@ router.post("/register", async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
-      "INSERT INTO users (name, email, phone, password_hash, role, enquiry_credits_left, listing_slots_left) VALUES (?, ?, ?, ?, ?, 3, 2)",
-      [trimmedName, trimmedEmail, trimmedPhone, passwordHash, userRole]
+      "INSERT INTO users (name, email, phone, password_hash, role, enquiry_credits_left, listing_slots_left) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [trimmedName, trimmedEmail, trimmedPhone, passwordHash, userRole, starter.enquiryTokens, starter.listingSlots]
     );
 
     const newUserId = result.insertId;
     await pool.query(
       `INSERT INTO credit_transactions (user_id, credit_type, transaction_type, amount_credits, balance_after, notes)
-       VALUES (?, 'enquiry', 'bonus', 3, 3, 'Welcome free enquiry tokens')`,
-      [newUserId]
+       VALUES (?, 'enquiry', 'bonus', ?, ?, 'Welcome free starter enquiry tokens')`,
+      [newUserId, starter.enquiryTokens, starter.enquiryTokens]
     );
     await pool.query(
       `INSERT INTO credit_transactions (user_id, credit_type, transaction_type, amount_credits, balance_after, notes)
-       VALUES (?, 'listing_slot', 'bonus', 2, 2, 'Welcome free listing slots')`,
-      [newUserId]
+       VALUES (?, 'listing_slot', 'bonus', ?, ?, 'Welcome free starter listing slots')`,
+      [newUserId, starter.listingSlots, starter.listingSlots]
     );
 
     const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [newUserId]);
@@ -256,10 +305,24 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [rows[0].id]);
-    const token = signToken(rows[0].id);
+    const userRow = rows[0];
+    if (!userRow.role || userRow.role.toLowerCase() === "user") {
+      await pool.query("UPDATE users SET role = 'Buyer' WHERE id = ?", [userRow.id]);
+      userRow.role = "Buyer";
+    }
+    if (userRow.enquiry_credits_left === null || userRow.listing_slots_left === null) {
+      const starter = await getStarterPackConfig();
+      await pool.query(
+        "UPDATE users SET enquiry_credits_left = COALESCE(enquiry_credits_left, ?), listing_slots_left = COALESCE(listing_slots_left, ?) WHERE id = ?",
+        [starter.enquiryTokens, starter.listingSlots, userRow.id]
+      );
+      if (userRow.enquiry_credits_left === null) userRow.enquiry_credits_left = starter.enquiryTokens;
+      if (userRow.listing_slots_left === null) userRow.listing_slots_left = starter.listingSlots;
+    }
+    await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [userRow.id]);
+    const token = signToken(userRow.id);
     setAuthCookie(res, token);
-    res.json({ token, user: toPublicUser(rows[0]) });
+    res.json({ token, user: toPublicUser(userRow) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Login failed" });
@@ -360,28 +423,42 @@ async function handleVerifyMobileOtp(req, res) {
     if (existingUsers.length > 0) {
       // Existing user: direct login
       user = existingUsers[0];
+      if (!user.role || user.role.toLowerCase() === "user") {
+        await pool.query("UPDATE users SET role = 'Buyer' WHERE id = ?", [user.id]);
+        user.role = "Buyer";
+      }
+      if (user.enquiry_credits_left === null || user.listing_slots_left === null) {
+        const starter = await getStarterPackConfig();
+        await pool.query(
+          "UPDATE users SET enquiry_credits_left = COALESCE(enquiry_credits_left, ?), listing_slots_left = COALESCE(listing_slots_left, ?) WHERE id = ?",
+          [starter.enquiryTokens, starter.listingSlots, user.id]
+        );
+        if (user.enquiry_credits_left === null) user.enquiry_credits_left = starter.enquiryTokens;
+        if (user.listing_slots_left === null) user.listing_slots_left = starter.listingSlots;
+      }
       isNewUser = false;
     } else {
       // New user: auto-create account
+      const starter = await getStarterPackConfig();
       const fullPhone = "+91" + last10;
       const userName = (name && String(name).trim()) ? String(name).trim() : `User ${last10.slice(-4)}`;
       const randomPassword = await bcrypt.hash(crypto.randomBytes(16).toString("hex"), 10);
 
       const [insertRes] = await pool.query(
-        "INSERT INTO users (name, phone, password_hash, role, enquiry_credits_left, listing_slots_left) VALUES (?, ?, ?, 'user', 3, 2)",
-        [userName, fullPhone, randomPassword]
+        "INSERT INTO users (name, phone, password_hash, role, enquiry_credits_left, listing_slots_left) VALUES (?, ?, ?, 'Buyer', ?, ?)",
+        [userName, fullPhone, randomPassword, starter.enquiryTokens, starter.listingSlots]
       );
       const newUserId = insertRes.insertId;
 
       await pool.query(
         `INSERT INTO credit_transactions (user_id, credit_type, transaction_type, amount_credits, balance_after, notes)
-         VALUES (?, 'enquiry', 'bonus', 3, 3, 'Welcome free enquiry tokens')`,
-        [newUserId]
+         VALUES (?, 'enquiry', 'bonus', ?, ?, 'Welcome free starter enquiry tokens')`,
+        [newUserId, starter.enquiryTokens, starter.enquiryTokens]
       );
       await pool.query(
         `INSERT INTO credit_transactions (user_id, credit_type, transaction_type, amount_credits, balance_after, notes)
-         VALUES (?, 'listing_slot', 'bonus', 2, 2, 'Welcome free listing slots')`,
-        [newUserId]
+         VALUES (?, 'listing_slot', 'bonus', ?, ?, 'Welcome free starter listing slots')`,
+        [newUserId, starter.listingSlots, starter.listingSlots]
       );
 
       const [userRows] = await pool.query("SELECT * FROM users WHERE id = ?", [newUserId]);
@@ -647,15 +724,40 @@ router.post("/google", async (req, res) => {
 
     let userRow;
     if (rows.length === 0) {
+      const starter = await getStarterPackConfig();
       const randomPassword = await bcrypt.hash(Math.random().toString(36), 10);
       const [insertResult] = await pool.query(
-        "INSERT INTO users (name, email, password_hash, role, avatar_url) VALUES (?, ?, ?, 'user', ?)",
-        [name, trimmedEmail, randomPassword, picture]
+        "INSERT INTO users (name, email, password_hash, role, avatar_url, enquiry_credits_left, listing_slots_left) VALUES (?, ?, ?, 'Buyer', ?, ?, ?)",
+        [name, trimmedEmail, randomPassword, picture, starter.enquiryTokens, starter.listingSlots]
       );
-      const [newRows] = await pool.query("SELECT * FROM users WHERE id = ?", [insertResult.insertId]);
+      const newUserId = insertResult.insertId;
+      await pool.query(
+        `INSERT INTO credit_transactions (user_id, credit_type, transaction_type, amount_credits, balance_after, notes)
+         VALUES (?, 'enquiry', 'bonus', ?, ?, 'Welcome free starter enquiry tokens')`,
+        [newUserId, starter.enquiryTokens, starter.enquiryTokens]
+      );
+      await pool.query(
+        `INSERT INTO credit_transactions (user_id, credit_type, transaction_type, amount_credits, balance_after, notes)
+         VALUES (?, 'listing_slot', 'bonus', ?, ?, 'Welcome free starter listing slots')`,
+        [newUserId, starter.listingSlots, starter.listingSlots]
+      );
+      const [newRows] = await pool.query("SELECT * FROM users WHERE id = ?", [newUserId]);
       userRow = newRows[0];
     } else {
       userRow = rows[0];
+      if (!userRow.role || userRow.role.toLowerCase() === "user") {
+        await pool.query("UPDATE users SET role = 'Buyer' WHERE id = ?", [userRow.id]);
+        userRow.role = "Buyer";
+      }
+      if (userRow.enquiry_credits_left === null || userRow.listing_slots_left === null) {
+        const starter = await getStarterPackConfig();
+        await pool.query(
+          "UPDATE users SET enquiry_credits_left = COALESCE(enquiry_credits_left, ?), listing_slots_left = COALESCE(listing_slots_left, ?) WHERE id = ?",
+          [starter.enquiryTokens, starter.listingSlots, userRow.id]
+        );
+        if (userRow.enquiry_credits_left === null) userRow.enquiry_credits_left = starter.enquiryTokens;
+        if (userRow.listing_slots_left === null) userRow.listing_slots_left = starter.listingSlots;
+      }
       if (!userRow.avatar_url && picture) {
         await pool.query("UPDATE users SET avatar_url = ? WHERE id = ?", [picture, userRow.id]);
         userRow.avatar_url = picture;
@@ -711,13 +813,7 @@ router.post("/facebook", async (req, res) => {
     res.json({
       message: "Successfully authenticated with Facebook",
       token,
-      user: {
-        id: userRow.id,
-        name: userRow.name,
-        email: userRow.email,
-        role: userRow.role,
-        avatar_url: userRow.avatar_url,
-      },
+      user: toPublicUser(userRow),
     });
   } catch (err) {
     console.error("Facebook authentication error:", err);

@@ -29,7 +29,8 @@ export default function SubscriptionDetails() {
   const [plans, setPlans] = useState<ApiSubscriptionPlan[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   
-  const userRole = (user?.role || "user").toLowerCase();
+  const rawRole = (user?.role || "user").toLowerCase();
+  const userRole = (rawRole === "buyer" || rawRole === "user") ? "user" : rawRole;
   const [activeTab, setActiveTab] = useState<"packages" | "history">("packages");
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1000);
 
@@ -96,7 +97,7 @@ export default function SubscriptionDetails() {
 
   // Strictly filter only packages matching this user's profile role
   const profilePlans = plans
-    .filter((p) => p.role === userRole)
+    .filter((p) => p.role === userRole || (userRole === "user" && p.role === "buyer"))
     .sort((a, b) => Number(a.price) - Number(b.price));
 
   const roleMeta: Record<string, { label: string; heroTitle: string; subtitle: string }> = {
@@ -136,7 +137,7 @@ export default function SubscriptionDetails() {
         <div className="text-center space-y-3 py-2">
           <div className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-[#1B5E4F] bg-emerald-50 px-3.5 py-1 rounded-full border border-emerald-100">
             <UserCheck size={13} className="text-[#1B5E4F]" />
-            <span>Profile Role: {user?.role || "User"}</span>
+            <span>Profile Role: {user?.role?.toLowerCase() === "user" ? "Buyer" : (user?.role || "Buyer")}</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 tracking-tight font-display">
             {currentRoleInfo.heroTitle}
@@ -262,7 +263,7 @@ export default function SubscriptionDetails() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-extrabold text-gray-900 font-display">
-                  Available Packages for {user?.role || "Your Account"}
+                  Available Packages for {user?.role?.toLowerCase() === "user" ? "Buyer" : (user?.role || "Buyer")}
                 </h2>
                 <p className="text-xs text-gray-500 font-medium">
                   Showing packages exclusively curated for your registered role.

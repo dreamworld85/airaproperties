@@ -95,7 +95,7 @@ export default function Profile() {
   }, [user]);
 
   useEffect(() => {
-    if (user?.role && user?.role.toLowerCase() !== "user") {
+    if (user?.role && user?.role.toLowerCase() !== "user" && user?.role.toLowerCase() !== "buyer") {
       api.fetchRoleSwitchStatus()
         .then((data) => {
           if (data) {
@@ -163,7 +163,7 @@ export default function Profile() {
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
                   <h1 className="font-display font-black text-2xl text-ink">{user?.name || "Your Name"}</h1>
                   <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-600/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                    {user?.role?.toLowerCase() === "user" ? "Buyer" : user?.role || "Owner"}
+                    {user?.role?.toLowerCase() === "user" || user?.role?.toLowerCase() === "buyer" ? "Buyer" : user?.role || "Buyer"}
                   </span>
                   {user?.subscriptionStatus === "active" && (
                     <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-600/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
@@ -272,7 +272,7 @@ export default function Profile() {
           )}
 
           {/* Upgrade request section for Locked Roles */}
-          {user?.role && user?.role.toLowerCase() !== "user" && user?.role.toLowerCase() !== "agency" && (
+          {user?.role && user?.role.toLowerCase() !== "user" && user?.role.toLowerCase() !== "buyer" && user?.role.toLowerCase() !== "agency" && (
             <div className="bg-white rounded-3xl p-6 border border-charcoal/5 shadow-sm flex flex-col gap-3 font-display">
               <span className="text-xs font-bold text-slate uppercase tracking-wider">Role Switch Request</span>
               {switchStatus === "Pending" ? (
@@ -488,7 +488,7 @@ export default function Profile() {
           <p className="text-xs text-slate mt-0.5 truncate">{user?.phone || user?.email}</p>
           <div className="flex gap-2 items-center mt-1.5 flex-wrap">
             <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-600/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
-              {user?.role?.toLowerCase() === "user" ? "Buyer" : user?.role || "Owner"}
+              {user?.role?.toLowerCase() === "user" || user?.role?.toLowerCase() === "buyer" ? "Buyer" : user?.role || "Buyer"}
             </span>
             {user?.subscriptionStatus === "active" && (
               <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-600/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -563,7 +563,7 @@ export default function Profile() {
       )}
 
       {/* Upgrade request section for Locked Roles */}
-      {user?.role && user?.role.toLowerCase() !== "user" && user?.role.toLowerCase() !== "agency" && (
+      {user?.role && user?.role.toLowerCase() !== "user" && user?.role.toLowerCase() !== "buyer" && user?.role.toLowerCase() !== "agency" && (
         <div className="mx-4 mt-4 bg-white rounded-3xl p-4 border border-charcoal/5 shadow-sm flex flex-col gap-2.5 font-display">
           <span className="text-[10px] font-bold text-slate uppercase tracking-wider">Role Switch Request</span>
           {switchStatus === "Pending" ? (
@@ -611,7 +611,7 @@ export default function Profile() {
       {/* Account Credit Balances Card */}
       <div className="mx-4 mt-4 bg-white rounded-3xl p-4 border border-charcoal/5 shadow-sm flex flex-col gap-3 font-display">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold text-slate uppercase tracking-wider">Credit Balances</span>
+          <span className="text-[10px] font-bold text-slate uppercase tracking-wider">Account Wallets & Concurrency</span>
           <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-600/10 uppercase tracking-widest">
             No Expiry
           </span>

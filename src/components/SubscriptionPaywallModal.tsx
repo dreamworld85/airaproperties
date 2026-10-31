@@ -23,7 +23,8 @@ export default function SubscriptionPaywallModal({
   const [loading, setLoading] = useState(false);
   const [plans, setPlans] = useState<ApiSubscriptionPlan[]>([]);
   
-  const userRole = (targetRole || user?.role || "user").toLowerCase();
+  const rawRole = (targetRole || user?.role || "user").toLowerCase();
+  const planRole = (rawRole === "buyer" || rawRole === "user") ? "user" : rawRole;
   const [selectedPlanId, setSelectedPlanId] = useState<number | string | null>(initialPlanId || null);
 
   useEffect(() => {
@@ -62,7 +63,7 @@ export default function SubscriptionPaywallModal({
 
   // Strictly filter only packages matching this user's profile role
   const profilePlans = plans
-    .filter((p) => p.role === userRole)
+    .filter((p) => p.role === planRole || (planRole === "user" && p.role === "buyer"))
     .sort((a, b) => Number(a.price) - Number(b.price));
 
   const selectedPlan = profilePlans.find((p) => p.id === selectedPlanId || p.plan_id === selectedPlanId) || profilePlans[0];
@@ -158,9 +159,9 @@ export default function SubscriptionPaywallModal({
   };
 
   const roleDisplayName = 
-    userRole === "broker" ? "Broker" :
-    userRole === "owner" ? "Owner" :
-    userRole === "agency" ? "Agency" : "Buyer & Tenant";
+    planRole === "broker" ? "Broker" :
+    planRole === "owner" ? "Owner" :
+    planRole === "agency" ? "Agency" : "Buyer & Tenant";
 
   return (
     <div 

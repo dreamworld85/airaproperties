@@ -30,7 +30,7 @@ export interface ApiUser {
   trialEndsAt?: string | null;
   subscriptionStatus?: "trial" | "active" | "expired" | "canceled" | null;
   razorpaySubscriptionId?: string | null;
-  role?: "Owner" | "Broker" | "Agency" | "User" | null;
+  role?: "Owner" | "Broker" | "Agency" | "User" | "Buyer" | string | null;
   agencyLogoUrl?: string | null;
   agencyAddress?: string | null;
   agencyDistrict?: string | null;

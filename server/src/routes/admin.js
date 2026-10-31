@@ -476,8 +476,12 @@ router.get("/users", async (req, res) => {
     }
 
     if (role !== "All") {
-      query += " AND role = ?";
-      params.push(role);
+      if (role.toLowerCase() === "buyer") {
+        query += " AND (LOWER(role) = 'buyer' OR LOWER(role) = 'user' OR role IS NULL)";
+      } else {
+        query += " AND LOWER(role) = LOWER(?)";
+        params.push(role);
+      }
     }
 
     query += " ORDER BY created_at DESC";
