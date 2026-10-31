@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import fsSync from "fs";
 import path from "path";
+import { getUploadDir } from "../middleware/upload.js";
 
 export async function deleteUploadedFile(urlPath) {
   if (!urlPath || typeof urlPath !== "string") {
@@ -28,6 +29,7 @@ export async function deleteUploadedFile(urlPath) {
 
   // Candidate directories where uploads might be stored across local dev and production
   const candidateDirs = [
+    (() => { try { return getUploadDir(); } catch { return null; } })(),
     process.env.UPLOADS_DIR,
     // Server folder variants (if cwd is project root or server root)
     path.resolve("src/uploads"),

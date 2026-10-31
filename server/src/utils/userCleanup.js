@@ -181,6 +181,14 @@ export async function deleteUserCompletely(conn, userId, options = {}) {
     await conn.query(`DELETE FROM builder_inquiries WHERE ${whereClause}`, params);
   }
 
+  // Defensively decouple any external credit transactions referencing these properties
+  if (propIds.length > 0) {
+    await conn.query(
+      `UPDATE credit_transactions SET property_id = NULL WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
+      propIds
+    );
+  }
+
   // O. Delete all uploaded properties and their property_media rows
   if (propIds.length > 0) {
     await conn.query(

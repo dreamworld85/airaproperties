@@ -941,7 +941,18 @@ router.delete("/properties/:id", async (req, res) => {
       if (m.url) pathsToDelete.push(m.url);
     }
 
-    // 2. Perform hard delete from DB
+    // 2. Defensively delete all child records and media associated with this property
+    await conn.query("DELETE FROM contact_clicks WHERE property_id = ?", [id]);
+    await conn.query("DELETE FROM enquiries WHERE property_id = ?", [id]);
+    await conn.query("DELETE FROM notifications WHERE property_id = ?", [id]);
+    await conn.query("DELETE FROM property_reviews WHERE property_id = ?", [id]);
+    await conn.query("DELETE FROM property_views WHERE property_id = ?", [id]);
+    await conn.query("DELETE FROM reported_listings WHERE property_id = ?", [id]);
+    await conn.query("DELETE FROM saved_properties WHERE property_id = ?", [id]);
+    await conn.query("DELETE FROM property_media WHERE property_id = ?", [id]);
+    await conn.query("UPDATE credit_transactions SET property_id = NULL WHERE property_id = ?", [id]);
+
+    // Perform hard delete of property from DB
     await conn.query("DELETE FROM properties WHERE id = ?", [id]);
 
     // Log activity
