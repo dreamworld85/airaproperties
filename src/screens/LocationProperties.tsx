@@ -129,7 +129,7 @@ export default function LocationProperties() {
         map: map,
         title: property.title,
         icon: {
-          url: "/images/location.gif",
+          url: "/images/location.svg",
           scaledSize: new maps.Size(isSelected ? 54 : 42, isSelected ? 54 : 42),
           origin: new maps.Point(0, 0),
           anchor: new maps.Point(isSelected ? 27 : 21, isSelected ? 54 : 42)
@@ -155,7 +155,7 @@ export default function LocationProperties() {
       if (window.google && window.google.maps) {
         const isSelected = id === property.id;
         marker.setIcon({
-          url: "/images/location.gif",
+          url: "/images/location.svg",
           scaledSize: new window.google.maps.Size(isSelected ? 54 : 42, isSelected ? 54 : 42),
           origin: new window.google.maps.Point(0, 0),
           anchor: new window.google.maps.Point(isSelected ? 27 : 21, isSelected ? 54 : 42)

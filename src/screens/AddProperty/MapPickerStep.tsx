@@ -419,7 +419,7 @@ export default function MapPickerStep() {
 
     const customIcon = window.L.divIcon({
       className: "custom-leaflet-picker-gif-pin",
-      html: `<img src="/images/location.gif" style="width: 48px; height: 48px; display: block; cursor: grab; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));" />`,
+      html: `<img src="/images/location.svg" style="width: 48px; height: 48px; display: block; cursor: grab; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));" />`,
       iconSize: [48, 48],
       iconAnchor: [24, 48]
     });
@@ -487,7 +487,7 @@ export default function MapPickerStep() {
       draggable: true,
       animation: maps.Animation.DROP,
       icon: {
-        url: "/images/location.gif",
+        url: "/images/location.svg",
         scaledSize: new maps.Size(48, 48),
         origin: new maps.Point(0, 0),
         anchor: new maps.Point(24, 48)
