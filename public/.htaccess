@@ -44,8 +44,10 @@
   ExpiresByType application/javascript "access plus 1 year"
   ExpiresByType application/x-javascript "access plus 1 year"
   
-  # Images and Icons
-  ExpiresByType image/x-icon "access plus 1 year"
+  # Favicons and site icons expire immediately
+  ExpiresByType image/x-icon "access plus 0 seconds"
+
+  # Images
   ExpiresByType image/jpeg "access plus 1 year"
   ExpiresByType image/png "access plus 1 year"
   ExpiresByType image/gif "access plus 1 year"
@@ -63,6 +65,14 @@
   <FilesMatch "\.(ico|jpe?g|png|gif|webp|svg|css|js|woff2?)$">
     Header set Cache-Control "max-age=31536000, public, immutable"
   </FilesMatch>
+
+  # Ensure favicons and site icons are never locked in cache
+  <FilesMatch "(favicon|site-icon|apple-touch-icon)\.(ico|svg|png)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+
   <FilesMatch "\.(html|htm|php)$">
     Header set Cache-Control "max-age=0, no-cache, no-store, must-revalidate"
   </FilesMatch>
