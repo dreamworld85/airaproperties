@@ -360,7 +360,6 @@ export default function DesktopPropertyListing({
         onSearchChange={handleSearchChange}
         onToggleMap={() => setShowMap((prev) => !prev)}
         isMapOpen={showMap}
-        hasNoResults={hasNoResults}
       />
 
       {/* Home Hero Banner — only on home page below the filter section */}
@@ -391,9 +390,15 @@ export default function DesktopPropertyListing({
                   <h1 className="text-xl font-bold text-gray-900 tracking-tight font-display">
                     {sortedVisibleMapProperties.length} Properties Available in This Area
                   </h1>
-                  <p className="text-xs text-gray-500 font-medium mt-0.5">
-                    Updated automatically as you pan or zoom the map
-                  </p>
+                  {sortedVisibleMapProperties.length === 0 ? (
+                    <p className="text-xs font-semibold text-red-600 italic mt-0.5">
+                      No results found. Try adjusting your search and try again.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-500 font-medium mt-0.5">
+                      Updated automatically as you pan or zoom the map
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -514,9 +519,15 @@ export default function DesktopPropertyListing({
               <h1 className="text-2xl font-bold text-gray-900 tracking-tight font-display">
                 Properties in {filters.district && !filters.district.startsWith("All ") ? filters.district : (filters.state || "All States (India)")}
               </h1>
-              <p className="text-xs text-gray-500 font-medium mt-1">
-                Showing {sortedProperties.length} results
-              </p>
+              {sortedProperties.length === 0 ? (
+                <p className="text-xs font-semibold text-red-600 italic mt-1">
+                  No results found. Try adjusting your search and try again.
+                </p>
+              ) : (
+                <p className="text-xs text-gray-500 font-medium mt-1">
+                  Showing {sortedProperties.length} results
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-3">

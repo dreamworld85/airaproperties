@@ -60,7 +60,6 @@ interface DesktopHeaderProps {
   initialDistrict?: string;
   initialType?: string;
   availableTypes?: string[];
-  hasNoResults?: boolean;
 }
 
 export default function DesktopHeader({
@@ -73,7 +72,6 @@ export default function DesktopHeader({
   initialDistrict = "All Districts",
   initialType = "All Types",
   availableTypes,
-  hasNoResults = false,
 }: DesktopHeaderProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -129,6 +127,7 @@ export default function DesktopHeader({
 
   const currentDistrictOptions = getDistrictOptionsForState(selectedState);
 
+  const debounceTimerRef = useRef<any>(null);
   // Auto-trigger search with debounce when typing in location/keyword/phone input
   const isFirstMountRef = useRef(true);
   useEffect(() => {
@@ -143,11 +142,11 @@ export default function DesktopHeader({
     return () => clearTimeout(timer);
   }, [locationInput]);
 
-  const handleSearch = (newPurpose = purpose, newType = propertyType, newState = selectedState, newDistrict = district) => {
+  const handleSearch = (newPurpose = purpose, newType = propertyType, newState = selectedState, newDistrict = district, newLocation = locationInput) => {
     let effectiveState = newState;
     let effectiveDistrict = newDistrict;
     if (!effectiveState || effectiveState === "All States (India)") {
-      const matched = INDIAN_STATES.find((s) => s.toLowerCase() === locationInput.trim().toLowerCase());
+      const matched = INDIAN_STATES.find((s) => s.toLowerCase() === (newLocation || "").trim().toLowerCase());
       if (matched) {
         effectiveState = matched;
         setSelectedState(effectiveState);
@@ -157,11 +156,11 @@ export default function DesktopHeader({
     }
 
     if (onSearchChange) {
-      onSearchChange({ purpose: newPurpose, location: locationInput, state: effectiveState, district: effectiveDistrict, propertyType: newType });
+      onSearchChange({ purpose: newPurpose, location: newLocation, state: effectiveState, district: effectiveDistrict, propertyType: newType });
     } else {
       const params = new URLSearchParams();
       if (newPurpose) params.set("purpose", newPurpose);
-      if (locationInput) params.set("search", locationInput);
+      if (newLocation) params.set("search", newLocation);
       if (effectiveState && effectiveState !== "All States (India)") params.set("state", effectiveState);
       if (effectiveDistrict && !effectiveDistrict.startsWith("All ")) params.set("district", effectiveDistrict);
       if (newType && newType !== "All Types") params.set("propertyType", newType);
@@ -333,13 +332,28 @@ export default function DesktopHeader({
                 const val = e.target.value;
                 setLocationInput(val);
                 const matched = INDIAN_STATES.find((s) => s.toLowerCase() === val.trim().toLowerCase());
+                let nextState = selectedState;
+                let nextDistrict = district;
                 if (matched && matched !== selectedState) {
+                  nextState = matched;
                   setSelectedState(matched);
                   const newDistOptions = getDistrictOptionsForState(matched);
-                  setDistrict(newDistOptions[0]);
+                  nextDistrict = newDistOptions[0];
+                  setDistrict(nextDistrict);
+                }
+                if (onSearchChange) {
+                  if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+                  debounceTimerRef.current = setTimeout(() => {
+                    handleSearch(purpose, propertyType, nextState, nextDistrict, val);
+                  }, 300);
                 }
               }}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+                  handleSearch();
+                }
+              }}
               className="w-full bg-transparent outline-none text-gray-800 placeholder-gray-400 font-medium"
             />
           </div>
@@ -424,13 +438,7 @@ export default function DesktopHeader({
             <span>Search</span>
           </button>
 
-          {hasNoResults && (
-            <div className="w-full text-left pt-2 pb-0.5 animate-in fade-in duration-200">
-              <span className="text-xs font-bold text-red-600 bg-white px-3 py-1.5 border border-red-300 shadow-xs inline-block">
-                No results found. Try adjusting your search and try again.
-              </span>
-            </div>
-          )}
+
         </div>
       </div>
     </div>
