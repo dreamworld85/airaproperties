@@ -66,10 +66,10 @@ export default function DesktopPropertyListing({
   // Search Filters — Default purpose is empty to show ALL properties initially
   const [filters, setFilters] = useState({
     purpose: searchParams.get("purpose") || "",
-    location: "",
-    state: "All States (India)",
+    location: searchParams.get("search") || searchParams.get("location") || searchParams.get("q") || "",
+    state: searchParams.get("state") || "All States (India)",
     district: searchParams.get("district") || "All Districts",
-    propertyType: "All Types"
+    propertyType: searchParams.get("propertyType") || searchParams.get("type") || "All Types"
   });
  
   useEffect(() => {
@@ -114,13 +114,21 @@ export default function DesktopPropertyListing({
   // Extract unique available property types
   const availableTypes = Array.from(new Set(properties.map((p) => p.propertyType))).filter(Boolean);
 
+  const isFilterActive = !!(
+    filters.location ||
+    filters.purpose ||
+    (filters.state && filters.state !== "All States (India)") ||
+    (filters.district && !filters.district.startsWith("All ")) ||
+    (filters.propertyType && filters.propertyType !== "All Types")
+  );
+
   // Filter properties based on Leaflet map bounds
   const updateVisibleMapProperties = () => {
     if (!mapRef.current || !window.L) return;
 
     try {
       const bounds = mapRef.current.getBounds();
-      const mapList = allProperties.length > 0 ? allProperties : (properties.length > 0 ? properties : []);
+      const mapList = isFilterActive ? properties : (allProperties.length > 0 ? allProperties : properties);
 
       const visible = mapList.filter((prop, idx) => {
         const distCoords = DISTRICT_COORDINATES[prop.district] || (prop.state ? STATE_COORDINATES[prop.state] : null);
@@ -235,7 +243,7 @@ export default function DesktopPropertyListing({
         });
         markersRef.current = [];
 
-        const mapList = allProperties.length > 0 ? allProperties : (properties.length > 0 ? properties : []);
+        const mapList = isFilterActive ? properties : (allProperties.length > 0 ? allProperties : properties);
 
         mapList.forEach((prop, idx) => {
           const rawLat = prop.latitude ? parseFloat(String(prop.latitude)) : null;
@@ -337,15 +345,7 @@ export default function DesktopPropertyListing({
     return 0;
   });
 
-  const isSearchActive = !!(
-    filters.location ||
-    filters.purpose ||
-    (filters.state && filters.state !== "All States (India)") ||
-    (filters.district && !filters.district.startsWith("All ")) ||
-    (filters.propertyType && filters.propertyType !== "All Types")
-  );
-
-  const hasNoResults = !loading && sortedProperties.length === 0 && isSearchActive;
+  const hasNoResults = !loading && sortedProperties.length === 0 && isFilterActive;
 
   return (
     <div className="min-h-screen bg-[#FAF8F3] w-full flex flex-col font-sans">
@@ -390,7 +390,11 @@ export default function DesktopPropertyListing({
                   <h1 className="text-xl font-bold text-gray-900 tracking-tight font-display">
                     {sortedVisibleMapProperties.length} Properties Available in This Area
                   </h1>
-                  {sortedVisibleMapProperties.length === 0 ? (
+                  {loading ? (
+                    <p className="text-xs text-gray-400 font-medium mt-0.5">
+                      Searching properties...
+                    </p>
+                  ) : sortedVisibleMapProperties.length === 0 ? (
                     <p className="text-xs font-semibold text-red-600 italic mt-0.5">
                       No results found. Try adjusting your search and try again.
                     </p>
@@ -519,7 +523,11 @@ export default function DesktopPropertyListing({
               <h1 className="text-2xl font-bold text-gray-900 tracking-tight font-display">
                 Properties in {filters.district && !filters.district.startsWith("All ") ? filters.district : (filters.state || "All States (India)")}
               </h1>
-              {sortedProperties.length === 0 ? (
+              {loading ? (
+                <p className="text-xs text-gray-400 font-medium mt-1">
+                  Searching properties...
+                </p>
+              ) : sortedProperties.length === 0 ? (
                 <p className="text-xs font-semibold text-red-600 italic mt-1">
                   No results found. Try adjusting your search and try again.
                 </p>

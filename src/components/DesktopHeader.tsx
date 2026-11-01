@@ -91,6 +91,10 @@ export default function DesktopHeader({
   }, [initialPurpose]);
 
   useEffect(() => {
+    setLocationInput(initialLocation);
+  }, [initialLocation]);
+
+  useEffect(() => {
     setSelectedState(initialState);
   }, [initialState]);
 
@@ -128,21 +132,13 @@ export default function DesktopHeader({
   const currentDistrictOptions = getDistrictOptionsForState(selectedState);
 
   const debounceTimerRef = useRef<any>(null);
-  // Auto-trigger search with debounce when typing in location/keyword/phone input
-  const isFirstMountRef = useRef(true);
-  useEffect(() => {
-    if (isFirstMountRef.current) {
-      isFirstMountRef.current = false;
-      return;
-    }
-    if (!onSearchChange) return;
-    const timer = setTimeout(() => {
-      handleSearch(purpose, propertyType, selectedState, district);
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [locationInput]);
 
   const handleSearch = (newPurpose = purpose, newType = propertyType, newState = selectedState, newDistrict = district, newLocation = locationInput) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+
     let effectiveState = newState;
     let effectiveDistrict = newDistrict;
     if (!effectiveState || effectiveState === "All States (India)") {
@@ -350,8 +346,8 @@ export default function DesktopHeader({
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-                  handleSearch();
+                  e.preventDefault();
+                  handleSearch(purpose, propertyType, selectedState, district, locationInput);
                 }
               }}
               className="w-full bg-transparent outline-none text-gray-800 placeholder-gray-400 font-medium"
@@ -431,8 +427,8 @@ export default function DesktopHeader({
           {/* Submit Search Button */}
           <button
             type="button"
-            onClick={() => handleSearch()}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-none text-sm font-semibold shadow-md transition cursor-pointer"
+            onClick={() => handleSearch(purpose, propertyType, selectedState, district, locationInput)}
+            className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-none text-sm font-semibold shadow-md transition cursor-pointer active:scale-95"
           >
             <Search className="w-4 h-4" />
             <span>Search</span>
