@@ -63,6 +63,7 @@ import ServiceEnquiries from "@/screens/Admin/ServiceEnquiries";
 import BuilderInquiries from "@/screens/Admin/BuilderInquiries";
 import AdminLaunch from "@/screens/Admin/Launch";
 import LaunchPopup from "@/components/LaunchPopup";
+import WelcomePopup from "@/components/WelcomePopup";
 import RequestPropertyButton from "@/components/RequestPropertyButton";
 import CustomCodeInjector from "@/components/CustomCodeInjector";
 
@@ -214,8 +215,13 @@ export default function App() {
       </Routes>
       </AddPropertyProvider>
 
-      {/* Main page promotional Launch popup */}
-      {(location.pathname === "/" || location.pathname === "/home") && <LaunchPopup />}
+      {/* Main page promotional Launch or Welcome popup */}
+      {(location.pathname === "/" || location.pathname === "/home") && (
+        <>
+          <LaunchPopup />
+          <WelcomePopup />
+        </>
+      )}
 
       {/* Request a Property sticky button common for all pages */}
       {!isAdminRoute && !isAuthRoute && <RequestPropertyButton />}
