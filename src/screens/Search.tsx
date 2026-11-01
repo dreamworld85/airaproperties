@@ -109,15 +109,31 @@ export default function Search() {
       }
     }
     if (!query) return true;
-    const q = query.toLowerCase();
+    const q = query.toLowerCase().trim();
+    const queryDigits = q.replace(/\D/g, "");
+
+    const matchesPhone = queryDigits.length >= 6 && (
+      (p.contactNumber && p.contactNumber.replace(/\D/g, "").includes(queryDigits)) ||
+      (p.whatsappNumber && p.whatsappNumber.replace(/\D/g, "").includes(queryDigits)) ||
+      (p.ownerPhone && p.ownerPhone.replace(/\D/g, "").includes(queryDigits)) ||
+      (p.ownerWhatsapp && p.ownerWhatsapp.replace(/\D/g, "").includes(queryDigits)) ||
+      (p.userPhone && p.userPhone.replace(/\D/g, "").includes(queryDigits)) ||
+      (p.userWhatsapp && p.userWhatsapp.replace(/\D/g, "").includes(queryDigits))
+    );
+
     return (
+      matchesPhone ||
       p.title.toLowerCase().includes(q) ||
       p.address.toLowerCase().includes(q) ||
       p.district.toLowerCase().includes(q) ||
       (p.state && p.state.toLowerCase().includes(q)) ||
       (p.ownerName && p.ownerName.toLowerCase().includes(q)) ||
       (p.contactNumber && p.contactNumber.toLowerCase().includes(q)) ||
-      (p.whatsappNumber && p.whatsappNumber.toLowerCase().includes(q))
+      (p.whatsappNumber && p.whatsappNumber.toLowerCase().includes(q)) ||
+      (p.ownerPhone && p.ownerPhone.toLowerCase().includes(q)) ||
+      (p.ownerWhatsapp && p.ownerWhatsapp.toLowerCase().includes(q)) ||
+      (p.userPhone && p.userPhone.toLowerCase().includes(q)) ||
+      (p.userWhatsapp && p.userWhatsapp.toLowerCase().includes(q))
     );
   });
 

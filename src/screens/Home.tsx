@@ -163,6 +163,7 @@ export default function Home() {
     if (appliedPurpose) params.purpose = appliedPurpose;
     if (appliedState) params.state = appliedState;
     if (appliedDistrict) params.district = appliedDistrict;
+    if (searchQuery.trim()) params.search = searchQuery.trim();
 
     api
       .fetchProperties(params)
@@ -171,16 +172,35 @@ export default function Home() {
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-  }, [activeCategory, appliedTypes, appliedPurpose, appliedState, appliedDistrict]);
+  }, [activeCategory, appliedTypes, appliedPurpose, appliedState, appliedDistrict, searchQuery]);
 
   const filteredProperties = properties.filter((p) => {
     if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase().trim();
+    const queryDigits = q.replace(/\D/g, "");
+
+    const matchesPhone = queryDigits.length >= 6 && (
+      (p.contactNumber && p.contactNumber.replace(/\D/g, "").includes(queryDigits)) ||
+      (p.whatsappNumber && p.whatsappNumber.replace(/\D/g, "").includes(queryDigits)) ||
+      (p.ownerPhone && p.ownerPhone.replace(/\D/g, "").includes(queryDigits)) ||
+      (p.ownerWhatsapp && p.ownerWhatsapp.replace(/\D/g, "").includes(queryDigits)) ||
+      (p.userPhone && p.userPhone.replace(/\D/g, "").includes(queryDigits)) ||
+      (p.userWhatsapp && p.userWhatsapp.replace(/\D/g, "").includes(queryDigits))
+    );
+
     return (
+      matchesPhone ||
       p.title.toLowerCase().includes(q) ||
       p.address.toLowerCase().includes(q) ||
       p.district.toLowerCase().includes(q) ||
-      (p.state && p.state.toLowerCase().includes(q))
+      (p.state && p.state.toLowerCase().includes(q)) ||
+      (p.contactNumber && p.contactNumber.toLowerCase().includes(q)) ||
+      (p.whatsappNumber && p.whatsappNumber.toLowerCase().includes(q)) ||
+      (p.ownerName && p.ownerName.toLowerCase().includes(q)) ||
+      (p.ownerPhone && p.ownerPhone.toLowerCase().includes(q)) ||
+      (p.ownerWhatsapp && p.ownerWhatsapp.toLowerCase().includes(q)) ||
+      (p.userPhone && p.userPhone.toLowerCase().includes(q)) ||
+      (p.userWhatsapp && p.userWhatsapp.toLowerCase().includes(q))
     );
   });
 
@@ -263,7 +283,7 @@ export default function Home() {
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search House, Apartment, etc"
+            placeholder="Search location, keywords, phone, WhatsApp..."
             className="flex-1 bg-transparent text-xs outline-none placeholder:text-slate/40 text-charcoal font-semibold"
           />
           <div className="h-5 w-[1px] bg-charcoal/10" />

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useBrand } from "@/lib/BrandContext";
@@ -126,6 +126,20 @@ export default function DesktopHeader({
   }, [availableTypes]);
 
   const currentDistrictOptions = getDistrictOptionsForState(selectedState);
+
+  // Auto-trigger search with debounce when typing in location/keyword/phone input
+  const isFirstMountRef = useRef(true);
+  useEffect(() => {
+    if (isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      return;
+    }
+    if (!onSearchChange) return;
+    const timer = setTimeout(() => {
+      handleSearch(purpose, propertyType, selectedState, district);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [locationInput]);
 
   const handleSearch = (newPurpose = purpose, newType = propertyType, newState = selectedState, newDistrict = district) => {
     let effectiveState = newState;
@@ -311,7 +325,7 @@ export default function DesktopHeader({
             <MapPin className="w-4 h-4 text-gray-400 mr-2 shrink-0" />
             <input
               type="text"
-              placeholder="Search location or keyword..."
+              placeholder="Search location, keywords, phone, WhatsApp..."
               value={locationInput}
               onChange={(e) => {
                 const val = e.target.value;

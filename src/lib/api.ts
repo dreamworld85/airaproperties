@@ -78,6 +78,10 @@ export interface ApiProperty {
   ratingCount?: number;
   ownerName?: string;
   ownerAvatarUrl?: string | null;
+  ownerPhone?: string | null;
+  ownerWhatsapp?: string | null;
+  userPhone?: string | null;
+  userWhatsapp?: string | null;
   contactNumber?: string | null;
   whatsappNumber?: string | null;
   latitude?: string | number | null;

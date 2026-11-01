@@ -44,9 +44,13 @@ function toPublicProperty(row, media = [], isSaved = false) {
     youtubeUrl: row.youtube_url,
     createdAt: row.created_at,
     isSaved,
-    contactNumber: row.contact_number,
-    whatsappNumber: row.whatsapp_number,
-    ownerName: row.owner_name,
+    contactNumber: row.contact_number || row.user_phone || null,
+    whatsappNumber: row.whatsapp_number || row.user_whatsapp || null,
+    ownerName: row.owner_name || row.uploader_name || null,
+    ownerPhone: row.user_phone || row.contact_number || null,
+    ownerWhatsapp: row.user_whatsapp || row.whatsapp_number || null,
+    userPhone: row.user_phone || row.contact_number || null,
+    userWhatsapp: row.user_whatsapp || row.whatsapp_number || null,
     ownerAvatarUrl: row.owner_avatar_url || null,
     brokerName: row.broker_name,
     agencyName: row.agency_name,
@@ -92,8 +96,11 @@ router.get("/", optionalAuth, async (req, res) => {
       clauses.push("p.status IN ('Active', 'Sold')");
     }
 
-    if (state) { clauses.push("p.state = ?"); params.push(state); }
-    if (district) { clauses.push("p.district = ?"); params.push(district); }
+    const searchDigits = search ? String(search).trim().replace(/\D/g, "") : "";
+    const isPhoneSearch = searchDigits.length >= 6;
+
+    if (state && !isPhoneSearch) { clauses.push("p.state = ?"); params.push(state); }
+    if (district && !isPhoneSearch) { clauses.push("p.district = ?"); params.push(district); }
     if (propertyType) {
       const rawTypes = (Array.isArray(propertyType) ? propertyType : String(propertyType).split(","))
         .map(t => t.trim())
@@ -125,15 +132,53 @@ router.get("/", optionalAuth, async (req, res) => {
     if (ownerId) { clauses.push("p.owner_id = ?"); params.push(ownerId); }
     
     if (search) {
+      const searchTrimmed = String(search).trim();
+      const searchWild = `%${searchTrimmed}%`;
+
+      let phoneClause = "";
+      const phoneParams = [];
+
+      if (isPhoneSearch) {
+        const last10Digits = searchDigits.length > 10 ? searchDigits.slice(-10) : searchDigits;
+        const digitWild = `%${last10Digits}%`;
+        const fullDigitWild = `%${searchDigits}%`;
+
+        phoneClause = ` OR u.phone LIKE ? OR u.whatsapp_number LIKE ? OR p.contact_number LIKE ? OR p.whatsapp_number LIKE ?
+          OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(u.phone, ''), ' ', ''), '-', ''), '+91', ''), '+', '') LIKE ?
+          OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(u.phone, ''), ' ', ''), '-', ''), '+91', ''), '+', '') LIKE ?
+          OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(u.whatsapp_number, ''), ' ', ''), '-', ''), '+91', ''), '+', '') LIKE ?
+          OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(u.whatsapp_number, ''), ' ', ''), '-', ''), '+91', ''), '+', '') LIKE ?
+          OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(p.contact_number, ''), ' ', ''), '-', ''), '+91', ''), '+', '') LIKE ?
+          OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(p.contact_number, ''), ' ', ''), '-', ''), '+91', ''), '+', '') LIKE ?
+          OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(p.whatsapp_number, ''), ' ', ''), '-', ''), '+91', ''), '+', '') LIKE ?
+          OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(p.whatsapp_number, ''), ' ', ''), '-', ''), '+91', ''), '+', '') LIKE ?`;
+
+        phoneParams.push(
+          digitWild, digitWild, digitWild, digitWild,
+          digitWild, fullDigitWild,
+          digitWild, fullDigitWild,
+          digitWild, fullDigitWild,
+          digitWild, fullDigitWild
+        );
+      }
+
       clauses.push(
-        `(p.title LIKE ? OR p.address LIKE ? OR p.district LIKE ? OR p.state LIKE ? OR p.description LIKE ? OR u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ? OR p.contact_number LIKE ? OR p.whatsapp_number LIKE ?)`
+        `(p.title LIKE ? OR p.address LIKE ? OR p.district LIKE ? OR p.state LIKE ? OR p.description LIKE ? OR u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ? OR u.whatsapp_number LIKE ? OR p.contact_number LIKE ? OR p.whatsapp_number LIKE ?${phoneClause})`
       );
-      const searchWild = `%${search}%`;
-      params.push(searchWild, searchWild, searchWild, searchWild, searchWild, searchWild, searchWild, searchWild, searchWild, searchWild);
+      params.push(
+        searchWild, searchWild, searchWild, searchWild, searchWild,
+        searchWild, searchWild, searchWild, searchWild, searchWild, searchWild,
+        ...phoneParams
+      );
     }
 
     const [rows] = await pool.query(
-      `SELECT p.*, u.role AS user_role FROM properties p
+      `SELECT p.*, 
+              u.role AS user_role, 
+              u.name AS uploader_name, 
+              u.phone AS user_phone, 
+              u.whatsapp_number AS user_whatsapp 
+       FROM properties p
        JOIN users u ON u.id = p.owner_id
        WHERE ${clauses.join(" AND ")} ORDER BY p.created_at DESC LIMIT 50`,
       params

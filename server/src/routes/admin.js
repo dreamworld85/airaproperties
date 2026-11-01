@@ -720,9 +720,17 @@ router.get("/properties", async (req, res) => {
     const params = [];
 
     if (search) {
-      query += " AND (p.title LIKE ? OR p.address LIKE ? OR p.district LIKE ? OR p.state LIKE ? OR u.name LIKE ?)";
+      const searchDigits = String(search).trim().replace(/\D/g, "");
+      let phoneClause = "";
+      const phoneParams = [];
+      if (searchDigits.length >= 6) {
+        const last10 = searchDigits.length > 10 ? searchDigits.slice(-10) : searchDigits;
+        phoneClause = " OR u.phone LIKE ? OR u.whatsapp_number LIKE ? OR p.contact_number LIKE ? OR p.whatsapp_number LIKE ?";
+        phoneParams.push(`%${last10}%`, `%${last10}%`, `%${last10}%`, `%${last10}%`);
+      }
+      query += ` AND (p.title LIKE ? OR p.address LIKE ? OR p.district LIKE ? OR p.state LIKE ? OR u.name LIKE ? OR u.phone LIKE ? OR u.whatsapp_number LIKE ? OR p.contact_number LIKE ? OR p.whatsapp_number LIKE ?${phoneClause})`;
       const wild = `%${search}%`;
-      params.push(wild, wild, wild, wild, wild);
+      params.push(wild, wild, wild, wild, wild, wild, wild, wild, wild, ...phoneParams);
     }
 
     if (status !== "All") {
