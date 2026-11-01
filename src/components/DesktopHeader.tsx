@@ -60,6 +60,7 @@ interface DesktopHeaderProps {
   initialDistrict?: string;
   initialType?: string;
   availableTypes?: string[];
+  hasNoResults?: boolean;
 }
 
 export default function DesktopHeader({
@@ -72,6 +73,7 @@ export default function DesktopHeader({
   initialDistrict = "All Districts",
   initialType = "All Types",
   availableTypes,
+  hasNoResults = false,
 }: DesktopHeaderProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -416,11 +418,19 @@ export default function DesktopHeader({
           <button
             type="button"
             onClick={() => handleSearch()}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-none text-sm font-semibold shadow-md transition"
+            className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-none text-sm font-semibold shadow-md transition cursor-pointer"
           >
             <Search className="w-4 h-4" />
             <span>Search</span>
           </button>
+
+          {hasNoResults && (
+            <div className="w-full text-left pt-2 pb-0.5 animate-in fade-in duration-200">
+              <span className="text-xs font-bold text-red-600 bg-white px-3 py-1.5 border border-red-300 shadow-xs inline-block">
+                No results found. Try adjusting your search and try again.
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>

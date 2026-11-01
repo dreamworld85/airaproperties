@@ -309,10 +309,10 @@ export default function Search() {
         )}
 
         {!loading && searched && results.length === 0 && !error && (
-          <div className="text-center py-16 bg-white rounded-2xl border border-charcoal/10 px-4">
-            <SlidersHorizontal className="mx-auto text-slate/40 mb-3" size={32} />
-            <p className="text-sm font-semibold text-charcoal">No properties matched your search.</p>
-            <p className="text-xs text-slate mt-1">Try resetting the filters or typing a different keyword.</p>
+          <div className="text-center py-10 bg-white rounded-2xl border border-red-200 px-4">
+            <p className="text-xs font-semibold text-red-600">
+              No results found. Try adjusting your search and try again.
+            </p>
           </div>
         )}
 

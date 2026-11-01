@@ -337,6 +337,16 @@ export default function DesktopPropertyListing({
     return 0;
   });
 
+  const isSearchActive = !!(
+    filters.location ||
+    filters.purpose ||
+    (filters.state && filters.state !== "All States (India)") ||
+    (filters.district && !filters.district.startsWith("All ")) ||
+    (filters.propertyType && filters.propertyType !== "All Types")
+  );
+
+  const hasNoResults = !loading && sortedProperties.length === 0 && isSearchActive;
+
   return (
     <div className="min-h-screen bg-[#FAF8F3] w-full flex flex-col font-sans">
       {/* Top Header with Google Maps pin icon toggle */}
@@ -350,6 +360,7 @@ export default function DesktopPropertyListing({
         onSearchChange={handleSearchChange}
         onToggleMap={() => setShowMap((prev) => !prev)}
         isMapOpen={showMap}
+        hasNoResults={hasNoResults}
       />
 
       {/* Home Hero Banner — only on home page below the filter section */}
@@ -409,16 +420,9 @@ export default function DesktopPropertyListing({
                   ))}
                 </div>
               ) : sortedVisibleMapProperties.length === 0 ? (
-                /* ERROR MESSAGE WITH FADE-IN EFFECT WHEN NO PROPERTIES ARE IN VISIBLE MAP REGION */
-                <div className="bg-white rounded-3xl p-10 text-center border border-gray-200/80 shadow-xs flex flex-col items-center justify-center gap-3 my-4 animate-fade-in">
-                  <div className="w-14 h-14 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center shadow-xs">
-                    <MapPin size={26} />
-                  </div>
-                  <h3 className="text-base font-bold text-gray-900">
-                    No properties listed in this location
-                  </h3>
-                  <p className="text-xs text-gray-500 max-w-xs">
-                    Try zooming out or moving the map to another region like Kerala or Karnataka to see available listings.
+                <div className="bg-white rounded-2xl p-8 text-center border border-red-200 shadow-xs flex flex-col items-center justify-center gap-1.5 my-4">
+                  <p className="text-xs sm:text-sm font-semibold text-red-600">
+                    No results found. Try adjusting your search and try again.
                   </p>
                 </div>
               ) : (
@@ -571,8 +575,10 @@ export default function DesktopPropertyListing({
               ))}
             </div>
           ) : sortedProperties.length === 0 ? (
-            <div className="bg-white rounded-2xl p-12 text-center border border-gray-200/80 shadow-xs">
-              <p className="text-gray-500 font-medium">No properties found matching your search criteria.</p>
+            <div className="bg-white rounded-2xl p-8 text-center border border-red-200 shadow-xs flex flex-col items-center justify-center gap-1.5 my-4">
+              <p className="text-xs sm:text-sm font-semibold text-red-600">
+                No results found. Try adjusting your search and try again.
+              </p>
             </div>
           ) : (
             <div className={

@@ -333,9 +333,11 @@ export default function Home() {
       )}
 
       {!loading && !error && filteredProperties.length === 0 && (
-        <p className="px-5 mt-6 text-sm text-slate select-none text-left">
-          No properties found matching your search.
-        </p>
+        <div className="px-5 mt-6">
+          <p className="text-xs font-semibold text-red-600 select-none text-left bg-red-50 border border-red-200 p-3 rounded-xl">
+            No results found. Try adjusting your search and try again.
+          </p>
+        </div>
       )}
 
       {!loading && !error && (
