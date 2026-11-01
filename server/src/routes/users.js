@@ -38,6 +38,7 @@ function toPublicUser(row) {
     phone: row.phone,
     whatsappNumber: row.whatsapp_number,
     location: row.location,
+    state: row.state || "Kerala",
     avatarUrl: row.avatar_url,
     trialEndsAt: row.custom_trial_expiry || row.trial_ends_at,
     subscriptionStatus: row.is_free_subscription_granted === 1 ? "active" : row.subscription_status,
@@ -114,7 +115,7 @@ router.get("/me/transactions", requireAuth, async (req, res) => {
 // PATCH /api/users/me  { name, phone, email, location, avatarUrl, whatsappNumber, password }
 router.patch("/me", requireAuth, async (req, res) => {
   try {
-    const { name, phone, email, location, avatarUrl, whatsappNumber, password } = req.body;
+    const { name, phone, email, location, state, avatarUrl, whatsappNumber, password } = req.body;
     const cleanEmail = email !== undefined ? (email && String(email).trim() ? String(email).trim().toLowerCase() : null) : undefined;
     const cleanPhone = phone !== undefined ? (phone && String(phone).trim() ? String(phone).trim() : null) : undefined;
     const cleanName = name !== undefined ? (name && String(name).trim() ? String(name).trim() : null) : undefined;
@@ -133,6 +134,7 @@ router.patch("/me", requireAuth, async (req, res) => {
         phone = COALESCE(?, phone),
         email = CASE WHEN ? = 1 THEN ? ELSE email END,
         location = COALESCE(?, location),
+        state = COALESCE(?, state),
         avatar_url = COALESCE(?, avatar_url),
         whatsapp_number = COALESCE(?, whatsapp_number)
        WHERE id = ?`,
@@ -142,6 +144,7 @@ router.patch("/me", requireAuth, async (req, res) => {
         cleanEmail !== undefined ? 1 : 0,
         cleanEmail !== undefined ? cleanEmail : null,
         location !== undefined ? location : null,
+        state !== undefined ? state : null,
         avatarUrl !== undefined ? avatarUrl : null,
         whatsappNumber !== undefined ? whatsappNumber : null,
         req.userId

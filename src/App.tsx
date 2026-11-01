@@ -52,6 +52,7 @@ import AdminProperties from "@/screens/Admin/Properties";
 import AdminPropertyList from "@/screens/Admin/PropertyList";
 import AdminPropertyDetails from "@/screens/Admin/PropertyDetails";
 import AdminReportedListings from "@/screens/Admin/ReportedListings";
+import AccountReports from "@/screens/Admin/AccountReports";
 import AdminAnalytics from "@/screens/Admin/Analytics";
 import AdminActivityLogs from "@/screens/Admin/ActivityLogs";
 import AdminSettings from "@/screens/Admin/Settings";
@@ -195,6 +196,7 @@ export default function App() {
           <Route path="properties-list" element={<AdminPropertyList />} />
           <Route path="properties/:id" element={<AdminPropertyDetails />} />
           <Route path="reports" element={<AdminReportedListings />} />
+          <Route path="accounts" element={<AccountReports />} />
           <Route path="enquiries" element={<ServiceEnquiries />} />
           <Route path="builder-inquiries" element={<BuilderInquiries />} />
           <Route path="analytics" element={<AdminAnalytics />} />

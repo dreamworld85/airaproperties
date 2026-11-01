@@ -69,7 +69,17 @@ export default function AdminLayout() {
 
   const currentPath = location.pathname;
 
-  const [propertiesExpanded, setPropertiesExpanded] = useState(true);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    "/admin/properties": true,
+    "/admin/reports": true,
+  });
+
+  const toggleSection = (path: string) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [path]: prev[path] === undefined ? false : !prev[path],
+    }));
+  };
 
   const navItems = [
     { label: "Dashboard", path: "/admin", icon: LayoutDashboard },
@@ -86,7 +96,15 @@ export default function AdminLayout() {
       ]
     },
     { label: "Builder Partners", path: "/admin/builder-inquiries", icon: Briefcase },
-    { label: "Reports", path: "/admin/reports", icon: Flag },
+    { 
+      label: "Reports", 
+      path: "/admin/reports", 
+      icon: Flag,
+      subItems: [
+        { label: "Reported Listings", path: "/admin/reports" },
+        { label: "Account Section", path: "/admin/accounts" },
+      ]
+    },
   ];
 
   function handleLogout() {
@@ -105,6 +123,7 @@ export default function AdminLayout() {
   else if (currentPath.startsWith("/admin/properties/")) pageTitle = "Property Details";
   else if (currentPath === "/admin/builder-inquiries") pageTitle = "Builder Partner Inquiries";
   else if (currentPath === "/admin/reports") pageTitle = "Reported Listings";
+  else if (currentPath === "/admin/accounts") pageTitle = "Account Section";
   else if (currentPath === "/admin/enquiries") pageTitle = "User Enquiries";
   else if (currentPath === "/admin/analytics") pageTitle = "Analytics";
   else if (currentPath === "/admin/logs") pageTitle = "Activity Logs";
@@ -142,10 +161,11 @@ export default function AdminLayout() {
             const Icon = item.icon;
 
             if (hasSub) {
+              const isExpanded = expandedSections[item.path] ?? true;
               return (
                 <div key={item.path} className="flex flex-col gap-1">
                   <div
-                    onClick={() => setPropertiesExpanded(!propertiesExpanded)}
+                    onClick={() => toggleSection(item.path)}
                     className={`flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
                       isActive 
                         ? "bg-emerald-50 text-emerald-800 shadow-xs" 
@@ -159,12 +179,12 @@ export default function AdminLayout() {
                     <ChevronDown
                       size={14}
                       className={`text-slate-400 transition-transform duration-200 ${
-                        propertiesExpanded ? "rotate-180" : "rotate-0"
+                        isExpanded ? "rotate-180" : "rotate-0"
                       }`}
                     />
                   </div>
 
-                  {propertiesExpanded && (
+                  {isExpanded && (
                     <div className="flex flex-col gap-1 pl-4 pr-1 py-1 border-l-2 border-emerald-100 ml-5 my-0.5 animate-in fade-in duration-150">
                       {item.subItems!.map((sub) => {
                         const isThisSubActive = currentPath === sub.path;

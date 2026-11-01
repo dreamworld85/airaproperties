@@ -1609,6 +1609,208 @@ router.delete("/service-enquiries/:id", async (req, res) => {
   }
 });
 
+// GET /api/admin/account-reports (Admin Protected - Shows all users who took packages, payments, slots, tokens, state filter)
+router.get("/account-reports", async (req, res) => {
+  try {
+    const { state, search, planType } = req.query;
+
+    // 1. Overall platform stats
+    const [[{ total_amount_all_users }]] = await pool.query(
+      "SELECT COALESCE(SUM(price_paid), 0) AS total_amount_all_users FROM credit_transactions WHERE price_paid > 0"
+    );
+
+    const [[{ total_paying_users }]] = await pool.query(
+      "SELECT COUNT(DISTINCT user_id) AS total_paying_users FROM credit_transactions WHERE price_paid > 0"
+    );
+
+    const [[{ total_packages_taken }]] = await pool.query(
+      "SELECT COUNT(*) AS total_packages_taken FROM credit_transactions WHERE transaction_type IN ('purchase', 'bonus') OR price_paid > 0"
+    );
+
+    // 2. Fetch users who took packages
+    let query = `
+      SELECT 
+        u.id,
+        u.name,
+        u.email,
+        u.phone,
+        u.role,
+        u.avatar_url,
+        COALESCE(NULLIF(TRIM(u.state), ''), (SELECT p.state FROM properties p WHERE p.owner_id = u.id AND p.state IS NOT NULL AND p.state != '' LIMIT 1), 'Kerala') AS state,
+        u.location,
+        u.enquiry_credits_left,
+        u.listing_slots_left,
+        u.subscription_status,
+        u.created_at,
+        COALESCE(SUM(CASE WHEN ct.price_paid > 0 THEN ct.price_paid ELSE 0 END), 0) AS total_paid,
+        COUNT(ct.id) AS total_transactions_count,
+        MAX(ct.created_at) AS last_package_date
+      FROM users u
+      LEFT JOIN credit_transactions ct ON u.id = ct.user_id
+      WHERE (
+        ct.id IS NOT NULL 
+        OR u.subscription_status = 'active'
+        OR u.enquiry_credits_left > 0 
+        OR u.listing_slots_left > 0
+      )
+    `;
+
+    const params = [];
+
+    if (state && state !== "All" && state !== "all") {
+      query += ` AND (
+        LOWER(COALESCE(NULLIF(TRIM(u.state), ''), (SELECT p2.state FROM properties p2 WHERE p2.owner_id = u.id AND p2.state IS NOT NULL AND p2.state != '' LIMIT 1), 'Kerala')) = LOWER(?)
+        OR LOWER(u.location) LIKE LOWER(?)
+      )`;
+      params.push(state, `%${state}%`);
+    }
+
+    if (search && search.trim()) {
+      query += ` AND (
+        u.name LIKE ? OR 
+        u.email LIKE ? OR 
+        u.phone LIKE ?
+      )`;
+      const s = `%${search.trim()}%`;
+      params.push(s, s, s);
+    }
+
+    query += `
+      GROUP BY u.id
+      ORDER BY total_paid DESC, last_package_date DESC, u.id DESC
+    `;
+
+    const [userRows] = await pool.query(query, params);
+
+    // 3. For each user, fetch their package transaction history
+    const userIds = userRows.map(u => u.id);
+    let allTransactions = [];
+    if (userIds.length > 0) {
+      const [txRows] = await pool.query(
+        `SELECT id, user_id, credit_type, transaction_type, amount_credits, balance_after, price_paid, payment_id, order_id, notes, created_at
+         FROM credit_transactions
+         WHERE user_id IN (?)
+         ORDER BY created_at DESC, id DESC`,
+        [userIds]
+      );
+      allTransactions = txRows;
+    }
+
+    const txByUser = {};
+    for (const tx of allTransactions) {
+      if (!txByUser[tx.user_id]) txByUser[tx.user_id] = [];
+      txByUser[tx.user_id].push(tx);
+    }
+
+    const roleStarterMap = {
+      buyer: "Starter Pack",
+      user: "Starter Pack",
+      owner: "Owner Starter",
+      broker: "Broker Starter",
+      agency: "Agency Starter",
+    };
+
+    let users = userRows.map(u => {
+      const uTx = txByUser[u.id] || [];
+      const purchaseTx = uTx.find(t => t.transaction_type === "purchase" || Number(t.price_paid) > 0);
+      const bonusTx = uTx.find(t => t.transaction_type === "bonus");
+      
+      let planName = "";
+      let latestPaymentId = null;
+      let latestOrderId = null;
+
+      if (purchaseTx) {
+        const match = (purchaseTx.notes || "").match(/\((.*?)\)/);
+        planName = match ? match[1] : (purchaseTx.notes || "Paid Package");
+        latestPaymentId = purchaseTx.payment_id;
+        latestOrderId = purchaseTx.order_id;
+      } else if (bonusTx) {
+        const match = (bonusTx.notes || "").match(/(?:Activated free\s+)?(.*?)(?:\s+\(|$)/i);
+        planName = match && match[1] ? match[1].trim() : (bonusTx.notes || "Starter Pack");
+      } else {
+        const r = (u.role || "buyer").toLowerCase();
+        planName = roleStarterMap[r] || "Starter Pack";
+      }
+
+      const totalPaidNum = Number(u.total_paid) || 0;
+      const isPaid = totalPaidNum > 0 || !!purchaseTx;
+
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        phone: u.phone,
+        role: (!u.role || u.role.toLowerCase() === "user") ? "Buyer" : u.role,
+        avatar_url: u.avatar_url,
+        state: u.state,
+        location: u.location,
+        enquiry_credits_left: Number(u.enquiry_credits_left || 0),
+        listing_slots_left: Number(u.listing_slots_left || 0),
+        subscription_status: u.subscription_status || "active",
+        total_paid: totalPaidNum,
+        is_paid: isPaid,
+        plan_name: planName,
+        latest_payment_id: latestPaymentId,
+        latest_order_id: latestOrderId,
+        last_package_date: u.last_package_date || u.created_at,
+        created_at: u.created_at,
+        transactions: uTx.map(t => ({
+          id: t.id,
+          credit_type: t.credit_type,
+          transaction_type: t.transaction_type,
+          amount_credits: t.amount_credits,
+          balance_after: t.balance_after,
+          price_paid: Number(t.price_paid || 0),
+          payment_id: t.payment_id,
+          order_id: t.order_id,
+          notes: t.notes,
+          created_at: t.created_at,
+        })),
+      };
+    });
+
+    if (planType === "paid") {
+      users = users.filter(u => u.is_paid);
+    } else if (planType === "starter") {
+      users = users.filter(u => !u.is_paid);
+    }
+
+    // Extract available states present among users
+    const [stateRows] = await pool.query(
+      `SELECT DISTINCT COALESCE(NULLIF(TRIM(u.state), ''), (SELECT p.state FROM properties p WHERE p.owner_id = u.id AND p.state IS NOT NULL AND p.state != '' LIMIT 1), 'Kerala') AS state
+       FROM users u
+       WHERE u.state IS NOT NULL OR u.id IN (SELECT owner_id FROM properties WHERE state IS NOT NULL)`
+    );
+
+    const foundStates = stateRows.map(r => r.state).filter(Boolean);
+    const defaultPriorityStates = [
+      "Kerala", "Karnataka", "Tamil Nadu", "Maharashtra", 
+      "Andhra Pradesh", "Telangana", "Delhi", "Goa", "Gujarat"
+    ];
+    const allStatesSet = new Set([...foundStates, ...defaultPriorityStates]);
+    const availableStates = Array.from(allStatesSet);
+
+    const totalListingSlots = users.reduce((acc, u) => acc + u.listing_slots_left, 0);
+    const totalEnquiryTokens = users.reduce((acc, u) => acc + u.enquiry_credits_left, 0);
+
+    res.json({
+      users,
+      summary: {
+        totalAmountPaidAllUsers: Number(total_amount_all_users) || 0,
+        totalPayingUsers: Number(total_paying_users) || 0,
+        totalPackagesTaken: Number(total_packages_taken) || 0,
+        totalListingSlots,
+        totalEnquiryTokens,
+        filteredUsersCount: users.length,
+      },
+      availableStates,
+    });
+  } catch (err) {
+    console.error("[ACCOUNT REPORTS ERROR]", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/admin/sync-live-frontend (Admin Protected)
 router.post("/sync-live-frontend", checkAdminSession, async (req, res) => {
   try {

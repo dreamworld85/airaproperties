@@ -422,7 +422,69 @@ export const adminApi = {
     });
     if (!res.ok) throw new Error("Failed to delete property request.");
   },
+
+  async getAccountReports(params?: { state?: string; search?: string; planType?: string }): Promise<AccountReportsResponse> {
+    const q = new URLSearchParams();
+    if (params?.state && params.state !== "All") q.append("state", params.state);
+    if (params?.search) q.append("search", params.search);
+    if (params?.planType && params.planType !== "all") q.append("planType", params.planType);
+    const res = await fetch(`${API_URL}/api/admin/account-reports?${q.toString()}`, {
+      headers: getAdminHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load account reports.");
+    return res.json();
+  },
 };
+
+export interface AccountReportTransaction {
+  id: number;
+  credit_type: "enquiry" | "listing_slot";
+  transaction_type: "purchase" | "bonus" | "usage" | "admin_adjustment";
+  amount_credits: number;
+  balance_after: number;
+  price_paid: number;
+  payment_id: string | null;
+  order_id: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface AdminAccountUser {
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  role: string;
+  avatar_url: string | null;
+  state: string;
+  location: string | null;
+  enquiry_credits_left: number;
+  listing_slots_left: number;
+  subscription_status: string;
+  total_paid: number;
+  is_paid: boolean;
+  plan_name: string;
+  latest_payment_id: string | null;
+  latest_order_id: string | null;
+  last_package_date: string;
+  created_at: string;
+  transactions: AccountReportTransaction[];
+}
+
+export interface AccountReportsSummary {
+  totalAmountPaidAllUsers: number;
+  totalPayingUsers: number;
+  totalPackagesTaken: number;
+  totalListingSlots: number;
+  totalEnquiryTokens: number;
+  filteredUsersCount: number;
+}
+
+export interface AccountReportsResponse {
+  users: AdminAccountUser[];
+  summary: AccountReportsSummary;
+  availableStates: string[];
+}
 
 export interface ServiceEnquiry {
   id: number;
