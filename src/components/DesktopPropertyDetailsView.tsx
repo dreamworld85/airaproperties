@@ -585,7 +585,7 @@ export default function DesktopPropertyDetailsView({
         </div>
 
         {/* Photo Gallery Hero Grid (matching attached layout: 1 Main on left + 4 in 2x2 grid on right) */}
-        <div className="relative w-full mb-6 sm:mb-8 lg:mb-10">
+        <div className="relative w-full mb-6 sm:mb-8 min-[1000px]:mb-0 lg:mb-0">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 h-[460px] min-h-[460px] max-h-[460px] select-none">
             {/* Left: 1 Large Hero Card (7 columns, full height) */}
             <div className="lg:col-span-7 h-full min-h-0">
