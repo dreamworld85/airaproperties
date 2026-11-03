@@ -642,15 +642,15 @@ export default function DesktopPropertyDetailsView({
             </div>
 
             {/* Overview Grid Card (8 Icon items matching Image 2) */}
-            <div className="bg-white rounded-3xl p-8 border border-gray-200/80 shadow-xs">
-              <h2 className="text-xl font-bold text-gray-900 mb-6 font-display">Overview</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+            <div className="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-xs">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3.5 font-display">Overview</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {isLand ? (
                   <>
                     {/* 1. ID */}
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                      <div className="p-2.5 rounded-xl bg-white text-emerald-600 shadow-xs">
-                        <Building className="w-5 h-5" />
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="p-2 rounded-lg bg-white shrink-0 text-emerald-600 shadow-xs">
+                        <Building className="w-4 h-4" />
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">ID</span>
@@ -659,9 +659,9 @@ export default function DesktopPropertyDetailsView({
                     </div>
 
                     {/* 2. Property Type */}
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                      <div className="p-2.5 rounded-xl bg-white text-emerald-600 shadow-xs">
-                        <Trees className="w-5 h-5" />
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="p-2 rounded-lg bg-white shrink-0 text-emerald-600 shadow-xs">
+                        <Trees className="w-4 h-4" />
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Type</span>
@@ -670,9 +670,9 @@ export default function DesktopPropertyDetailsView({
                     </div>
 
                     {/* 3. Total Land Area */}
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                      <div className="p-2.5 rounded-xl bg-white text-emerald-600 shadow-xs">
-                        <Maximize className="w-5 h-5" />
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="p-2 rounded-lg bg-white shrink-0 text-emerald-600 shadow-xs">
+                        <Maximize className="w-4 h-4" />
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Land Area</span>
@@ -681,9 +681,9 @@ export default function DesktopPropertyDetailsView({
                     </div>
 
                     {/* 4. Measure in Cents / Equivalent */}
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                      <div className="p-2.5 rounded-xl bg-white text-emerald-600 shadow-xs">
-                        <Layers className="w-5 h-5" />
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="p-2 rounded-lg bg-white shrink-0 text-emerald-600 shadow-xs">
+                        <Layers className="w-4 h-4" />
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">In Cents</span>
@@ -692,9 +692,9 @@ export default function DesktopPropertyDetailsView({
                     </div>
 
                     {/* 5. Rate / Cent */}
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                      <div className="p-2.5 rounded-xl bg-white text-emerald-600 shadow-xs">
-                        <Tag className="w-5 h-5" />
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="p-2 rounded-lg bg-white shrink-0 text-emerald-600 shadow-xs">
+                        <Tag className="w-4 h-4" />
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Rate / Cent</span>
@@ -703,9 +703,9 @@ export default function DesktopPropertyDetailsView({
                     </div>
 
                     {/* 6. Purpose */}
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                      <div className="p-2.5 rounded-xl bg-white text-emerald-600 shadow-xs">
-                        <ShieldCheck className="w-5 h-5" />
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="p-2 rounded-lg bg-white shrink-0 text-emerald-600 shadow-xs">
+                        <ShieldCheck className="w-4 h-4" />
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Purpose</span>
@@ -714,9 +714,9 @@ export default function DesktopPropertyDetailsView({
                     </div>
 
                     {/* 7. Facing / Road Access */}
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                      <div className="p-2.5 rounded-xl bg-white text-emerald-600 shadow-xs">
-                        <Compass className="w-5 h-5" />
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="p-2 rounded-lg bg-white shrink-0 text-emerald-600 shadow-xs">
+                        <Compass className="w-4 h-4" />
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Facing</span>
@@ -725,9 +725,9 @@ export default function DesktopPropertyDetailsView({
                     </div>
 
                     {/* 8. Possession / Status */}
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                      <div className="p-2.5 rounded-xl bg-white text-emerald-600 shadow-xs">
-                        <CheckCircle2 className="w-5 h-5" />
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="p-2 rounded-lg bg-white shrink-0 text-emerald-600 shadow-xs">
+                        <CheckCircle2 className="w-4 h-4" />
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Possession</span>
@@ -738,9 +738,9 @@ export default function DesktopPropertyDetailsView({
                 ) : (
                   <>
                     {/* 1. ID */}
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                      <div className="p-2.5 rounded-xl bg-white text-blue-600 shadow-xs">
-                        <Building className="w-5 h-5" />
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="p-2 rounded-lg bg-white shrink-0 text-blue-600 shadow-xs">
+                        <Building className="w-4 h-4" />
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">ID</span>
@@ -749,9 +749,9 @@ export default function DesktopPropertyDetailsView({
                     </div>
 
                     {/* 2. Type */}
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                      <div className="p-2.5 rounded-xl bg-white text-blue-600 shadow-xs">
-                        <Building className="w-5 h-5" />
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="p-2 rounded-lg bg-white shrink-0 text-blue-600 shadow-xs">
+                        <Building className="w-4 h-4" />
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Type</span>
@@ -760,9 +760,9 @@ export default function DesktopPropertyDetailsView({
                     </div>
 
                     {/* 3. Garages / Furnishing */}
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                      <div className="p-2.5 rounded-xl bg-white text-blue-600 shadow-xs">
-                        <ShieldCheck className="w-5 h-5" />
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="p-2 rounded-lg bg-white shrink-0 text-blue-600 shadow-xs">
+                        <ShieldCheck className="w-4 h-4" />
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Furnishing</span>
@@ -771,9 +771,9 @@ export default function DesktopPropertyDetailsView({
                     </div>
 
                     {/* 4. Bedrooms */}
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                      <div className="p-2.5 rounded-xl bg-white text-blue-600 shadow-xs">
-                        <BedDouble className="w-5 h-5" />
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="p-2 rounded-lg bg-white shrink-0 text-blue-600 shadow-xs">
+                        <BedDouble className="w-4 h-4" />
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Bedrooms</span>
@@ -782,9 +782,9 @@ export default function DesktopPropertyDetailsView({
                     </div>
 
                     {/* 5. Bathrooms */}
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                      <div className="p-2.5 rounded-xl bg-white text-blue-600 shadow-xs">
-                        <Bath className="w-5 h-5" />
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="p-2 rounded-lg bg-white shrink-0 text-blue-600 shadow-xs">
+                        <Bath className="w-4 h-4" />
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Bathrooms</span>
@@ -793,9 +793,9 @@ export default function DesktopPropertyDetailsView({
                     </div>
 
                     {/* 6. Built-up Area */}
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                      <div className="p-2.5 rounded-xl bg-white text-blue-600 shadow-xs">
-                        <Maximize className="w-5 h-5" />
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="p-2 rounded-lg bg-white shrink-0 text-blue-600 shadow-xs">
+                        <Maximize className="w-4 h-4" />
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Super Built-up</span>
@@ -804,9 +804,9 @@ export default function DesktopPropertyDetailsView({
                     </div>
 
                     {/* 7. Property Age */}
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                      <div className="p-2.5 rounded-xl bg-white text-blue-600 shadow-xs">
-                        <Calendar className="w-5 h-5" />
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="p-2 rounded-lg bg-white shrink-0 text-blue-600 shadow-xs">
+                        <Calendar className="w-4 h-4" />
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Property Age</span>
@@ -815,9 +815,9 @@ export default function DesktopPropertyDetailsView({
                     </div>
 
                     {/* 8. Carpet Area */}
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                      <div className="p-2.5 rounded-xl bg-white text-blue-600 shadow-xs">
-                        <Maximize className="w-5 h-5" />
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="p-2 rounded-lg bg-white shrink-0 text-blue-600 shadow-xs">
+                        <Maximize className="w-4 h-4" />
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Carpet Area</span>
