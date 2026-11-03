@@ -604,20 +604,20 @@ export default function DesktopPropertyDetailsView({
         {/* Quick Property Meta Info (Property ID, User, Posted on, Views) matching design */}
         <div className="flex items-center divide-x divide-gray-200 py-1 select-none">
           <div className="pr-6 sm:pr-8">
-            <div className="text-sm sm:text-[15px] text-[#556987] font-normal">Property ID</div>
-            <div className="text-base sm:text-[17px] font-semibold text-gray-900 mt-1">{formattedPropertyId}</div>
+            <div className="text-[12px] uppercase text-black font-semibold tracking-wider">Property ID</div>
+            <div className="text-[12px] font-medium text-[#307f30] mt-0.5">{formattedPropertyId}</div>
           </div>
           <div className="px-6 sm:px-8">
-            <div className="text-sm sm:text-[15px] text-[#556987] font-normal">User</div>
-            <div className="text-base sm:text-[17px] font-semibold text-gray-900 mt-1">{formattedUserRole}</div>
+            <div className="text-[12px] uppercase text-black font-semibold tracking-wider">User</div>
+            <div className="text-[12px] font-medium text-[#307f30] mt-0.5">{formattedUserRole}</div>
           </div>
           <div className="px-6 sm:px-8">
-            <div className="text-sm sm:text-[15px] text-[#556987] font-normal">Posted on</div>
-            <div className="text-base sm:text-[17px] font-semibold text-gray-900 mt-1">{formattedPostedDate}</div>
+            <div className="text-[12px] uppercase text-black font-semibold tracking-wider">Posted on</div>
+            <div className="text-[12px] font-medium text-[#307f30] mt-0.5">{formattedPostedDate}</div>
           </div>
           <div className="pl-6 sm:pl-8">
-            <div className="text-sm sm:text-[15px] text-[#556987] font-normal">Views</div>
-            <div className="text-base sm:text-[17px] font-semibold text-gray-900 mt-1">{formattedViews}</div>
+            <div className="text-[12px] uppercase text-black font-semibold tracking-wider">Views</div>
+            <div className="text-[12px] font-medium text-[#307f30] mt-0.5">{formattedViews}</div>
           </div>
         </div>
 
