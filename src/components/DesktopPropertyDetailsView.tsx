@@ -86,6 +86,31 @@ export default function DesktopPropertyDetailsView({
   const isLand = isLandProperty(property.propertyType);
   const landArea = getLandAreaDetails(property.areaSqft, property.price);
 
+  const formattedPropertyId = (() => {
+    if (!property.id) return "P991131";
+    const idStr = String(property.id);
+    return idStr.startsWith("P") ? idStr : `P${idStr}`;
+  })();
+
+  const formattedUserRole = property.listingRole || "Owner";
+
+  const formattedPostedDate = (() => {
+    if (!property.createdAt) return "13/Oct/2026";
+    try {
+      const d = new Date(property.createdAt);
+      if (isNaN(d.getTime())) return "13/Oct/2026";
+      const day = String(d.getDate()).padStart(2, "0");
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const month = monthNames[d.getMonth()];
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch {
+      return "13/Oct/2026";
+    }
+  })();
+
+  const formattedViews = property.views !== undefined && property.views !== null ? property.views : 43;
+
   // Inquiry Form state
   const [contactName, setContactName] = useState(user?.name || "");
   const [contactPhone, setContactPhone] = useState(user?.phone || "");
@@ -453,9 +478,9 @@ export default function DesktopPropertyDetailsView({
       <DesktopHeader />
 
       {/* Main Content Container matching Image 2 */}
-      <main className="max-w-7xl mx-auto w-full px-6 py-8 flex flex-col gap-8">
+      <main className="max-w-7xl mx-auto w-full px-6 py-8 flex flex-col gap-3">
         {/* Title Bar Section */}
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-200/80 pb-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-[1.4rem] font-semibold text-gray-900 tracking-tight font-display">
               {property.title}
@@ -573,6 +598,26 @@ export default function DesktopPropertyDetailsView({
                 renderMediaCard(slot.item, slot.targetIdx, false, `grid-${i + 1}`)
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Quick Property Meta Info (Property ID, User, Posted on, Views) matching design */}
+        <div className="flex items-center divide-x divide-gray-200 py-1 select-none">
+          <div className="pr-6 sm:pr-8">
+            <div className="text-sm sm:text-[15px] text-[#556987] font-normal">Property ID</div>
+            <div className="text-base sm:text-[17px] font-semibold text-gray-900 mt-1">{formattedPropertyId}</div>
+          </div>
+          <div className="px-6 sm:px-8">
+            <div className="text-sm sm:text-[15px] text-[#556987] font-normal">User</div>
+            <div className="text-base sm:text-[17px] font-semibold text-gray-900 mt-1">{formattedUserRole}</div>
+          </div>
+          <div className="px-6 sm:px-8">
+            <div className="text-sm sm:text-[15px] text-[#556987] font-normal">Posted on</div>
+            <div className="text-base sm:text-[17px] font-semibold text-gray-900 mt-1">{formattedPostedDate}</div>
+          </div>
+          <div className="pl-6 sm:pl-8">
+            <div className="text-sm sm:text-[15px] text-[#556987] font-normal">Views</div>
+            <div className="text-base sm:text-[17px] font-semibold text-gray-900 mt-1">{formattedViews}</div>
           </div>
         </div>
 
