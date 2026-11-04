@@ -660,23 +660,19 @@ View Details: ${window.location.origin}/property/${property.id}`;
                 <span>{[property.address, property.district, property.state].filter(Boolean).join(", ")}</span>
               </p>
 
-              {/* Quick Property Meta Info (Property ID, User, Posted on, Views) in a single line matching Image 2 */}
+              {/* Quick Property Meta Info (Property ID, User, Posted on) in a single line */}
               <div className="flex items-center divide-x divide-gray-200 py-2.5 mt-2.5 border-t border-gray-200/80 select-none">
-                <div className="pr-3 xs:pr-4 shrink-0 text-left">
+                <div className="pr-4 xs:pr-5 shrink-0 text-left">
                   <div className="text-[10px] xs:text-[11px] uppercase text-black font-semibold tracking-wider">Property ID</div>
                   <div className="text-[11px] xs:text-[12px] font-medium text-[#307f30] mt-0.5">{formattedPropertyId}</div>
                 </div>
-                <div className="px-3 xs:px-4 shrink-0 text-left">
+                <div className="px-4 xs:pr-5 shrink-0 text-left">
                   <div className="text-[10px] xs:text-[11px] uppercase text-black font-semibold tracking-wider">User</div>
                   <div className="text-[11px] xs:text-[12px] font-medium text-[#307f30] mt-0.5">{formattedUserRole}</div>
                 </div>
-                <div className="px-3 xs:px-4 shrink-0 text-left">
+                <div className="pl-4 xs:pl-5 shrink-0 text-left">
                   <div className="text-[10px] xs:text-[11px] uppercase text-black font-semibold tracking-wider">Posted on</div>
                   <div className="text-[11px] xs:text-[12px] font-medium text-[#307f30] mt-0.5">{formattedPostedDate}</div>
-                </div>
-                <div className="pl-3 xs:pl-4 shrink-0 text-left">
-                  <div className="text-[10px] xs:text-[11px] uppercase text-black font-semibold tracking-wider">Views</div>
-                  <div className="text-[11px] xs:text-[12px] font-medium text-[#307f30] mt-0.5">{formattedViews}</div>
                 </div>
               </div>
             </div>
@@ -925,7 +921,7 @@ View Details: ${window.location.origin}/property/${property.id}`;
                       : (property.ownerName || "Owner")}
                   </span>
                   <span className="text-[11px] font-bold text-[#25D366] mt-0.5">
-                    Verified Real Estate Agent
+                    Verified Agent
                   </span>
                   <button 
                     type="button"
