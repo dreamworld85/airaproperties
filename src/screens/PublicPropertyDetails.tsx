@@ -887,8 +887,8 @@ View Details: ${window.location.origin}/property/${property.id}`;
           </div>
         ) : (
             <>
-            {/* 3. OWNER / AGENT CARD SECTION */}
-            <div className="flex items-center justify-between p-4 bg-slate-100/55 rounded-3xl border border-charcoal/5 gap-3">
+            {/* 3. OWNER / AGENT CARD SECTION matching Image */}
+            <div className="flex items-center justify-between p-4 sm:p-5 bg-[#FAF8F3] rounded-3xl border border-gray-200/80 gap-3 shadow-xs">
               <div 
                 onClick={() => {
                   if (property.ownerId) {
@@ -942,8 +942,8 @@ View Details: ${window.location.origin}/property/${property.id}`;
                 </div>
               </div>
 
-              {/* Action Buttons matching Image 1 */}
-              <div className="flex items-center gap-2 shrink-0 select-none">
+              {/* Action Buttons: WhatsApp (Up) & Call (Down) matching Image */}
+              <div className="flex flex-col items-center justify-center gap-1.5 shrink-0 select-none">
                 <button
                   type="button"
                   onClick={(e) => handleContactClick(e, "WhatsApp")}
@@ -953,10 +953,10 @@ View Details: ${window.location.origin}/property/${property.id}`;
                   <img 
                     src="/images/whatsapp.svg" 
                     alt={`Chat with ${formattedUserRole}`} 
-                    className="w-full h-full object-contain" 
+                    className="w-full h-full object-contain drop-shadow-xs" 
                   />
                 </button>
-                <div className="w-[1px] h-7 bg-gray-200/90 mx-0.5 shrink-0" />
+                <div className="w-[1px] h-3.5 bg-gray-200/90 shrink-0" />
                 <button
                   type="button"
                   onClick={(e) => handleContactClick(e, "Call")}
