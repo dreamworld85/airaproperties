@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Heart, Share2, Flag, Phone, MessageCircle, ChevronLeft, ChevronRight, MapPin, X, Star, Maximize, BedDouble, Bath, Compass, Eye, Download, Play, Shield, Award, Calendar, Check, Building, Users, CheckCircle2, Tag, Image as ImageIcon, Coins, Zap } from "lucide-react";
+import { Heart, Share2, Flag, Phone, MessageCircle, ChevronLeft, ChevronRight, MapPin, X, Star, Maximize, BedDouble, Bath, Compass, Eye, Download, Play, Shield, Award, Calendar, Check, Building, Users, CheckCircle2, Tag, Image as ImageIcon, Coins, Zap, Copy } from "lucide-react";
 import { api, ApiPropertyDetail, mediaUrl, formatArea, parseYouTubeVideo } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import RoleBadge from "@/components/RoleBadge";
@@ -152,6 +152,7 @@ export default function PublicPropertyDetails() {
   const [calendarNavigationDate, setCalendarNavigationDate] = useState(new Date());
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
   const [enableScheduleVisit, setEnableScheduleVisit] = useState(true);
+  const [copiedPhone, setCopiedPhone] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
 
   const handleThumbnailClick = (idx: number) => {
@@ -403,6 +404,31 @@ View Details: ${window.location.origin}/property/${property.id}`;
     );
   }
 
+  const formattedPropertyId = (() => {
+    if (!property?.id) return "P34";
+    const idStr = String(property.id);
+    return idStr.startsWith("P") ? idStr : `P${idStr}`;
+  })();
+
+  const formattedUserRole = property?.listingRole || "Owner";
+
+  const formattedPostedDate = (() => {
+    if (!property?.createdAt) return "07/Oct/2026";
+    try {
+      const d = new Date(property.createdAt);
+      if (isNaN(d.getTime())) return "07/Oct/2026";
+      const day = String(d.getDate()).padStart(2, "0");
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const month = monthNames[d.getMonth()];
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch {
+      return "07/Oct/2026";
+    }
+  })();
+
+  const formattedViews = property?.views !== undefined && property?.views !== null ? property.views : 0;
+
   const rawYt = property.youtubeUrl || (property as any).youtube_url;
   const ytParsed = parseYouTubeVideo(rawYt);
 
@@ -633,6 +659,26 @@ View Details: ${window.location.origin}/property/${property.id}`;
                 <MapPin size={13.5} className="text-[#25D366] shrink-0" /> 
                 <span>{[property.address, property.district, property.state].filter(Boolean).join(", ")}</span>
               </p>
+
+              {/* Quick Property Meta Info (Property ID, User, Posted on, Views) in a single line matching Image 2 */}
+              <div className="flex items-center divide-x divide-gray-200 py-2.5 mt-2.5 border-t border-gray-200/80 select-none">
+                <div className="pr-3 xs:pr-4 shrink-0 text-left">
+                  <div className="text-[10px] xs:text-[11px] uppercase text-black font-semibold tracking-wider">Property ID</div>
+                  <div className="text-[11px] xs:text-[12px] font-medium text-[#307f30] mt-0.5">{formattedPropertyId}</div>
+                </div>
+                <div className="px-3 xs:px-4 shrink-0 text-left">
+                  <div className="text-[10px] xs:text-[11px] uppercase text-black font-semibold tracking-wider">User</div>
+                  <div className="text-[11px] xs:text-[12px] font-medium text-[#307f30] mt-0.5">{formattedUserRole}</div>
+                </div>
+                <div className="px-3 xs:px-4 shrink-0 text-left">
+                  <div className="text-[10px] xs:text-[11px] uppercase text-black font-semibold tracking-wider">Posted on</div>
+                  <div className="text-[11px] xs:text-[12px] font-medium text-[#307f30] mt-0.5">{formattedPostedDate}</div>
+                </div>
+                <div className="pl-3 xs:pl-4 shrink-0 text-left">
+                  <div className="text-[10px] xs:text-[11px] uppercase text-black font-semibold tracking-wider">Views</div>
+                  <div className="text-[11px] xs:text-[12px] font-medium text-[#307f30] mt-0.5">{formattedViews}</div>
+                </div>
+              </div>
             </div>
 
             {/* Price & Negotiable tag */}
@@ -871,50 +917,54 @@ View Details: ${window.location.origin}/property/${property.id}`;
                 </div>
 
                 <div className="flex flex-col min-w-0 text-left">
-                  <span className="font-display font-black text-sm text-charcoal truncate max-w-[140px] leading-tight group-hover:text-emerald-700 transition-colors">
+                  <span className="font-display font-extrabold text-[15px] sm:text-base text-gray-900 truncate leading-tight group-hover:text-emerald-700 transition-colors">
                     {property.listingRole === "Agency"
                       ? (property.agencyName || property.ownerName || "Agency")
                       : property.listingRole === "Broker"
                       ? (property.brokerName || property.ownerName || "Broker")
                       : (property.ownerName || "Owner")}
                   </span>
-                  <span className="text-[9.5px] font-bold text-[#25D366] mt-0.5">
+                  <span className="text-[11px] font-bold text-[#25D366] mt-0.5">
                     Verified Real Estate Agent
                   </span>
                   <button 
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (property.ownerId) {
                         navigate(`/agency/${property.ownerId}`);
                       }
                     }}
-                    className="text-[9.5px] text-slate font-black text-left hover:underline select-none mt-1 uppercase tracking-wider flex items-center gap-0.5 hover:text-emerald-700 cursor-pointer"
+                    className="text-[9.5px] text-gray-400 font-bold text-left hover:underline select-none mt-1 uppercase tracking-wider flex items-center gap-0.5 hover:text-emerald-700 cursor-pointer font-display"
                   >
-                    View agent profile <span className="font-sans text-[8px] opacity-75">{`>`}</span>
+                    VIEW AGENT PROFILE <span className="font-sans text-[8.5px]">{`>`}</span>
                   </button>
                 </div>
               </div>
 
-              {/* Circular Action Buttons with Brand/WhatsApp Colors */}
-              <div className="flex items-center gap-2.5 shrink-0 select-none">
-                <a
-                  href={hasAccess && (property.whatsappNumber || property.ownerPhone) ? `https://wa.me/${(property.whatsappNumber || property.ownerPhone || "").replace(/\D/g, "")}?text=${waMessage}` : undefined}
-                  target={hasAccess ? "_blank" : undefined}
-                  rel="noreferrer"
+              {/* Action Buttons matching Image 1 */}
+              <div className="flex items-center gap-2 shrink-0 select-none">
+                <button
+                  type="button"
                   onClick={(e) => handleContactClick(e, "WhatsApp")}
-                  className="w-10 h-10 agent-contact-btn flex items-center justify-center bg-white text-[#25D366] rounded-full shadow-md hover:bg-slate-50 transition-all active:scale-95 cursor-pointer border border-[#25D366]/20"
-                  aria-label="WhatsApp agent"
+                  title={`Chat with ${formattedUserRole}`}
+                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center transition-transform active:scale-95 hover:scale-105 cursor-pointer p-0 border-0 bg-transparent shrink-0"
                 >
-                  <img src="/images/whatsapp.svg" alt="WhatsApp" className="w-[22px] h-[22px] object-contain shrink-0 agent-contact-icon-wa" />
-                </a>
-                <a
-                  href={hasAccess && (property.contactNumber || property.ownerPhone) ? `tel:${property.contactNumber || property.ownerPhone}` : undefined}
+                  <img 
+                    src="/images/whatsapp.svg" 
+                    alt={`Chat with ${formattedUserRole}`} 
+                    className="w-full h-full object-contain" 
+                  />
+                </button>
+                <div className="w-[1px] h-7 bg-gray-200/90 mx-0.5 shrink-0" />
+                <button
+                  type="button"
                   onClick={(e) => handleContactClick(e, "Call")}
-                  className="w-10 h-10 agent-contact-btn flex items-center justify-center bg-forest text-cream rounded-full shadow-md hover:bg-forest/95 transition-all active:scale-95 cursor-pointer"
-                  aria-label="Call agent"
+                  title={`Call ${formattedUserRole}`}
+                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#1B5E4F] hover:bg-[#14483d] text-white flex items-center justify-center shadow-xs transition-transform active:scale-95 cursor-pointer shrink-0"
                 >
-                  <Phone size={17.5} className="agent-contact-icon-phone" />
-                </a>
+                  <Phone size={18} className="stroke-[2.2] text-white" />
+                </button>
               </div>
             </div>
 
@@ -1098,43 +1148,99 @@ View Details: ${window.location.origin}/property/${property.id}`;
                 )}
               </div>
 
-              {(property.contactNumber || property.ownerPhone) && (
-                <a
-                  href={hasAccess ? `tel:${property.contactNumber || property.ownerPhone}` : undefined}
-                  onClick={(e) => handleContactClick(e, "Call")}
-                  className="w-full py-3 px-4 rounded-xl bg-ink hover:bg-black text-cream text-xs sm:text-sm font-normal font-display flex items-center justify-center gap-2.5 shadow-md transition-all active:scale-[0.98] cursor-pointer" style={{ fontWeight: 400 }}
-                >
-                  <Phone size={14} />
-                  <span>
-                    {hasAccess || isOwner 
-                      ? `Call: ${property.contactNumber || property.ownerPhone}` 
-                      : (user?.enquiryCreditsLeft ?? 0) > 0 
-                      ? "Call (1 Token)" 
-                      : "Call: +91 XXXXX XXXXX"
-                    }
-                    {hasAccess && property.useAdminContact && " (admin's)"}
-                  </span>
-                </a>
-              )}
-              
-              {(property.whatsappNumber || property.ownerPhone) && (
-                <a
-                  href={hasAccess ? `https://wa.me/${(property.whatsappNumber || property.ownerPhone || "").replace(/\D/g, "")}?text=${waMessage}` : undefined}
-                  target={hasAccess ? "_blank" : undefined}
-                  rel="noreferrer"
-                  onClick={(e) => handleContactClick(e, "WhatsApp")}
-                  className="w-full py-3 px-4 rounded-xl border border-forest hover:bg-forest/5 text-forest text-xs sm:text-sm font-normal font-display flex items-center justify-center gap-2.5 transition-all active:scale-[0.98] cursor-pointer" style={{ fontWeight: 400 }}>
-                  <img src="/images/whatsapp.svg" alt="WhatsApp" className="w-[22px] h-[22px] object-contain shrink-0" />
-                  <span>
-                    {hasAccess || isOwner 
-                      ? `WhatsApp` 
-                      : (user?.enquiryCreditsLeft ?? 0) > 0 
-                      ? "WhatsApp (1 Token)" 
-                      : "WhatsApp: +91 XXXXX XXXXX"
-                    }
-                    {hasAccess && property.useAdminContact && " (admin's)"}
-                  </span>
-                </a>
+              {hasAccess || isOwner ? (
+                <div className="flex flex-col gap-2.5">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => handleContactClick(e, "Call")}
+                      className="flex-1 h-[48px] px-3.5 bg-[#1B5E4F] hover:bg-[#14483d] text-white font-medium text-xs sm:text-sm rounded-2xl shadow-xs transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 min-w-0"
+                    >
+                      <Phone size={16} className="shrink-0" />
+                      <span className="truncate">Call: {property.contactNumber || property.ownerPhone}</span>
+                    </button>
+
+                    {/* Copy Number Button with Tooltip */}
+                    <div className="relative group shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const num = property.contactNumber || property.ownerPhone || "";
+                          if (num && !num.includes("XXXXX")) {
+                            navigator.clipboard.writeText(num);
+                            setCopiedPhone(true);
+                            setTimeout(() => setCopiedPhone(false), 2000);
+                          }
+                        }}
+                        title={copiedPhone ? "Copied!" : "Copy phone number"}
+                        className="w-[48px] h-[48px] bg-white hover:bg-gray-50 text-gray-700 border border-gray-200/90 rounded-2xl flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-2xs"
+                      >
+                        {copiedPhone ? <Check size={18} className="text-emerald-600 stroke-[2.5]" /> : <Copy size={18} />}
+                      </button>
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 bg-gray-900 text-white text-[11px] font-medium rounded-lg shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-30">
+                        {copiedPhone ? "Copied!" : "Copy number"}
+                        <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-gray-900" />
+                      </div>
+                    </div>
+
+                    {/* WhatsApp Icon Button with Tooltip */}
+                    <div className="relative group shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => handleContactClick(e, "WhatsApp")}
+                        title={`Chat with ${formattedUserRole}`}
+                        className="w-[48px] h-[48px] rounded-2xl flex items-center justify-center transition-all active:scale-95 hover:scale-105 cursor-pointer p-0 border-0 bg-transparent overflow-hidden"
+                      >
+                        <img
+                          src="/images/whatsapp.svg"
+                          alt={`Chat with ${formattedUserRole}`}
+                          className="w-full h-full object-contain"
+                        />
+                      </button>
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 bg-gray-900 text-white text-[11px] font-medium rounded-lg shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-30">
+                        Chat with {formattedUserRole}
+                        <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-gray-900" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-gray-500 text-center font-medium leading-relaxed">
+                    Direct contact unlocked. You have permanent access to this seller.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {(property.contactNumber || property.ownerPhone) && (
+                    <a
+                      href={undefined}
+                      onClick={(e) => handleContactClick(e, "Call")}
+                      className="w-full py-3 px-4 rounded-xl bg-ink hover:bg-black text-cream text-xs sm:text-sm font-normal font-display flex items-center justify-center gap-2.5 shadow-md transition-all active:scale-[0.98] cursor-pointer" style={{ fontWeight: 400 }}
+                    >
+                      <Phone size={14} />
+                      <span>
+                        {(user?.enquiryCreditsLeft ?? 0) > 0 
+                          ? "Call (1 Token)" 
+                          : "Call: +91 XXXXX XXXXX"
+                        }
+                      </span>
+                    </a>
+                  )}
+                  
+                  {(property.whatsappNumber || property.ownerPhone) && (
+                    <a
+                      href={undefined}
+                      onClick={(e) => handleContactClick(e, "WhatsApp")}
+                      className="w-full py-3 px-4 rounded-xl border border-forest hover:bg-forest/5 text-forest text-xs sm:text-sm font-normal font-display flex items-center justify-center gap-2.5 transition-all active:scale-[0.98] cursor-pointer" style={{ fontWeight: 400 }}>
+                      <img src="/images/whatsapp.svg" alt="WhatsApp" className="w-[22px] h-[22px] object-contain shrink-0" />
+                      <span>
+                        {(user?.enquiryCreditsLeft ?? 0) > 0 
+                          ? "WhatsApp (1 Token)" 
+                          : "WhatsApp: +91 XXXXX XXXXX"
+                        }
+                      </span>
+                    </a>
+                  )}
+                </>
               )}
             </div>
           </div>
