@@ -259,6 +259,7 @@ export default function DesktopPropertyDetailsView({
   const hasAccess = Boolean(localProperty.contactAccess);
   const userTokens = user?.enquiryCreditsLeft ?? 0;
   const isOwner = Boolean(user && user.id === localProperty.ownerId);
+  const sellerRole = localProperty.listingRole || property.listingRole || "Owner";
 
   const priceFormatted = formatPrice(localProperty.price);
   const locationFormatted = [localProperty.address, localProperty.district, localProperty.state].filter(Boolean).join(", ");
@@ -277,8 +278,9 @@ export default function DesktopPropertyDetailsView({
         const phone = localProperty.contactNumber || localProperty.ownerPhone;
         window.open(`tel:${phone}`, "_self");
       } else if (type === "WhatsApp") {
-        const phone = (localProperty.whatsappNumber || localProperty.ownerPhone || "").replace(/\D/g, "");
-        window.open(`https://wa.me/91${phone}?text=${waEncoded}`, "_blank");
+        const rawDigits = (localProperty.whatsappNumber || localProperty.contactNumber || localProperty.ownerPhone || "").replace(/\D/g, "");
+        const waPhone = rawDigits.startsWith("91") ? rawDigits : (rawDigits.length === 10 ? `91${rawDigits}` : rawDigits);
+        window.open(`https://wa.me/${waPhone}?text=${waEncoded}`, "_blank");
       }
       return;
     }
@@ -303,12 +305,13 @@ export default function DesktopPropertyDetailsView({
       }
 
       const activePhone = fresh.contactNumber || fresh.ownerPhone || res.contactNumber || res.contact;
-      const activeWa = fresh.whatsappNumber || fresh.ownerPhone || res.whatsappNumber || res.whatsapp;
+      const rawWa = (fresh.whatsappNumber || fresh.contactNumber || fresh.ownerPhone || res.whatsappNumber || res.whatsapp || "").replace(/\D/g, "");
+      const waPhone = rawWa.startsWith("91") ? rawWa : (rawWa.length === 10 ? `91${rawWa}` : rawWa);
 
       if (type === "Call" && activePhone) {
         window.open(`tel:${activePhone}`, "_self");
-      } else if (type === "WhatsApp" && activeWa) {
-        window.open(`https://wa.me/91${activeWa.replace(/\D/g, "")}?text=${waEncoded}`, "_blank");
+      } else if (type === "WhatsApp" && waPhone) {
+        window.open(`https://wa.me/${waPhone}?text=${waEncoded}`, "_blank");
       }
     } catch (err: any) {
       if (err?.requiresTopUp || err?.message?.includes("0 enquiry tokens")) {
@@ -896,34 +899,55 @@ export default function DesktopPropertyDetailsView({
                 {/* Case 1: Unlocked / Owner -> Show real Phone and WhatsApp buttons */}
                 {hasAccess || isOwner ? (
                   <div className="flex flex-col gap-2.5">
-                    {/* Call Button */}
+                    {/* Call, Copy & WhatsApp buttons in one row */}
                     <div className="flex items-center gap-2">
                       <button
+                        type="button"
                         onClick={() => handleContactAction("Call")}
-                        className="flex-1 py-3 px-4 bg-[#1B5E4F] hover:bg-[#14483d] text-white font-normal text-xs sm:text-sm rounded-xl shadow-xs transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2" style={{ fontWeight: 400 }}
+                        className="flex-1 h-[48px] px-3.5 bg-[#1B5E4F] hover:bg-[#14483d] text-white font-medium text-xs sm:text-sm rounded-2xl shadow-xs transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 min-w-0"
                       >
-                        <Phone size={16} />
-                        <span>Call: {localProperty.contactNumber || localProperty.ownerPhone}</span>
+                        <Phone size={16} className="shrink-0" />
+                        <span className="truncate">Call: {localProperty.contactNumber || localProperty.ownerPhone}</span>
                       </button>
-                      <button
-                        onClick={handleCopyNumber}
-                        title="Copy phone number"
-                        className="p-3 bg-white hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-xl transition cursor-pointer shrink-0"
-                      >
-                        {copiedPhone ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
-                      </button>
+
+                      {/* Copy Number Button with Tooltip */}
+                      <div className="relative group shrink-0">
+                        <button
+                          type="button"
+                          onClick={handleCopyNumber}
+                          title={copiedPhone ? "Copied!" : "Copy phone number"}
+                          className="w-[48px] h-[48px] bg-white hover:bg-gray-50 text-gray-700 border border-gray-200/90 rounded-2xl flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-2xs"
+                        >
+                          {copiedPhone ? <Check size={18} className="text-emerald-600 stroke-[2.5]" /> : <Copy size={18} />}
+                        </button>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 bg-gray-900 text-white text-[11px] font-medium rounded-lg shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-30">
+                          {copiedPhone ? "Copied!" : "Copy number"}
+                          <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-gray-900" />
+                        </div>
+                      </div>
+
+                      {/* WhatsApp Icon Button with Tooltip */}
+                      <div className="relative group shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleContactAction("WhatsApp")}
+                          title={`Chat with ${sellerRole}`}
+                          className="w-[48px] h-[48px] rounded-2xl flex items-center justify-center transition-all active:scale-95 hover:scale-105 cursor-pointer p-0 border-0 bg-transparent overflow-hidden"
+                        >
+                          <img
+                            src="/images/whatsapp.svg"
+                            alt={`Chat with ${sellerRole}`}
+                            className="w-full h-full object-contain"
+                          />
+                        </button>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 bg-gray-900 text-white text-[11px] font-medium rounded-lg shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-30">
+                          Chat with {sellerRole}
+                          <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-gray-900" />
+                        </div>
+                      </div>
                     </div>
 
-                    {/* WhatsApp Button */}
-                    <button
-                      onClick={() => handleContactAction("WhatsApp")}
-                      className="w-full py-3.5 px-5 bg-[#25D366] hover:bg-[#20bd5a] text-white font-normal text-sm sm:text-base rounded-xl shadow-xs transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5 min-h-[48px]"
-                      style={{ fontWeight: 400 }}
-                    >
-                      <img src="/images/whatsapp.svg" alt="WhatsApp" className="w-[28px] h-[28px] object-contain shrink-0" />
-                      <span>Chat on WhatsApp</span>
-                    </button>
-                    <p className="text-[11px] text-gray-500 text-center font-medium">
+                    <p className="text-[11px] text-gray-500 text-center font-medium leading-relaxed">
                       Direct contact unlocked. You have permanent access to this seller.
                     </p>
                   </div>
