@@ -66,6 +66,7 @@ import LaunchPopup from "@/components/LaunchPopup";
 import WelcomePopup from "@/components/WelcomePopup";
 import RequestPropertyButton from "@/components/RequestPropertyButton";
 import CustomCodeInjector from "@/components/CustomCodeInjector";
+import SEOHead from "@/components/SEOHead";
 
 export default function App() {
   const location = useLocation();
@@ -88,6 +89,7 @@ export default function App() {
 
   return (
     <div className={isFullWidth ? "min-h-screen w-full bg-[#FAF8F3] relative" : "app-container w-full max-w-[420px] mx-auto bg-cream min-h-screen relative shadow-md overflow-x-hidden"}>
+      <SEOHead />
       <AddPropertyProvider>
         <CustomCodeInjector />
         <Routes>

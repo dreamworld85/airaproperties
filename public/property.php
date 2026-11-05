@@ -47,13 +47,20 @@ if ($id) {
 // Serve the index.html but replace meta tags dynamically
 $html = file_get_contents('index.html');
 
+$canonical = "https://airaproperties.in/property/" . htmlspecialchars($id);
 $metaTags = '
     <title>' . htmlspecialchars($title) . '</title>
+    <meta name="description" content="' . htmlspecialchars($desc) . '" />
+    <link rel="canonical" href="' . $canonical . '" />
     <meta property="og:title" content="' . htmlspecialchars($title) . '" />
     <meta property="og:description" content="' . htmlspecialchars($desc) . '" />
     <meta property="og:image" content="' . htmlspecialchars($image) . '" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://airaproperties.in/property/' . htmlspecialchars($id) . '" />
+    <meta property="og:url" content="' . $canonical . '" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="' . htmlspecialchars($title) . '" />
+    <meta name="twitter:description" content="' . htmlspecialchars($desc) . '" />
+    <meta name="twitter:image" content="' . htmlspecialchars($image) . '" />
 ';
 
 // Replace the existing title tag and inject the meta tags

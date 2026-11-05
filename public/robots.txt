@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+# Disallow private user & administrative areas
+Disallow: /admin/
+Disallow: /my-properties/
+Disallow: /profile/
+Disallow: /saved
+Disallow: /visitors-enquiries
+Disallow: /enquiries
+Disallow: /settings
+Disallow: /subscription
+
+# Point crawlers to the sitemap
+Sitemap: https://airaproperties.in/sitemap.xml

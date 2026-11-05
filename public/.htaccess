@@ -2,6 +2,9 @@
   RewriteEngine On
   RewriteBase /
   
+  # Route sitemap.xml to sitemap.php for dynamic XML generation including listed properties
+  RewriteRule ^sitemap\.xml$ sitemap.php [L]
+  
   # Serve uploads directly from airaproperties.in domain via uploads.php
   RewriteRule ^uploads/(.*)$ uploads.php?file=$1 [L,QSA]
   
