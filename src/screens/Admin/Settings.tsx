@@ -1137,6 +1137,9 @@ export default function Settings() {
                   })
                 ]);
 
+                localStorage.setItem("sparrow_admin_email", adminEmail);
+                localStorage.setItem("sparrow_contact_phone", contactPhoneState);
+                localStorage.setItem("sparrow_contact_address", contactAddress);
                 alert("Admin profile configuration updated successfully!");
                 if (window.innerWidth < 1024) setActiveTab("menu");
               } catch (err: any) {

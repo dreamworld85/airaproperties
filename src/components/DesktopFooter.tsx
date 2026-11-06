@@ -1,10 +1,45 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Phone, MapPin } from "lucide-react";
 import { useBrand } from "@/lib/BrandContext";
+import { api } from "@/lib/api";
 
 export default function DesktopFooter() {
   const navigate = useNavigate();
   const { desktopLogoUrl } = useBrand();
+
+  const [email, setEmail] = useState(() => localStorage.getItem("sparrow_admin_email") || "admin@airaproperties.in");
+  const [phone, setPhone] = useState(() => localStorage.getItem("sparrow_contact_phone") || "+91 9495126132 (10 AM - 6 PM)");
+  const [address, setAddress] = useState(() => localStorage.getItem("sparrow_contact_address") || "Aira Properties Ventures Private Limited, Infopark Phase II, Kakkanad, Kochi, Kerala - 682030");
+
+  useEffect(() => {
+    api.fetchSetting("admin_email")
+      .then(d => {
+        if (d && d.value && d.value.trim()) {
+          setEmail(d.value.trim());
+          localStorage.setItem("sparrow_admin_email", d.value.trim());
+        }
+      })
+      .catch(e => console.error("Error fetching admin_email:", e));
+
+    api.fetchSetting("contact_phone")
+      .then(d => {
+        if (d && d.value && d.value.trim()) {
+          setPhone(d.value.trim());
+          localStorage.setItem("sparrow_contact_phone", d.value.trim());
+        }
+      })
+      .catch(e => console.error("Error fetching contact_phone:", e));
+
+    api.fetchSetting("contact_address")
+      .then(d => {
+        if (d && d.value && d.value.trim()) {
+          setAddress(d.value.trim());
+          localStorage.setItem("sparrow_contact_address", d.value.trim());
+        }
+      })
+      .catch(e => console.error("Error fetching contact_address:", e));
+  }, []);
 
   return (
     <footer 
@@ -100,22 +135,22 @@ export default function DesktopFooter() {
             </h4>
             <div className="flex flex-col gap-2.5 text-xs text-gray-700 font-medium">
               <a 
-                href="mailto:support@airaproperties.in" 
+                href={`mailto:${email}`} 
                 className="flex items-center gap-2.5 text-gray-900 hover:text-[#60A963] transition-colors cursor-pointer w-fit"
               >
                 <Mail className="w-4 h-4 text-[#60A963] shrink-0" />
-                <span>support@airaproperties.in</span>
+                <span>{email}</span>
               </a>
               <a 
-                href="tel:+914842901234" 
+                href={`tel:${phone.split("(")[0].trim().replace(/[^\d+]/g, '')}`} 
                 className="flex items-center gap-2.5 text-gray-900 hover:text-[#60A963] transition-colors cursor-pointer w-fit"
               >
                 <Phone className="w-4 h-4 text-[#60A963] shrink-0" />
-                <span>+91 484 2901234 (10 AM - 6 PM)</span>
+                <span>{phone}</span>
               </a>
               <div className="flex items-start gap-2.5 text-gray-700">
                 <MapPin className="w-4 h-4 text-[#60A963] shrink-0 mt-0.5" />
-                <span>Aira Properties, Infopark Phase II, Kochi, Kerala</span>
+                <span className="whitespace-pre-line leading-relaxed">{address}</span>
               </div>
               <span 
                 onClick={() => navigate("/contact-us")} 
