@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ChevronLeft, MapPin, BedDouble, Bath, Star, Heart, X } from "lucide-react";
+import { ChevronLeft, MapPin, BedDouble, Bath, X, Sparkles } from "lucide-react";
 import { api, ApiProperty, mediaUrl, formatArea, isLandProperty } from "@/lib/api";
 import BottomNav from "@/components/BottomNav";
 import PropertyCard from "@/components/PropertyCard";
@@ -20,7 +20,14 @@ const DISTRICT_COORDINATES: Record<string, { lat: number; lng: number }> = {
   Alappuzha: { lat: 9.4981, lng: 76.3388 },
   Pathanamthitta: { lat: 9.2648, lng: 76.7870 },
   Kollam: { lat: 8.8932, lng: 76.6141 },
-  Thiruvananthapuram: { lat: 8.5241, lng: 76.9366 }
+  Thiruvananthapuram: { lat: 8.5241, lng: 76.9366 },
+  Bangalore: { lat: 12.9716, lng: 77.5946 },
+  Bengaluru: { lat: 12.9716, lng: 77.5946 },
+  "Bengaluru Urban": { lat: 12.9716, lng: 77.5946 },
+  "Bengaluru Rural": { lat: 13.2257, lng: 77.5750 },
+  Ramanagara: { lat: 12.7209, lng: 77.2799 },
+  Mysore: { lat: 12.2958, lng: 76.6394 },
+  Mysuru: { lat: 12.2958, lng: 76.6394 }
 };
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&q=80";
@@ -45,6 +52,7 @@ export default function LocationProperties() {
   const [properties, setProperties] = useState<ApiProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [mapLoading, setMapLoading] = useState(true);
+  const [isStateFallback, setIsStateFallback] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<ApiProperty | null>(null);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -55,125 +63,160 @@ export default function LocationProperties() {
   const coords = DISTRICT_COORDINATES[decodedLocation] || (stateParam && STATE_COORDINATES[stateParam]) || { lat: 10.850516, lng: 76.271080 };
 
   useEffect(() => {
-    // 1. Fetch properties in the selected location
-    api.fetchProperties({ district: decodedLocation })
-      .then((data) => {
-        setProperties(data || []);
-      })
-      .catch((err) => {
-        console.error("Failed to fetch location properties:", err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [decodedLocation]);
+    let isMounted = true;
+    setLoading(true);
 
-  useEffect(() => {
-    // 2. Load Google Maps Script
-    if (window.google && window.google.maps) {
-      setMapLoading(false);
-      initializeMap();
-      return;
+    async function fetchLocationData() {
+      const loc = decodedLocation.trim();
+      let found: ApiProperty[] = [];
+      let fallbackUsed = false;
+
+      try {
+        if (loc) {
+          // 1. Try district match
+          found = await api.fetchProperties({ district: loc }).catch(() => []);
+          // 2. If no direct district match, try free text search (in address/title)
+          if ((!found || found.length === 0)) {
+            found = await api.fetchProperties({ search: loc }).catch(() => []);
+          }
+        }
+
+        // 3. If still empty and state is provided, show the whole state's listings!
+        if ((!found || found.length === 0) && stateParam) {
+          const stateResults = await api.fetchProperties({ state: stateParam }).catch(() => []);
+          if (stateResults && stateResults.length > 0) {
+            found = stateResults;
+            fallbackUsed = true;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch location properties:", err);
+      }
+
+      if (isMounted) {
+        setProperties(found || []);
+        setIsStateFallback(fallbackUsed);
+        setLoading(false);
+      }
     }
 
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      setMapLoading(false);
-      initializeMap();
-    };
-    script.onerror = () => {
-      setMapLoading(false);
-      console.error("Failed to load Google Maps");
-    };
-    document.head.appendChild(script);
+    fetchLocationData();
 
     return () => {
-      // Clear markers on unmount
-      markersRef.current.forEach(m => m.setMap(null));
-      markersRef.current = [];
+      isMounted = false;
     };
-  }, [properties]);
+  }, [decodedLocation, stateParam]);
 
-  const initializeMap = () => {
-    if (!mapContainerRef.current || !window.google || !window.google.maps) return;
-
-    const maps = window.google.maps;
-
-    // Create Map
-    const map = new maps.Map(mapContainerRef.current, {
-      center: coords,
-      zoom: 11,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-      styles: [
-        {
-          featureType: "poi",
-          elementType: "labels",
-          stylers: [{ visibility: "off" }]
+  // Leaflet Map Initialization Hook
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    const checkAndInit = () => {
+      if (window.L && mapContainerRef.current) {
+        setMapLoading(false);
+        if (!mapRef.current) {
+          const map = window.L.map(mapContainerRef.current, {
+            center: [coords.lat, coords.lng],
+            zoom: 10,
+            zoomControl: false,
+          });
+          window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: "&copy; OpenStreetMap"
+          }).addTo(map);
+          mapRef.current = map;
         }
-      ]
-    });
-    mapRef.current = map;
+      } else {
+        timer = setTimeout(checkAndInit, 150);
+      }
+    };
+
+    checkAndInit();
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [coords]);
+
+  // Sync Markers with Properties & fit map bounds
+  useEffect(() => {
+    if (!mapRef.current || !window.L) return;
 
     // Remove existing markers
-    markersRef.current.forEach(m => m.setMap(null));
-    markersRef.current = [];
-
-    // Place markers for each property that has coordinates
-    properties.forEach((property) => {
-      if (!property.latitude || !property.longitude) return;
-
-      const markerCoords = { lat: Number(property.latitude), lng: Number(property.longitude) };
-
-      const isSelected = selectedProperty?.id === property.id;
-      const marker = new maps.Marker({
-        position: markerCoords,
-        map: map,
-        title: property.title,
-        icon: {
-          url: "/images/location.svg",
-          scaledSize: new maps.Size(isSelected ? 54 : 42, isSelected ? 54 : 42),
-          origin: new maps.Point(0, 0),
-          anchor: new maps.Point(isSelected ? 27 : 21, isSelected ? 54 : 42)
-        }
-      });
-
-      marker.addListener("click", () => {
-        handleMarkerClick(property);
-      });
-
-      markersRef.current.push({ id: property.id, marker });
-    });
-  };
-
-  const handleMarkerClick = (property: ApiProperty) => {
-    setSelectedProperty(property);
-    if (mapRef.current && property.latitude && property.longitude) {
-      mapRef.current.panTo({ lat: Number(property.latitude), lng: Number(property.longitude) });
-    }
-
-    // Highlight selected marker size
-    markersRef.current.forEach(({ id, marker }) => {
-      if (window.google && window.google.maps) {
-        const isSelected = id === property.id;
-        marker.setIcon({
-          url: "/images/location.svg",
-          scaledSize: new window.google.maps.Size(isSelected ? 54 : 42, isSelected ? 54 : 42),
-          origin: new window.google.maps.Point(0, 0),
-          anchor: new window.google.maps.Point(isSelected ? 27 : 21, isSelected ? 54 : 42)
-        });
+    markersRef.current.forEach((m) => {
+      if (m && typeof m.remove === "function") {
+        m.remove();
       }
     });
+    markersRef.current = [];
+
+    const latLngBounds: [number, number][] = [];
+
+    properties.forEach((property) => {
+      let lat = parseFloat(property.latitude as string);
+      let lng = parseFloat(property.longitude as string);
+
+      if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
+        const fallback = DISTRICT_COORDINATES[property.district] || (property.state && STATE_COORDINATES[property.state]) || coords;
+        const seed = property.id || 1;
+        const offsetLat = (Math.sin(seed) * 0.5) * 0.03;
+        const offsetLng = (Math.cos(seed) * 0.5) * 0.03;
+        lat = fallback.lat + offsetLat;
+        lng = fallback.lng + offsetLng;
+      }
+
+      latLngBounds.push([lat, lng]);
+
+      const isSelected = selectedProperty?.id === property.id;
+      const priceText = formatPrice(property.price);
+
+      const customIcon = window.L.divIcon({
+        className: "custom-leaflet-price-pin",
+        html: `<div style="
+          background: ${isSelected ? '#FF5A5F' : '#59AD63'};
+          color: #ffffff;
+          padding: 4px 10px;
+          border-radius: 18px;
+          font-weight: 800;
+          font-size: 11px;
+          font-family: inherit;
+          border: 2px solid #ffffff;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+          white-space: nowrap;
+          cursor: pointer;
+          transform: ${isSelected ? 'scale(1.15)' : 'scale(1.0)'};
+          transition: transform 0.2s, background 0.2s;
+        ">📍 ${priceText}</div>`,
+        iconSize: null,
+      });
+
+      const marker = window.L.marker([lat, lng], { icon: customIcon }).addTo(mapRef.current);
+      marker.on("click", () => {
+        handleMarkerClick(property, lat, lng);
+      });
+
+      markersRef.current.push(marker);
+    });
+
+    if (latLngBounds.length > 0 && !selectedProperty) {
+      mapRef.current.fitBounds(latLngBounds, { padding: [40, 40], maxZoom: 13 });
+    } else if (latLngBounds.length === 0) {
+      mapRef.current.setView([coords.lat, coords.lng], 9);
+    }
+  }, [properties, selectedProperty, coords]);
+
+  const handleMarkerClick = (property: ApiProperty, lat?: number, lng?: number) => {
+    setSelectedProperty(property);
+    if (mapRef.current) {
+      const propLat = lat !== undefined ? lat : parseFloat(property.latitude as string);
+      const propLng = lng !== undefined ? lng : parseFloat(property.longitude as string);
+      if (!isNaN(propLat) && !isNaN(propLng)) {
+        mapRef.current.setView([propLat, propLng], 13, { animate: true });
+      }
+    }
   };
 
   const handlePropertyCardClick = (property: ApiProperty) => {
     handleMarkerClick(property);
-    // Smooth scroll map into view if clicked from list
     const mapElement = document.getElementById("properties-map");
     if (mapElement) {
       mapElement.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -192,10 +235,12 @@ export default function LocationProperties() {
           <ChevronLeft size={22} className="text-[#091F40]" />
         </button>
 
-        <div className="flex flex-col items-center">
-          <span className="font-bold text-sm text-[#091F40]">Properties in {decodedLocation}{stateParam ? `, ${stateParam}` : ""}</span>
+        <div className="flex flex-col items-center text-center">
+          <span className="font-bold text-sm text-[#091F40]">
+            Properties in {decodedLocation}{stateParam ? `, ${stateParam}` : ""}
+          </span>
           <span className="text-[9px] font-bold text-slate/50 tracking-wider uppercase leading-none mt-0.5">
-            {properties.length} Listings Found
+            {properties.length} Listings {isStateFallback ? `Found in ${stateParam}` : "Found"}
           </span>
         </div>
 
@@ -203,7 +248,7 @@ export default function LocationProperties() {
       </div>
 
       {/* Map View Section */}
-      <div id="properties-map" className="relative w-full h-[260px] bg-slate-50 border-b border-charcoal/5 shrink-0">
+      <div id="properties-map" className="relative w-full h-[270px] bg-slate-50 border-b border-charcoal/5 shrink-0">
         {mapLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate bg-slate-100 z-10">
             <div className="w-8 h-8 border-4 border-[#59AD63] border-t-transparent rounded-full animate-spin" />
@@ -214,7 +259,7 @@ export default function LocationProperties() {
 
         {/* Floating Property Preview Card */}
         {selectedProperty && (
-          <div className="absolute bottom-4 left-4 right-4 bg-white rounded-xl shadow-lg border border-charcoal/5 p-3 flex gap-3 animate-slide-up z-20">
+          <div className="absolute bottom-4 left-4 right-4 bg-white rounded-xl shadow-lg border border-charcoal/5 p-3 flex gap-3 animate-slide-up z-[1000]">
             {/* Cover Image */}
             <div 
               onClick={() => navigate(`/property/${selectedProperty.id}`)}
@@ -284,7 +329,27 @@ export default function LocationProperties() {
       </div>
 
       <div className="px-6 pt-5 flex-1 flex flex-col gap-4">
-        <h2 className="font-display font-semibold text-[16px] text-[#091F40]">Available Listings</h2>
+        {/* Fallback Notice Banner */}
+        {isStateFallback && properties.length > 0 && (
+          <div className="bg-emerald-50/90 border border-emerald-200/80 rounded-xl p-3 text-xs text-emerald-900 shadow-sm flex items-start gap-2.5">
+            <Sparkles size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-[12px] text-emerald-950">
+                Showing all {properties.length} properties across {stateParam}
+              </p>
+              <p className="text-[11px] text-emerald-800/80 mt-0.5 leading-snug">
+                No direct listings were found in {decodedLocation}. We are displaying all available listings across {stateParam}.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between">
+          <h2 className="font-display font-semibold text-[16px] text-[#091F40]">Available Listings</h2>
+          <span className="text-xs font-medium text-slate-500">
+            {properties.length} {properties.length === 1 ? "Property" : "Properties"}
+          </span>
+        </div>
 
         {loading ? (
           <div className="flex-1 flex items-center justify-center py-12">
