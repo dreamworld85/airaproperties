@@ -27,7 +27,7 @@ const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1600585154340-be6161a5
 function formatPrice(price: number): string {
   const num = Number(price);
   if (!num || isNaN(num)) return "₹0";
-  const formatted = Math.round(num).toLocaleString("en-US");
+  const formatted = Math.round(num).toLocaleString("en-IN");
   if (num >= 5000000) return `₹${formatted} Cr`;
   if (num >= 100000) return `₹${formatted} L`;
   if (num >= 1000) return `₹${formatted} K`;

@@ -946,7 +946,7 @@ export function formatPrice(price: number | string | undefined | null, purpose?:
   if (isNaN(num) || num <= 0) return "—";
 
   const rounded = Math.round(num);
-  const formatted = rounded.toLocaleString("en-US");
+  const formatted = rounded.toLocaleString("en-IN");
 
   let text = "";
   if (num >= 5000000) {

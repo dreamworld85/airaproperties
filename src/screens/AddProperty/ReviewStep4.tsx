@@ -14,7 +14,7 @@ import SubscriptionPaywallModal from "@/components/SubscriptionPaywallModal";
 function formatPrice(price: string): string {
   const n = Number(price);
   if (!n || isNaN(n)) return "—";
-  const formatted = Math.round(n).toLocaleString("en-US");
+  const formatted = Math.round(n).toLocaleString("en-IN");
   if (n >= 5000000) return `₹${formatted} Cr`;
   if (n >= 100000) return `₹${formatted} L`;
   if (n >= 1000) return `₹${formatted} K`;

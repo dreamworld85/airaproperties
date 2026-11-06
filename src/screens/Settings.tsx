@@ -35,7 +35,7 @@ const DEFAULT_AGENCY_BANNER =
 function formatPrice(price: number, purpose?: string): string {
   const num = Number(price);
   if (!num || isNaN(num)) return "₹0";
-  const formatted = Math.round(num).toLocaleString("en-US");
+  const formatted = Math.round(num).toLocaleString("en-IN");
   let text = "";
   if (num >= 5000000) text = `₹${formatted} Cr`;
   else if (num >= 100000) text = `₹${formatted} L`;
