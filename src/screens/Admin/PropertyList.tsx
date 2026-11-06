@@ -210,7 +210,11 @@ export default function PropertyList() {
   // Format price in Indian Rupee format
   const formatPrice = (priceVal: number | string) => {
     const num = Number(priceVal) || 0;
-    return `₹${num.toLocaleString("en-IN")}`;
+    const formatted = Math.round(num).toLocaleString("en-US");
+    if (num >= 5000000) return `₹${formatted} Cr`;
+    if (num >= 100000) return `₹${formatted} L`;
+    if (num >= 1000) return `₹${formatted} K`;
+    return `₹${formatted}`;
   };
 
   // Format posted date

@@ -33,13 +33,17 @@ const DEFAULT_AGENCY_BANNER =
   "https://images.unsplash.com/photo-1582407947304-fd86f028f716?w=1600&auto=format&fit=crop&q=80";
 
 function formatPrice(price: number, purpose?: string): string {
+  const num = Number(price);
+  if (!num || isNaN(num)) return "₹0";
+  const formatted = Math.round(num).toLocaleString("en-US");
   let text = "";
-  if (price >= 10000000) text = `₹${(price / 10000000).toFixed(2)} Cr`;
-  else if (price >= 100000) text = `₹${(price / 100000).toFixed(1)} L`;
-  else text = `₹${price.toLocaleString("en-IN")}`;
+  if (num >= 5000000) text = `₹${formatted} Cr`;
+  else if (num >= 100000) text = `₹${formatted} L`;
+  else if (num >= 1000) text = `₹${formatted} K`;
+  else text = `₹${formatted}`;
 
   if (purpose === "For Rent") {
-    return `${text} / night`;
+    return `${text} /month`;
   }
   return text;
 }

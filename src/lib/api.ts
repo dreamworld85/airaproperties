@@ -940,6 +940,31 @@ export function formatArea(areaSqft: number, propertyType?: string): string {
   return `${(Number(areaSqft) || 0).toLocaleString("en-IN")} sq.ft`;
 }
 
+export function formatPrice(price: number | string | undefined | null, purpose?: string): string {
+  if (price === undefined || price === null || price === "") return "—";
+  const num = typeof price === "number" ? price : Number(price);
+  if (isNaN(num) || num <= 0) return "—";
+
+  const rounded = Math.round(num);
+  const formatted = rounded.toLocaleString("en-US");
+
+  let text = "";
+  if (num >= 5000000) {
+    text = `₹${formatted} Cr`;
+  } else if (num >= 100000) {
+    text = `₹${formatted} L`;
+  } else if (num >= 1000) {
+    text = `₹${formatted} K`;
+  } else {
+    text = `₹${formatted}`;
+  }
+
+  if (purpose === "For Rent") {
+    return `${text} /month`;
+  }
+  return text;
+}
+
 export function parseYouTubeVideo(url?: string | null): {
   videoId: string;
   embedUrl: string;

@@ -16,9 +16,13 @@ const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&q=80";
 
 function formatPrice(price: number): string {
-  if (price >= 10000000) return `₹${(price / 10000000).toFixed(2)} Cr`;
-  if (price >= 100000) return `₹${(price / 100000).toFixed(1)} L`;
-  return `₹${price.toLocaleString("en-IN")}`;
+  const num = Number(price);
+  if (!num || isNaN(num)) return "₹0";
+  const formatted = Math.round(num).toLocaleString("en-US");
+  if (num >= 5000000) return `₹${formatted} Cr`;
+  if (num >= 100000) return `₹${formatted} L`;
+  if (num >= 1000) return `₹${formatted} K`;
+  return `₹${formatted}`;
 }
 
 export default function MyProperties() {

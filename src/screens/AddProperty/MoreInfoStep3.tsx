@@ -335,19 +335,17 @@ export default function MoreInfoStep3() {
               {(() => {
                 const num = Number(form.price);
                 if (!num || isNaN(num)) return "";
-                if (num >= 10000000) {
-                  const cr = num / 10000000;
-                  return `${cr.toFixed(2).replace(/\.00$/, "")} Crores`;
+                const formatted = Math.round(num).toLocaleString("en-US");
+                if (num >= 5000000) {
+                  return `${formatted} Cr`;
                 }
                 if (num >= 100000) {
-                  const lakh = num / 100000;
-                  return `${lakh.toFixed(2).replace(/\.00$/, "")} Lakhs`;
+                  return `${formatted} L`;
                 }
                 if (num >= 1000) {
-                  const thousand = num / 1000;
-                  return `${thousand.toFixed(2).replace(/\.00$/, "")} Thousands`;
+                  return `${formatted} K`;
                 }
-                return `${num.toLocaleString("en-IN")}`;
+                return formatted;
               })()}
             </div>
           )}

@@ -13,10 +13,12 @@ import SubscriptionPaywallModal from "@/components/SubscriptionPaywallModal";
 
 function formatPrice(price: string): string {
   const n = Number(price);
-  if (!n) return "—";
-  if (n >= 10000000) return `₹${(n / 10000000).toFixed(2)} Cr`;
-  if (n >= 100000) return `₹${(n / 100000).toFixed(1)} L`;
-  return `₹${n.toLocaleString("en-IN")}`;
+  if (!n || isNaN(n)) return "—";
+  const formatted = Math.round(n).toLocaleString("en-US");
+  if (n >= 5000000) return `₹${formatted} Cr`;
+  if (n >= 100000) return `₹${formatted} L`;
+  if (n >= 1000) return `₹${formatted} K`;
+  return `₹${formatted}`;
 }
 
 export default function ReviewStep4() {

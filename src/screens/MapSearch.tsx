@@ -26,9 +26,13 @@ const DISTRICT_COORDINATES: Record<string, { lat: number; lng: number }> = {
 };
 
 function formatPrice(price: number): string {
-  if (price >= 10000000) return `₹${(price / 10000000).toFixed(2)} Cr`;
-  if (price >= 100000) return `₹${(price / 100000).toFixed(1)} L`;
-  return `₹${price.toLocaleString("en-IN")}`;
+  const num = Number(price);
+  if (!num || isNaN(num)) return "₹0";
+  const formatted = Math.round(num).toLocaleString("en-US");
+  if (num >= 5000000) return `₹${formatted} Cr`;
+  if (num >= 100000) return `₹${formatted} L`;
+  if (num >= 1000) return `₹${formatted} K`;
+  return `₹${formatted}`;
 }
 
 export default function MapSearch() {
