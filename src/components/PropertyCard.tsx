@@ -13,7 +13,7 @@ function formatPrice(price: number, purpose?: string): string {
   const formatted = Math.round(num).toLocaleString("en-IN");
 
   let text = "";
-  if (num >= 5000000) text = `₹${formatted} Cr`;
+  if (num >= 10000000) text = `₹${formatted} Cr`;
   else if (num >= 100000) text = `₹${formatted} L`;
   else if (num >= 1000) text = `₹${formatted} K`;
   else text = `₹${formatted}`;

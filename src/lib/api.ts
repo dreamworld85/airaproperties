@@ -318,6 +318,9 @@ export const api = {
     });
 
     let list = Array.from(map.values());
+    if (params.ownerId) {
+      list = list.filter((p) => String(p.ownerId || (p as any).owner_id) === String(params.ownerId));
+    }
     if (params.purpose) {
       list = list.filter((p) => p.purpose === params.purpose);
     }
@@ -949,7 +952,7 @@ export function formatPrice(price: number | string | undefined | null, purpose?:
   const formatted = rounded.toLocaleString("en-IN");
 
   let text = "";
-  if (num >= 5000000) {
+  if (num >= 10000000) {
     text = `₹${formatted} Cr`;
   } else if (num >= 100000) {
     text = `₹${formatted} L`;

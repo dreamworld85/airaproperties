@@ -211,7 +211,7 @@ export default function PropertyList() {
   const formatPrice = (priceVal: number | string) => {
     const num = Number(priceVal) || 0;
     const formatted = Math.round(num).toLocaleString("en-IN");
-    if (num >= 5000000) return `₹${formatted} Cr`;
+    if (num >= 10000000) return `₹${formatted} Cr`;
     if (num >= 100000) return `₹${formatted} L`;
     if (num >= 1000) return `₹${formatted} K`;
     return `₹${formatted}`;

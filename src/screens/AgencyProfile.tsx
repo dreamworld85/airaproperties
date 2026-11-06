@@ -93,9 +93,12 @@ export default function AgencyProfile() {
     api.fetchPublicProfile(agencyIdentifier)
       .then(async (p) => {
         setProfile(p);
-        // Fetch listings by ownerId
+        // Fetch listings strictly by ownerId
         const l = await api.fetchProperties({ ownerId: String(p.id) });
-        setListings(l || []);
+        const agencyOnly = (l || []).filter(
+          (prop) => String(prop.ownerId || (prop as any).owner_id) === String(p.id)
+        );
+        setListings(agencyOnly);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));

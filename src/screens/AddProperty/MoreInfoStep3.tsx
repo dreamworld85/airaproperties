@@ -336,7 +336,7 @@ export default function MoreInfoStep3() {
                 const num = Number(form.price);
                 if (!num || isNaN(num)) return "";
                 const formatted = Math.round(num).toLocaleString("en-IN");
-                if (num >= 5000000) {
+                if (num >= 10000000) {
                   return `${formatted} Cr`;
                 }
                 if (num >= 100000) {
