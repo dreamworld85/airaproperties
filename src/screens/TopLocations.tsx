@@ -9,7 +9,7 @@ import BottomNav from "@/components/BottomNav";
 export default function TopLocationsScreen() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [topLocations, setTopLocations] = useState<{ id: number; name: string; image_url: string }[]>([]);
+  const [topLocations, setTopLocations] = useState<{ id: number; name: string; state?: string; image_url: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,7 +53,7 @@ export default function TopLocationsScreen() {
             {topLocations.map((loc) => (
               <div 
                 key={loc.id} 
-                onClick={() => navigate(`/location/${encodeURIComponent(loc.name)}`)}
+                onClick={() => navigate(`/location/${encodeURIComponent(loc.name)}?state=${encodeURIComponent(loc.state || "Kerala")}`)}
                 className="flex flex-col bg-white border border-charcoal/5 rounded-2xl overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.02)] cursor-pointer hover:shadow-md transition-all duration-200 active:scale-[0.98]"
               >
                 <div className="aspect-[4/3] w-full overflow-hidden bg-slate-50">
@@ -64,7 +64,10 @@ export default function TopLocationsScreen() {
                   />
                 </div>
                 <div className="p-3 bg-white">
-                  <span className="text-[13px] font-medium text-slate-800 truncate block">{loc.name}</span>
+                  <div className="flex flex-col">
+                    <span className="text-[13px] font-bold text-slate-900 truncate block">{loc.name}</span>
+                    <span className="text-[10px] font-medium text-emerald-700 truncate block">{loc.state || "Kerala"}</span>
+                  </div>
                 </div>
               </div>
             ))}

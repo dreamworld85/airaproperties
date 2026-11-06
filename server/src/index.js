@@ -718,10 +718,21 @@ async function checkDbMigration() {
       CREATE TABLE IF NOT EXISTS top_locations (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
+        state VARCHAR(255) NOT NULL DEFAULT 'Kerala',
         image_url VARCHAR(500) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
+
+    // Verify top_locations has state column
+    const [topLocCols] = await pool.query("SHOW COLUMNS FROM top_locations");
+    const topLocColNames = topLocCols.map(c => c.Field);
+    if (!topLocColNames.includes("state")) {
+      console.log("Adding state column to top_locations...");
+      await pool.query("ALTER TABLE top_locations ADD COLUMN state VARCHAR(255) NOT NULL DEFAULT 'Kerala'");
+    }
+    // Update known non-kerala locations
+    await pool.query("UPDATE top_locations SET state = 'Karnataka' WHERE (name LIKE '%Bangalore%' OR name LIKE '%Bengaluru%') AND (state IS NULL OR state = '' OR state = 'Kerala')");
     console.log("Database top_locations table verified.");
 
     // Create property_requests table if it does not exist

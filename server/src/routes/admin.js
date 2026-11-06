@@ -1519,7 +1519,7 @@ router.get("/database/export", checkAdminSession, (req, res) => {
 // POST /api/admin/top-locations (Admin Protected)
 router.post("/top-locations", upload.single("image"), async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, state } = req.body;
     if (!name) {
       return res.status(400).json({ message: "Location name is required." });
     }
@@ -1531,7 +1531,8 @@ router.post("/top-locations", upload.single("image"), async (req, res) => {
     } else {
       return res.status(400).json({ message: "Image file or imageUrl is required." });
     }
-    await pool.query("INSERT INTO top_locations (name, image_url) VALUES (?, ?)", [name, imageUrl]);
+    const finalState = state && state.trim() ? state.trim() : "Kerala";
+    await pool.query("INSERT INTO top_locations (name, state, image_url) VALUES (?, ?, ?)", [name, finalState, imageUrl]);
     res.json({ success: true, message: "Location added successfully." });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1542,7 +1543,7 @@ router.post("/top-locations", upload.single("image"), async (req, res) => {
 router.put("/top-locations/:id", upload.single("image"), async (req, res) => {
   try {
     const { id } = req.params;
-    const { name } = req.body;
+    const { name, state } = req.body;
     
     const [[existing]] = await pool.query("SELECT * FROM top_locations WHERE id = ?", [id]);
     if (!existing) {
@@ -1559,8 +1560,8 @@ router.put("/top-locations/:id", upload.single("image"), async (req, res) => {
     }
     
     await pool.query(
-      "UPDATE top_locations SET name = COALESCE(?, name), image_url = ? WHERE id = ?",
-      [name || null, imageUrl, id]
+      "UPDATE top_locations SET name = COALESCE(?, name), state = COALESCE(?, state), image_url = ? WHERE id = ?",
+      [name || null, state || null, imageUrl, id]
     );
     res.json({ success: true, message: "Location updated successfully." });
   } catch (err) {

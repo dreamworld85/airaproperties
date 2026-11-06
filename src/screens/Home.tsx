@@ -38,7 +38,7 @@ export default function Home() {
   }, []);
   const [properties, setProperties] = useState<ApiProperty[]>([]);
   const [agents, setAgents] = useState<ApiUser[]>([]);
-  const [topLocations, setTopLocations] = useState<{ id: number; name: string; image_url: string }[]>([]);
+  const [topLocations, setTopLocations] = useState<{ id: number; name: string; state?: string; image_url: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("All");
@@ -414,7 +414,7 @@ export default function Home() {
                 {topLocations.map((loc) => (
                   <div 
                     key={loc.id} 
-                    onClick={() => navigate(`/location/${encodeURIComponent(loc.name)}`)}
+                    onClick={() => navigate(`/location/${encodeURIComponent(loc.name)}?state=${encodeURIComponent(loc.state || "Kerala")}`)}
                     className="relative w-[105px] h-[135px] shrink-0 rounded-2xl overflow-hidden shadow-sm cursor-pointer border border-charcoal/5 hover:scale-[1.02] active:scale-[0.98] transition-all"
                   >
                     <img 
@@ -424,7 +424,7 @@ export default function Home() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/25 to-transparent flex flex-col justify-end p-2.5 text-left">
                       <span className="text-[12px] font-bold text-white leading-tight truncate block">{loc.name}</span>
-                      <span className="text-[9px] font-semibold text-white/70 mt-0.5 truncate block">Kerala</span>
+                      <span className="text-[9px] font-semibold text-white/70 mt-0.5 truncate block">{loc.state || "Kerala"}</span>
                     </div>
                   </div>
                 ))}

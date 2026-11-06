@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { api, mediaUrl, getApiUrl } from "@/lib/api";
+import { INDIAN_STATES } from "@/lib/indiaLocationData";
 
 export default function Settings() {
   const location = useLocation();
@@ -112,8 +113,9 @@ export default function Settings() {
     const val = localStorage.getItem("sparrow_enable_home_hero_banner");
     return val !== "false";
   });
-  const [locationsList, setLocationsList] = useState<{ id: number; name: string; image_url: string }[]>([]);
+  const [locationsList, setLocationsList] = useState<{ id: number; name: string; state?: string; image_url: string }[]>([]);
   const [newLocationName, setNewLocationName] = useState("");
+  const [newLocationState, setNewLocationState] = useState("Kerala");
   const [newLocationFile, setNewLocationFile] = useState<File | null>(null);
   const [newLocationPreview, setNewLocationPreview] = useState<string | null>(null);
   const [loadingLocations, setLoadingLocations] = useState(false);
@@ -986,11 +988,13 @@ export default function Settings() {
     try {
       const formData = new FormData();
       formData.append("name", newLocationName.trim());
+      formData.append("state", newLocationState);
       formData.append("image", newLocationFile);
       const res = await api.adminAddTopLocation(formData);
       if (res.success) {
         alert("Location added successfully!");
         setNewLocationName("");
+        setNewLocationState("Kerala");
         setNewLocationFile(null);
         setNewLocationPreview(null);
         loadLocations();
@@ -2637,15 +2641,30 @@ export default function Settings() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-ink">Location Name</label>
+            <label className="text-xs font-bold text-ink">Location Name (City / District)</label>
             <input 
               type="text"
               required
               value={newLocationName}
               onChange={(e) => setNewLocationName(e.target.value)}
-              placeholder="e.g. Wayanad"
+              placeholder="e.g. Kozhikode, Bangalore, Wayanad"
               className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-forest/40 focus:bg-white transition-all w-full font-semibold font-display"
             />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-ink">State Name</label>
+            <select
+              value={newLocationState}
+              onChange={(e) => setNewLocationState(e.target.value)}
+              className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-forest/40 focus:bg-white transition-all w-full font-semibold font-display cursor-pointer"
+            >
+              {INDIAN_STATES.map((st) => (
+                <option key={st} value={st}>
+                  {st}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -2707,6 +2726,7 @@ export default function Settings() {
                   />
                   <div className="flex-1 min-w-0">
                     <span className="text-xs font-bold text-ink truncate block">{loc.name}</span>
+                    <span className="text-[10px] text-emerald-700 font-semibold block truncate">{loc.state || "Kerala"}</span>
                     <span className="text-[9px] text-slate block truncate">ID: {loc.id}</span>
                   </div>
                   <button

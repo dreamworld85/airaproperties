@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronLeft, MapPin, BedDouble, Bath, Star, Heart, X } from "lucide-react";
 import { api, ApiProperty, mediaUrl, formatArea, isLandProperty } from "@/lib/api";
 import BottomNav from "@/components/BottomNav";
 import PropertyCard from "@/components/PropertyCard";
+import { STATE_COORDINATES } from "@/lib/indiaLocationData";
 
 const DISTRICT_COORDINATES: Record<string, { lat: number; lng: number }> = {
   Wayanad: { lat: 11.6854, lng: 76.1320 },
@@ -36,6 +37,8 @@ function formatPrice(price: number): string {
 
 export default function LocationProperties() {
   const { locationName } = useParams<{ locationName: string }>();
+  const [searchParams] = useSearchParams();
+  const stateParam = searchParams.get("state") || "";
   const navigate = useNavigate();
   const decodedLocation = locationName ? decodeURIComponent(locationName) : "";
 
@@ -49,7 +52,7 @@ export default function LocationProperties() {
   const markersRef = useRef<any[]>([]);
 
   // Centered position coordinates
-  const coords = DISTRICT_COORDINATES[decodedLocation] || { lat: 10.850516, lng: 76.271080 };
+  const coords = DISTRICT_COORDINATES[decodedLocation] || (stateParam && STATE_COORDINATES[stateParam]) || { lat: 10.850516, lng: 76.271080 };
 
   useEffect(() => {
     // 1. Fetch properties in the selected location
@@ -190,7 +193,7 @@ export default function LocationProperties() {
         </button>
 
         <div className="flex flex-col items-center">
-          <span className="font-bold text-sm text-[#091F40]">Properties in {decodedLocation}</span>
+          <span className="font-bold text-sm text-[#091F40]">Properties in {decodedLocation}{stateParam ? `, ${stateParam}` : ""}</span>
           <span className="text-[9px] font-bold text-slate/50 tracking-wider uppercase leading-none mt-0.5">
             {properties.length} Listings Found
           </span>

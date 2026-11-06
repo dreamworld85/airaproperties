@@ -506,7 +506,7 @@ export const api = {
 
   async fetchTopLocations() {
     const res = await fetch(`${API_URL}/api/admin/top-locations`);
-    return handle<{ id: number; name: string; image_url: string }[]>(res);
+    return handle<{ id: number; name: string; state?: string; image_url: string }[]>(res);
   },
 
   async adminAddTopLocation(formData: FormData) {
