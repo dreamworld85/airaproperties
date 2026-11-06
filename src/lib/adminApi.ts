@@ -434,6 +434,39 @@ export const adminApi = {
     if (!res.ok) throw new Error("Failed to load account reports.");
     return res.json();
   },
+
+  async fetchPropertyTypes(): Promise<any[]> {
+    const res = await fetch(`${API_URL}/api/admin/property-types`, {
+      headers: getAdminHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load property types.");
+    return res.json();
+  },
+
+  async addPropertyType(data: { name: string; category?: string; for_sale?: boolean; for_rent?: boolean }): Promise<any> {
+    const res = await fetch(`${API_URL}/api/admin/property-types`, {
+      method: "POST",
+      headers: {
+        ...getAdminHeaders(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || "Failed to add property type.");
+    }
+    return res.json();
+  },
+
+  async deletePropertyType(id: number): Promise<void> {
+    const res = await fetch(`${API_URL}/api/admin/property-types/${id}`, {
+      method: "DELETE",
+      headers: getAdminHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to delete property type.");
+    return res.json();
+  },
 };
 
 export interface AccountReportTransaction {

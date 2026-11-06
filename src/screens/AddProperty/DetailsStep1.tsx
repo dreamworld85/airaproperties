@@ -5,7 +5,7 @@ import { useAddProperty } from "@/lib/AddPropertyContext";
 import { useAuth } from "@/lib/AuthContext";
 import { ListingRole } from "@/lib/types";
 import BottomNav from "@/components/BottomNav";
-import { api } from "@/lib/api";
+import { api, ApiPropertyType } from "@/lib/api";
 
 const residentialTypesForSale = [
   "Apartment",
@@ -49,10 +49,19 @@ export default function DetailsStep1() {
 
   const [attemptedNext, setAttemptedNext] = useState(false);
   const [showAllTypes, setShowAllTypes] = useState(false);
+  const [propertyTypesList, setPropertyTypesList] = useState<ApiPropertyType[]>([]);
   const defaultPostMsg = encodeURIComponent("Hello! I want to post my property listing on Aira Properties.");
   const [whatsappLink, setWhatsappLink] = useState(`https://wa.me/917012021221?text=${defaultPostMsg}`);
 
   useEffect(() => {
+    api.fetchPropertyTypes()
+      .then((data) => {
+        if (data && data.length > 0) {
+          setPropertyTypesList(data);
+        }
+      })
+      .catch((err) => console.error("Error loading property types:", err));
+
     api.fetchSetting("admin_contact_number")
       .then((data) => {
         if (data && data.value) {
@@ -77,16 +86,38 @@ export default function DetailsStep1() {
     }
   }, [user, form.role, update]);
 
+  function getAvailableTypes(category: string, rent: boolean) {
+    if (propertyTypesList && propertyTypesList.length > 0) {
+      const filtered = propertyTypesList.filter((t) => {
+        if (category === "Commercial") {
+          if (t.category !== "Commercial" && t.category !== "Both") return false;
+        } else {
+          if (t.category !== "Residential" && t.category !== "Both") return false;
+        }
+        if (rent) {
+          return Boolean(t.for_rent);
+        } else {
+          return Boolean(t.for_sale);
+        }
+      }).map(t => t.name);
+
+      if (!filtered.includes("Other")) {
+        filtered.push("Other");
+      }
+      return filtered;
+    }
+
+    return category === "Commercial"
+      ? (rent ? commercialTypesForRent : commercialTypesForSale)
+      : (rent ? residentialTypesForRent : residentialTypesForSale);
+  }
+
   const isRent = form.purpose === "For Rent" || form.purpose === "For Lease" || form.purpose === "Paying Guest";
-  const activeTypes = form.propertyCategory === "Commercial"
-    ? (isRent ? commercialTypesForRent : commercialTypesForSale)
-    : (isRent ? residentialTypesForRent : residentialTypesForSale);
+  const activeTypes = getAvailableTypes(form.propertyCategory, isRent);
 
   function handlePurposeChange(val: string) {
     const nextRent = val === "For Rent" || val === "For Lease" || val === "Paying Guest";
-    const nextTypes = form.propertyCategory === "Commercial"
-      ? (nextRent ? commercialTypesForRent : commercialTypesForSale)
-      : (nextRent ? residentialTypesForRent : residentialTypesForSale);
+    const nextTypes = getAvailableTypes(form.propertyCategory, nextRent);
       
     const resetType = nextTypes.includes(form.propertyType) ? form.propertyType : "";
     const isApplicable = resetType === "Apartment" || resetType === "Independent House / Villa";

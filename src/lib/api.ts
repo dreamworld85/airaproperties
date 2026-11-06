@@ -46,6 +46,15 @@ export interface ApiUser {
   createdAt?: string | null;
 }
 
+export interface ApiPropertyType {
+  id: number;
+  name: string;
+  category: "Residential" | "Commercial" | "Both" | string;
+  for_sale: number | boolean;
+  for_rent: number | boolean;
+  created_at?: string;
+}
+
 export interface ApiProperty {
   id: number;
   ownerId: number;
@@ -507,6 +516,11 @@ export const api = {
   async fetchTopLocations() {
     const res = await fetch(`${API_URL}/api/admin/top-locations`);
     return handle<{ id: number; name: string; state?: string; image_url: string }[]>(res);
+  },
+
+  async fetchPropertyTypes() {
+    const res = await fetch(`${API_URL}/api/property-types`);
+    return handle<ApiPropertyType[]>(res);
   },
 
   async adminAddTopLocation(formData: FormData) {

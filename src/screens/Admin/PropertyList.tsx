@@ -34,7 +34,7 @@ import {
   UploadCloud
 } from "lucide-react";
 import { adminApi, AdminProperty } from "@/lib/adminApi";
-import { mediaUrl } from "@/lib/api";
+import { mediaUrl, api, ApiPropertyType } from "@/lib/api";
 
 const statusOptions = [
   { label: "All Statuses", value: "All" },
@@ -157,6 +157,7 @@ export default function PropertyList() {
   const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
 
   // Edit Property Modal State (Admin editing images, youtube_url, status & details)
+  const [allPropertyTypes, setAllPropertyTypes] = useState<string[]>(propertyTypes);
   const [editPropertyItem, setEditPropertyItem] = useState<AdminProperty | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editPrice, setEditPrice] = useState("");
@@ -188,6 +189,16 @@ export default function PropertyList() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    api.fetchPropertyTypes()
+      .then((data: ApiPropertyType[]) => {
+        if (data && data.length > 0) {
+          setAllPropertyTypes(Array.from(new Set([...propertyTypes, ...data.map((d: ApiPropertyType) => d.name)])));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -1375,7 +1386,7 @@ export default function PropertyList() {
                       onChange={(e) => setEditPropertyType(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
                     >
-                      {propertyTypes.map((t) => (
+                      {allPropertyTypes.map((t) => (
                         <option key={t} value={t}>{t}</option>
                       ))}
                     </select>

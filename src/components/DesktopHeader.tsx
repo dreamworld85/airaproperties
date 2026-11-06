@@ -118,14 +118,31 @@ export default function DesktopHeader({
     if (availableTypes && availableTypes.length > 0) {
       setDynamicTypes(availableTypes);
     } else {
-      api.fetchProperties({})
-        .then((data) => {
-          if (data) {
-            const types = Array.from(new Set(data.map(p => p.propertyType))).filter(Boolean);
-            setDynamicTypes(types);
+      api.fetchPropertyTypes()
+        .then((types) => {
+          if (types && types.length > 0) {
+            setDynamicTypes(types.map(t => t.name));
+          } else {
+            api.fetchProperties({})
+              .then((data) => {
+                if (data) {
+                  const pTypes = Array.from(new Set(data.map(p => p.propertyType))).filter(Boolean);
+                  setDynamicTypes(pTypes);
+                }
+              })
+              .catch(() => {});
           }
         })
-        .catch((err) => console.error("Failed to load property types for header:", err));
+        .catch(() => {
+          api.fetchProperties({})
+            .then((data) => {
+              if (data) {
+                const pTypes = Array.from(new Set(data.map(p => p.propertyType))).filter(Boolean);
+                setDynamicTypes(pTypes);
+              }
+            })
+            .catch(() => {});
+        });
     }
   }, [availableTypes]);
 

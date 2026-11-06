@@ -24,7 +24,8 @@ import {
   ExternalLink,
   Key,
   Code,
-  Sparkles
+  Sparkles,
+  Building2
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { api, mediaUrl, getApiUrl } from "@/lib/api";
@@ -32,7 +33,7 @@ import { INDIAN_STATES } from "@/lib/indiaLocationData";
 
 export default function Settings() {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<"menu" | "site" | "logos" | "payment" | "trials" | "profile" | "database" | "landing" | "interstitial" | "locations" | "pages" | "custom-code">("menu");
+  const [activeTab, setActiveTab] = useState<"menu" | "site" | "logos" | "payment" | "trials" | "profile" | "database" | "landing" | "interstitial" | "locations" | "property-types" | "pages" | "custom-code">("menu");
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -47,6 +48,8 @@ export default function Settings() {
       setActiveTab("trials");
     } else if (tabParam === "locations") {
       setActiveTab("locations");
+    } else if (tabParam === "property-types") {
+      setActiveTab("property-types");
     } else if (tabParam === "pages") {
       setActiveTab("pages");
     } else if (tabParam === "payment") {
@@ -124,6 +127,13 @@ export default function Settings() {
   const [newLocationFile, setNewLocationFile] = useState<File | null>(null);
   const [newLocationPreview, setNewLocationPreview] = useState<string | null>(null);
   const [loadingLocations, setLoadingLocations] = useState(false);
+  const [propertyTypesList, setPropertyTypesList] = useState<{ id: number; name: string; category: string; for_sale: number | boolean; for_rent: number | boolean; created_at?: string }[]>([]);
+  const [newTypeName, setNewTypeName] = useState("");
+  const [newTypeCategory, setNewTypeCategory] = useState<"Residential" | "Commercial" | "Both">("Residential");
+  const [newTypeForSale, setNewTypeForSale] = useState(true);
+  const [newTypeForRent, setNewTypeForRent] = useState(true);
+  const [loadingPropertyTypes, setLoadingPropertyTypes] = useState(false);
+  const [savingPropertyType, setSavingPropertyType] = useState(false);
 
   const [landingHeroTitle, setLandingHeroTitle] = useState("");
   const [interstitialSettings, setInterstitialSettings] = useState<any>(null);
@@ -992,8 +1002,61 @@ export default function Settings() {
   useEffect(() => {
     if (activeTab === "locations") {
       loadLocations();
+    } else if (activeTab === "property-types") {
+      loadPropertyTypes();
     }
   }, [activeTab]);
+
+  async function loadPropertyTypes() {
+    setLoadingPropertyTypes(true);
+    try {
+      const data = await adminApi.fetchPropertyTypes();
+      setPropertyTypesList(data || []);
+    } catch (err) {
+      console.error("Failed to load property types:", err);
+    } finally {
+      setLoadingPropertyTypes(false);
+    }
+  }
+
+  async function handleAddPropertyType(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newTypeName.trim()) {
+      alert("Please enter a property type name.");
+      return;
+    }
+    setSavingPropertyType(true);
+    try {
+      await adminApi.addPropertyType({
+        name: newTypeName.trim(),
+        category: newTypeCategory,
+        for_sale: newTypeForSale,
+        for_rent: newTypeForRent,
+      });
+      setNewTypeName("");
+      await loadPropertyTypes();
+      alert("Property type added successfully!");
+    } catch (err: any) {
+      alert(err.message || "Failed to add property type.");
+    } finally {
+      setSavingPropertyType(false);
+    }
+  }
+
+  async function handleDeletePropertyType(id: number, name: string) {
+    if (!window.confirm(`Are you sure you want to delete property type "${name}"?`)) {
+      return;
+    }
+    setSavingPropertyType(true);
+    try {
+      await adminApi.deletePropertyType(id);
+      await loadPropertyTypes();
+    } catch (err: any) {
+      alert(err.message || "Failed to delete property type.");
+    } finally {
+      setSavingPropertyType(false);
+    }
+  }
 
   async function loadLocations() {
     setLoadingLocations(true);
@@ -1073,6 +1136,7 @@ export default function Settings() {
         { key: "landing", label: "Landing Manager", desc: "Manage desktop landing text, app QR, and feature cards", icon: FileText, color: "text-amber-600 bg-amber-50" },
         { key: "interstitial", label: "Share Interstitial Settings", desc: "Manage logo, store links, headlines and footers for shared links", icon: Sliders, color: "text-teal-600 bg-teal-50" },
         { key: "locations", label: "Top Locations", desc: "Manage popular top locations and preview graphics", icon: MapPin, color: "text-indigo-600 bg-indigo-50" },
+        { key: "property-types", label: "Add Property Type", desc: "Manage existing property types and add new ones across the app", icon: Building2, color: "text-blue-600 bg-blue-50" },
         { key: "pages", label: "Page Settings", desc: "Manage legal and public page titles, contents, and contact info", icon: FileText, color: "text-purple-600 bg-purple-50" },
         { key: "custom-code", label: "Custom Code", desc: "Inject Google Analytics, Search Console meta tags, custom CSS & JS", icon: Code, color: "text-violet-600 bg-violet-50" },
       ],
@@ -2795,6 +2859,181 @@ export default function Settings() {
             </div>
           )}
         </div>
+
+        {/* Manage Property Types Quick Card below Top Locations */}
+        <div className="bg-gradient-to-r from-blue-50/70 to-indigo-50/70 border border-blue-200/80 rounded-3xl p-5 shadow-sm text-left flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Building2 className="text-blue-600" size={20} />
+              <h3 className="font-display font-extrabold text-sm text-ink">Add & Manage Property Types</h3>
+            </div>
+            <p className="text-[11px] text-slate mt-1">
+              Add new property types (e.g. Penthouse, Duplex, Warehouse, Farmhouse) to reflect in Add Property page, filters, and searches.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab("property-types")}
+            className="py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-xs font-bold font-display shadow-sm transition-all active:scale-[0.98] shrink-0 cursor-pointer"
+          >
+            Manage Property Types →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderPropertyTypesTab() {
+    return (
+      <div className="flex flex-col gap-6 text-left">
+        <div className="flex items-center gap-2 lg:hidden px-1">
+          <button 
+            onClick={() => setActiveTab("menu")}
+            className="p-1 hover:bg-slate-100 rounded-full transition-all text-slate cursor-pointer"
+            aria-label="Back"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <h3 className="font-display font-bold text-sm text-ink">Back to Menu</h3>
+        </div>
+
+        {/* Add Property Type Form Card */}
+        <form onSubmit={handleAddPropertyType} className="bg-white border border-charcoal/5 rounded-3xl p-6 shadow-sm flex flex-col gap-5">
+          <div className="border-b border-charcoal/5 pb-4">
+            <div className="flex items-center gap-2">
+              <Building2 className="text-blue-600" size={20} />
+              <h2 className="font-display font-extrabold text-base text-black">Add Property Type</h2>
+            </div>
+            <p className="text-[11px] text-slate mt-1">
+              Create a new property type to display on post-property forms, search filters, and browse categories.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-ink">Property Type Name</label>
+            <input 
+              type="text"
+              placeholder="e.g. Penthouse, Duplex, Farmhouse, Studio Apartment"
+              value={newTypeName}
+              onChange={(e) => setNewTypeName(e.target.value)}
+              className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-blue-500 transition-colors"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Category */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-ink">Property Category</label>
+              <select
+                value={newTypeCategory}
+                onChange={(e) => setNewTypeCategory(e.target.value as any)}
+                className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-blue-500 transition-colors"
+              >
+                <option value="Residential">Residential</option>
+                <option value="Commercial">Commercial</option>
+                <option value="Both">Both (Residential & Commercial)</option>
+              </select>
+            </div>
+
+            {/* Purpose applicability checkboxes */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-ink">Available For Purpose</label>
+              <div className="flex items-center gap-4 p-2.5 bg-slate-50 border border-charcoal/10 rounded-2xl">
+                <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newTypeForSale}
+                    onChange={(e) => setNewTypeForSale(e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600 accent-blue-600 cursor-pointer"
+                  />
+                  <span>For Sale</span>
+                </label>
+                <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newTypeForRent}
+                    onChange={(e) => setNewTypeForRent(e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600 accent-blue-600 cursor-pointer"
+                  />
+                  <span>For Rent / Lease</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={savingPropertyType}
+            className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer text-center"
+          >
+            <span>{savingPropertyType ? "Adding Property Type..." : "Add Property Type"}</span>
+          </button>
+        </form>
+
+        {/* Current Property Types List Card */}
+        <div className="bg-white border border-charcoal/5 rounded-3xl p-6 shadow-sm text-left">
+          <div className="flex items-center justify-between border-b border-charcoal/5 pb-4 mb-4">
+            <div>
+              <h2 className="font-display font-extrabold text-base text-black">Current Property Types</h2>
+              <p className="text-[10px] text-slate mt-0.5">
+                Existing types available on Add Property page and search filters ({propertyTypesList.length} types).
+              </p>
+            </div>
+            <span className="text-[10px] font-bold px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-200">
+              Active in System
+            </span>
+          </div>
+
+          {loadingPropertyTypes ? (
+            <div className="py-8 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+            </div>
+          ) : propertyTypesList.length === 0 ? (
+            <p className="text-xs text-slate py-4 text-center">No property types found.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {propertyTypesList.map((t) => (
+                <div 
+                  key={t.id} 
+                  className="flex items-center justify-between p-3 rounded-2xl border border-charcoal/10 bg-slate-50/60 shadow-sm hover:border-blue-200 transition-colors"
+                >
+                  <div className="flex flex-col min-w-0 pr-2">
+                    <span className="text-xs font-bold text-ink truncate block">{t.name}</span>
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                        t.category === "Commercial" ? "bg-purple-100 text-purple-700" :
+                        t.category === "Both" ? "bg-blue-100 text-blue-700" :
+                        "bg-emerald-100 text-emerald-800"
+                      }`}>
+                        {t.category}
+                      </span>
+                      {Boolean(t.for_sale) && (
+                        <span className="text-[9px] font-medium text-slate-500 bg-white border border-slate-200 px-1 rounded">
+                          Sale
+                        </span>
+                      )}
+                      {Boolean(t.for_rent) && (
+                        <span className="text-[9px] font-medium text-slate-500 bg-white border border-slate-200 px-1 rounded">
+                          Rent
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePropertyType(t.id, t.name)}
+                    disabled={savingPropertyType}
+                    className="px-2.5 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-[10px] font-bold transition-all cursor-pointer shrink-0"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -3438,6 +3677,8 @@ export default function Settings() {
                           setActiveTab("interstitial");
                         } else if (item.key === "locations") {
                           setActiveTab("locations");
+                        } else if (item.key === "property-types") {
+                          setActiveTab("property-types");
                         } else if (item.key === "pages") {
                           setActiveTab("pages");
                         } else {
@@ -3489,6 +3730,7 @@ export default function Settings() {
           {activeTab === "landing" && renderLandingTab()}
           {activeTab === "interstitial" && renderInterstitialTab()}
           {activeTab === "locations" && renderLocationsTab()}
+          {activeTab === "property-types" && renderPropertyTypesTab()}
           {activeTab === "pages" && renderPagesTab()}
           {activeTab === "custom-code" && renderCustomCodeTab()}
         </div>

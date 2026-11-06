@@ -1587,6 +1587,93 @@ router.delete("/top-locations/:id", async (req, res) => {
   }
 });
 
+// GET /api/admin/property-types (Public / Admin)
+router.get("/property-types", async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM property_types ORDER BY id ASC");
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/property-types (Admin Protected)
+router.post("/property-types", async (req, res) => {
+  try {
+    const { name, category, for_sale, for_rent } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: "Property type name is required." });
+    }
+    const cleanName = name.trim();
+    const cleanCategory = ["Residential", "Commercial", "Both"].includes(category) ? category : "Residential";
+    const forSaleVal = for_sale === false || for_sale === "false" || for_sale === 0 || for_sale === "0" ? 0 : 1;
+    const forRentVal = for_rent === false || for_rent === "false" || for_rent === 0 || for_rent === "0" ? 0 : 1;
+
+    // Check if duplicate
+    const [[existing]] = await pool.query("SELECT id FROM property_types WHERE LOWER(name) = LOWER(?)", [cleanName]);
+    if (existing) {
+      return res.status(400).json({ message: "Property type with this name already exists." });
+    }
+
+    const [result] = await pool.query(
+      "INSERT INTO property_types (name, category, for_sale, for_rent) VALUES (?, ?, ?, ?)",
+      [cleanName, cleanCategory, forSaleVal, forRentVal]
+    );
+
+    res.json({
+      success: true,
+      message: "Property type added successfully.",
+      id: result.insertId,
+      name: cleanName,
+      category: cleanCategory,
+      for_sale: forSaleVal,
+      for_rent: forRentVal
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/property-types/:id (Admin Protected)
+router.put("/property-types/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, category, for_sale, for_rent } = req.body;
+    const [[existing]] = await pool.query("SELECT * FROM property_types WHERE id = ?", [id]);
+    if (!existing) {
+      return res.status(404).json({ message: "Property type not found." });
+    }
+
+    const updatedName = name && name.trim() ? name.trim() : existing.name;
+    const updatedCategory = category && ["Residential", "Commercial", "Both"].includes(category) ? category : existing.category;
+    const updatedForSale = for_sale !== undefined ? (for_sale ? 1 : 0) : existing.for_sale;
+    const updatedForRent = for_rent !== undefined ? (for_rent ? 1 : 0) : existing.for_rent;
+
+    await pool.query(
+      "UPDATE property_types SET name = ?, category = ?, for_sale = ?, for_rent = ? WHERE id = ?",
+      [updatedName, updatedCategory, updatedForSale, updatedForRent, id]
+    );
+
+    res.json({ success: true, message: "Property type updated successfully." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/property-types/:id (Admin Protected)
+router.delete("/property-types/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query("DELETE FROM property_types WHERE id = ?", [id]);
+    res.json({ success: true, message: "Property type deleted successfully." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/admin/service-enquiries (Admin Protected)
 router.get("/service-enquiries", async (req, res) => {
   try {

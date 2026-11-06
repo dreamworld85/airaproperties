@@ -27,8 +27,19 @@ export default function Search() {
   const [district, setDistrict] = useState(searchParams.get("district") || "");
   const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
   const [propertyType, setPropertyType] = useState(searchParams.get("type") || "");
+  const [dynamicTypes, setDynamicTypes] = useState<string[]>([]);
   const [purpose, setPurpose] = useState(searchParams.get("purpose") || "");
   const [query, setQuery] = useState(searchParams.get("q") || searchParams.get("location") || "");
+
+  useEffect(() => {
+    api.fetchPropertyTypes()
+      .then((data) => {
+        if (data && data.length > 0) {
+          setDynamicTypes(data.map(d => d.name));
+        }
+      })
+      .catch(() => {});
+  }, []);
   
   useEffect(() => {
     const qParam = new URLSearchParams(location.search).get("q") || "";
@@ -270,7 +281,7 @@ export default function Search() {
               className="w-full appearance-none rounded-xl border border-charcoal/12 bg-white pl-2.5 pr-6 py-2.5 text-[11px] font-semibold text-charcoal outline-none focus:border-black transition-colors cursor-pointer shadow-sm truncate"
             >
               <option value="">All Types</option>
-              {propertyTypes.map((opt) => (
+              {(dynamicTypes.length > 0 ? dynamicTypes : propertyTypes).map((opt) => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>

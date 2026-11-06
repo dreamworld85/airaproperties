@@ -735,6 +735,44 @@ async function checkDbMigration() {
     await pool.query("UPDATE top_locations SET state = 'Karnataka' WHERE (name LIKE '%Bangalore%' OR name LIKE '%Bengaluru%') AND (state IS NULL OR state = '' OR state = 'Kerala')");
     console.log("Database top_locations table verified.");
 
+    // Create property_types table if it does not exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS property_types (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL UNIQUE,
+        category VARCHAR(50) NOT NULL DEFAULT 'Residential',
+        for_sale TINYINT(1) NOT NULL DEFAULT 1,
+        for_rent TINYINT(1) NOT NULL DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    const [existingTypes] = await pool.query("SELECT COUNT(*) as count FROM property_types");
+    if (existingTypes[0].count === 0) {
+      console.log("Seeding default property types...");
+      const defaultTypes = [
+        ['Apartment', 'Residential', 1, 1],
+        ['Independent House / Villa', 'Residential', 1, 1],
+        ['Builder Floor', 'Residential', 1, 1],
+        ['Plot / Land', 'Both', 1, 1],
+        ['1 RK/ Studio Apartment', 'Residential', 1, 1],
+        ['Farmhouse', 'Residential', 1, 0],
+        ['Serviced Apartment', 'Residential', 0, 1],
+        ['Office Space', 'Commercial', 1, 1],
+        ['Retail Shop', 'Commercial', 1, 1],
+        ['Warehouse', 'Commercial', 1, 1],
+        ['Co-working Space', 'Commercial', 0, 1],
+        ['Other', 'Both', 1, 1]
+      ];
+      for (const item of defaultTypes) {
+        await pool.query(
+          "INSERT IGNORE INTO property_types (name, category, for_sale, for_rent) VALUES (?, ?, ?, ?)",
+          item
+        );
+      }
+    }
+    console.log("Database property_types table verified.");
+
     // Create property_requests table if it does not exist
     await pool.query(`
       CREATE TABLE IF NOT EXISTS property_requests (
@@ -1514,6 +1552,16 @@ app.get(["/apk", "/apk/"], (_req, res) => {
 });
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
+// GET /api/property-types (Public Property Types getter)
+app.get("/api/property-types", async (_req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM property_types ORDER BY id ASC");
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET /api/settings (Public batch settings getter)
 app.get("/api/settings", async (_req, res) => {
