@@ -217,10 +217,14 @@ router.post("/verify-subscription", requireAuth, async (req, res) => {
       success: true,
       planType: plan?.plan_type || "combo",
       creditsAdded: enquiryTokensToAdd + listingSlotsToAdd,
-      enquiryTokensAdded,
+      enquiryTokensAdded: enquiryTokensToAdd,
       listingSlotsAdded: listingSlotsToAdd,
       enquiryCreditsLeft: updatedEnquiry,
       listingSlotsLeft: updatedSlots,
+      paymentId: razorpay_payment_id,
+      orderId: razorpay_order_id,
+      amount: pricePaid,
+      planName: plan?.name || null,
     });
   } catch (err) {
     console.error("Subscription verification error:", err);

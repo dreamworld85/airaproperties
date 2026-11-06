@@ -657,6 +657,10 @@ export const api = {
       listingSlotsAdded?: number; 
       enquiryCreditsLeft?: number; 
       listingSlotsLeft?: number; 
+      paymentId?: string;
+      orderId?: string;
+      amount?: number;
+      planName?: string;
     }>(res);
   },
 
