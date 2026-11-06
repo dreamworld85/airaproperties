@@ -1669,9 +1669,6 @@ router.delete("/property-types/:id", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
 });
 
 // GET /api/admin/service-enquiries (Admin Protected)
