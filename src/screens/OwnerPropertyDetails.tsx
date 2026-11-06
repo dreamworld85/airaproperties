@@ -809,28 +809,7 @@ export default function OwnerPropertyDetails() {
                   </div>
                 </div>
 
-                {/* Promote to Featured Banner */}
-                {property.status === "Active" && !property.isFeatured && (
-                  <div className="mt-1 p-4 rounded-2xl bg-amber-50/80 border border-amber-200/60 flex flex-col gap-2.5">
-                    <div>
-                      <h4 className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                        <Star size={13} className="fill-amber-500 text-amber-500" />
-                        <span>Feature Your Listing</span>
-                      </h4>
-                      <p className="text-[11px] text-gray-600 mt-1 leading-relaxed">
-                        Pin your listing to the top of home feed and search results to get up to 10x more buyer leads.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setShowFeatureModal(true)}
-                      className="w-full py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-xs transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Sparkles size={12} />
-                      <span>Promote to Featured ({featuredData?.isEligibleForFree ? "Free Trial" : `₹${featuredData?.featuredPrice || 299}`})</span>
-                    </button>
-                  </div>
-                )}
-
+                
                 {/* Restore Contact Info (If using admin contact) */}
                 {property.useAdminContact && user?.subscriptionStatus === "active" && (
                   <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-col gap-2.5">
@@ -1332,26 +1311,7 @@ export default function OwnerPropertyDetails() {
           </div>
         </div>
 
-        {property.status === "Active" && !property.isFeatured && (
-          <div className="mt-2 p-3.5 rounded-2xl bg-amber-50/50 border border-amber-200/30 flex flex-col gap-2.5">
-            <div>
-              <h4 className="text-xs font-bold text-ink flex items-center gap-1.5">
-                <Star size={13} className="fill-gold text-gold" />
-                Feature Your Listing
-              </h4>
-              <p className="text-[10px] text-slate mt-0.5 leading-relaxed">
-                Pin your listing to the top of home feed and search results to get up to 10x more leads.
-              </p>
-            </div>
-            <button
-              onClick={() => setShowFeatureModal(true)}
-              className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-gold hover:bg-gold-500 text-white text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] cursor-pointer animate-fade-in"
-            >
-              <Sparkles size={12} /> Promote to Featured ({featuredData?.isEligibleForFree ? "Free Trial" : `₹${featuredData?.featuredPrice || 299}`})
-            </button>
-          </div>
-        )}
-      </div>
+              </div>
 
       {showViewersModal && (
         <PropertyViewersModal 

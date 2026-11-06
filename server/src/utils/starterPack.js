@@ -62,20 +62,58 @@ export async function getStarterPackForRole(role = "Buyer") {
 
   // Fallbacks if database row missing
   const fallbacks = {
-    user: { enquiryTokens: 10, listingSlots: 0, planName: "Starter Pack", planId: "user_starter_pack" },
+    user: { enquiryTokens: 20, listingSlots: 0, planName: "Starter Pack", planId: "user_starter_pack" },
     owner: { enquiryTokens: 15, listingSlots: 1, planName: "Owner Starter", planId: "owner_starter_pack" },
     broker: { enquiryTokens: 35, listingSlots: 10, planName: "Broker Starter", planId: "broker_standard_pack" },
     agency: { enquiryTokens: 100, listingSlots: 15, planName: "Agency Starter", planId: "agency_corporate_pack" },
   };
 
   const fb = fallbacks[dbRole] || fallbacks.user;
+  let finalEnquiry = fb.enquiryTokens;
+  let finalSlots = fb.listingSlots;
+
+  // Check if admin has configured role-based limits in settings
+  try {
+    let enquiryKey = "default_free_inquiries_limit";
+    let listingKey = null;
+
+    if (dbRole === "owner") {
+      enquiryKey = "default_free_inquiries_owner";
+      listingKey = "default_free_listings_owner";
+    } else if (dbRole === "broker") {
+      enquiryKey = "default_free_inquiries_broker";
+      listingKey = "default_free_listings_broker";
+    } else if (dbRole === "agency") {
+      enquiryKey = "default_free_inquiries_agency";
+      listingKey = "default_free_listings_agency";
+    }
+
+    const [settingRows] = await pool.query(
+      "SELECT `key`, `value` FROM settings WHERE `key` IN (?, ?)",
+      [enquiryKey, listingKey || ""]
+    );
+
+    settingRows.forEach(r => {
+      if (r.key === enquiryKey && r.value !== null && r.value !== "") {
+        const val = parseInt(r.value, 10);
+        if (!isNaN(val)) finalEnquiry = val;
+      }
+      if (r.key === listingKey && r.value !== null && r.value !== "") {
+        const val = parseInt(r.value, 10);
+        if (!isNaN(val)) finalSlots = val;
+      }
+    });
+  } catch (settingErr) {
+    console.error("[StarterPack] Error checking role settings:", settingErr.message);
+  }
+
   return {
     id: null,
     planId: fb.planId,
     planName: fb.planName,
     role: dbRole,
-    enquiryTokens: fb.enquiryTokens,
-    listingSlots: fb.listingSlots,
+    enquiryTokens: finalEnquiry,
+    listingSlots: finalSlots,
   };
 }
 

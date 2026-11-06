@@ -510,6 +510,12 @@ async function checkDbMigration() {
     await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('default_trial_days', '5')");
     await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('default_trial_days_broker', '5')");
     await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('default_trial_days_agency', '3')");
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('default_free_inquiries_owner', '15')");
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('default_free_listings_owner', '1')");
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('default_free_inquiries_broker', '35')");
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('default_free_listings_broker', '10')");
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('default_free_inquiries_agency', '100')");
+    await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('default_free_listings_agency', '15')");
     await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('contact_email', 'support@airaproperties.in')");
     await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('contact_phone', '+91 484 2901234 (10 AM - 6 PM)')");
     await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('contact_address', 'Aira Properties Private Limited,\\nInfopark Phase II, Kakkanad,\\nKochi, Kerala - 682030')");

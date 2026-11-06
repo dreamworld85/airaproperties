@@ -394,23 +394,7 @@ export default function MyProperties() {
                 <Trash2 size={14} /> Delete
               </button>
             </div>
-            {p.status === "Active" && (
-              <div className="bg-emerald-50/40 px-4 py-2.5 border-t border-charcoal/6 flex items-center justify-between">
-                <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
-                  <Star size={13} className={p.isFeatured ? "fill-emerald-600 text-emerald-600 animate-pulse" : "text-emerald-700"} />
-                  {p.isFeatured ? "Featured Ad Active" : "Promote as Advertisement"}
-                </span>
-                {!p.isFeatured && (
-                  <button
-                    disabled={busyId === p.id}
-                    onClick={() => handlePromoteProperty(p)}
-                    className="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-3 py-1.5 rounded-xl flex items-center gap-1 active:scale-95 transition-all select-none shadow-sm disabled:opacity-50"
-                  >
-                    Promote Ad
-                  </button>
-                )}
-              </div>
-            )}
+            
           </div>
         ))}
       </div>

@@ -94,6 +94,12 @@ export default function Settings() {
   const [defaultTrialDaysOwner, setDefaultTrialDaysOwner] = useState(5);
   const [defaultTrialDaysUser, setDefaultTrialDaysUser] = useState(30);
   const [defaultFreeInquiriesLimit, setDefaultFreeInquiriesLimit] = useState(20);
+  const [defaultFreeInquiriesOwner, setDefaultFreeInquiriesOwner] = useState(15);
+  const [defaultFreeListingsOwner, setDefaultFreeListingsOwner] = useState(1);
+  const [defaultFreeInquiriesBroker, setDefaultFreeInquiriesBroker] = useState(35);
+  const [defaultFreeListingsBroker, setDefaultFreeListingsBroker] = useState(10);
+  const [defaultFreeInquiriesAgency, setDefaultFreeInquiriesAgency] = useState(100);
+  const [defaultFreeListingsAgency, setDefaultFreeListingsAgency] = useState(15);
   const [adminEmail, setAdminEmail] = useState("admin@keralarealty.com");
   const [adminPhone, setAdminPhone] = useState("+91 94460 12345");
   const [contactEmail, setContactEmail] = useState("");
@@ -630,6 +636,36 @@ export default function Settings() {
       })
       .catch(err => console.error("Error loading default_trial_days_agency setting:", err));
 
+    fetch(`${getApiUrl()}/api/admin/settings/default_free_inquiries_owner`)
+      .then(res => res.json())
+      .then(data => { if (data && data.value !== undefined) setDefaultFreeInquiriesOwner(Number(data.value)); })
+      .catch(() => {});
+
+    fetch(`${getApiUrl()}/api/admin/settings/default_free_listings_owner`)
+      .then(res => res.json())
+      .then(data => { if (data && data.value !== undefined) setDefaultFreeListingsOwner(Number(data.value)); })
+      .catch(() => {});
+
+    fetch(`${getApiUrl()}/api/admin/settings/default_free_inquiries_broker`)
+      .then(res => res.json())
+      .then(data => { if (data && data.value !== undefined) setDefaultFreeInquiriesBroker(Number(data.value)); })
+      .catch(() => {});
+
+    fetch(`${getApiUrl()}/api/admin/settings/default_free_listings_broker`)
+      .then(res => res.json())
+      .then(data => { if (data && data.value !== undefined) setDefaultFreeListingsBroker(Number(data.value)); })
+      .catch(() => {});
+
+    fetch(`${getApiUrl()}/api/admin/settings/default_free_inquiries_agency`)
+      .then(res => res.json())
+      .then(data => { if (data && data.value !== undefined) setDefaultFreeInquiriesAgency(Number(data.value)); })
+      .catch(() => {});
+
+    fetch(`${getApiUrl()}/api/admin/settings/default_free_listings_agency`)
+      .then(res => res.json())
+      .then(data => { if (data && data.value !== undefined) setDefaultFreeListingsAgency(Number(data.value)); })
+      .catch(() => {});
+
     // Fetch default_trial_days setting (Owner)
     fetch(`${getApiUrl()}/api/admin/settings/default_trial_days`)
       .then(res => res.json())
@@ -1160,7 +1196,7 @@ export default function Settings() {
 
   function renderTrialsTab() {
     return (
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-6 text-left pb-16">
         <div className="flex items-center gap-2 lg:hidden px-1">
           <button 
             onClick={() => setActiveTab("menu")}
@@ -1172,92 +1208,176 @@ export default function Settings() {
           <h3 className="font-display font-bold text-sm text-ink">Back to Menu</h3>
         </div>
 
-        <div className="bg-white border border-charcoal/5 rounded-3xl p-5 shadow-sm text-left">
-          <div className="mb-4">
-            <h2 className="font-display font-extrabold text-base text-black">Trial & Limits Settings</h2>
-            <p className="text-[10px] text-slate mt-0.5">Configure global default trial durations and access limits.</p>
+        <div className="bg-white border border-charcoal/5 rounded-3xl p-5 sm:p-6 shadow-sm text-left">
+          <div className="mb-5">
+            <h2 className="font-display font-extrabold text-base sm:text-lg text-black">Trial & Limits Settings</h2>
+            <p className="text-xs text-slate mt-0.5">Configure global default trial durations, free inquiry tokens, and free listing slots by user role.</p>
           </div>
 
-          <div className="flex flex-col gap-3.5 font-display">
-            <span className="text-[10px] font-bold text-ink uppercase tracking-wider block border-b border-charcoal/5 pb-2 mb-1">
+          <div className="flex flex-col gap-5 font-display">
+            <span className="text-[11px] font-bold text-ink uppercase tracking-wider block border-b border-charcoal/5 pb-2">
               Role-Based Global Configuration
             </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-slate">Owner Trial (Days)</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 5"
-                  value={defaultTrialDaysOwner}
-                  onChange={(e) => setDefaultTrialDaysOwner(Number(e.target.value))}
-                  className="w-full rounded-xl border border-charcoal/10 bg-white px-3 py-2.5 text-xs text-charcoal outline-none focus:border-emerald-600 shadow-sm font-semibold"
-                />
+
+            {/* OWNER CONFIGURATION */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-[#f8faf9] border border-charcoal/10 flex flex-col gap-3.5">
+              <div className="flex items-center justify-between border-b border-charcoal/8 pb-2.5">
+                <span className="text-xs sm:text-sm font-bold text-gray-900 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shadow-xs"></span>
+                  Owner Configuration
+                </span>
+                <span className="text-[10px] text-slate font-semibold uppercase tracking-wider">Property Owners</span>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-slate">Broker Trial (Days)</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 5"
-                  value={defaultTrialDaysBroker}
-                  onChange={(e) => setDefaultTrialDaysBroker(Number(e.target.value))}
-                  className="w-full rounded-xl border border-charcoal/10 bg-white px-3 py-2.5 text-xs text-charcoal outline-none focus:border-emerald-600 shadow-sm font-semibold"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-slate">Agency Trial (Days)</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 3"
-                  value={defaultTrialDaysAgency}
-                  onChange={(e) => setDefaultTrialDaysAgency(Number(e.target.value))}
-                  className="w-full rounded-xl border border-charcoal/10 bg-white px-3 py-2.5 text-xs text-charcoal outline-none focus:border-emerald-600 shadow-sm font-semibold"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-slate">Buyer Trial (Days)</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 30"
-                  value={defaultTrialDaysUser}
-                  onChange={(e) => setDefaultTrialDaysUser(Number(e.target.value))}
-                  className="w-full rounded-xl border border-charcoal/10 bg-white px-3 py-2.5 text-xs text-charcoal outline-none focus:border-emerald-600 shadow-sm font-semibold"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-slate">Buyer Free Inquiry Limit</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 20"
-                  value={defaultFreeInquiriesLimit}
-                  onChange={(e) => setDefaultFreeInquiriesLimit(Number(e.target.value))}
-                  className="w-full rounded-xl border border-charcoal/10 bg-white px-3 py-2.5 text-xs text-charcoal outline-none focus:border-emerald-600 shadow-sm font-semibold"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate">Owner Trial (Days)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 5"
+                    value={defaultTrialDaysOwner}
+                    onChange={(e) => setDefaultTrialDaysOwner(Number(e.target.value))}
+                    className="w-full rounded-xl border border-charcoal/10 bg-white px-3 py-2.5 text-xs text-charcoal outline-none focus:border-emerald-600 shadow-sm font-semibold"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate">Free Inquiry</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 15"
+                    value={defaultFreeInquiriesOwner}
+                    onChange={(e) => setDefaultFreeInquiriesOwner(Number(e.target.value))}
+                    className="w-full rounded-xl border border-charcoal/10 bg-white px-3 py-2.5 text-xs text-charcoal outline-none focus:border-emerald-600 shadow-sm font-semibold"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate">Free Listing</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 1"
+                    value={defaultFreeListingsOwner}
+                    onChange={(e) => setDefaultFreeListingsOwner(Number(e.target.value))}
+                    className="w-full rounded-xl border border-charcoal/10 bg-white px-3 py-2.5 text-xs text-charcoal outline-none focus:border-emerald-600 shadow-sm font-semibold"
+                  />
+                </div>
               </div>
             </div>
 
-            <span className="text-[10px] font-bold text-ink uppercase tracking-wider block border-b border-charcoal/5 pb-2 mt-4 mb-1">
-              Featured Listing Booster Configuration
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-slate">Featured Upgrade Price (₹)</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 299"
-                  value={featuredPrice}
-                  onChange={(e) => setFeaturedPrice(Number(e.target.value))}
-                  className="w-full rounded-xl border border-charcoal/10 bg-white px-3 py-2.5 text-xs text-charcoal outline-none focus:border-emerald-600 shadow-sm font-semibold"
-                />
+            {/* BROKER CONFIGURATION */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-[#f8faf9] border border-charcoal/10 flex flex-col gap-3.5">
+              <div className="flex items-center justify-between border-b border-charcoal/8 pb-2.5">
+                <span className="text-xs sm:text-sm font-bold text-gray-900 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block shadow-xs"></span>
+                  Broker Configuration
+                </span>
+                <span className="text-[10px] text-slate font-semibold uppercase tracking-wider">Independent Brokers</span>
               </div>
-              <div className="flex flex-col gap-1.5 sm:col-span-2">
-                <label className="text-[10px] font-bold text-slate">Featured booster promo text</label>
-                <input
-                  type="text"
-                  placeholder="Marketing pitch for featuring property listings..."
-                  value={featuredText}
-                  onChange={(e) => setFeaturedText(e.target.value)}
-                  className="w-full rounded-xl border border-charcoal/10 bg-white px-3 py-2.5 text-xs text-charcoal outline-none focus:border-emerald-600 shadow-sm font-semibold"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate">Broker Trial (Days)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 5"
+                    value={defaultTrialDaysBroker}
+                    onChange={(e) => setDefaultTrialDaysBroker(Number(e.target.value))}
+                    className="w-full rounded-xl border border-charcoal/10 bg-white px-3 py-2.5 text-xs text-charcoal outline-none focus:border-emerald-600 shadow-sm font-semibold"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate">Free Inquiry</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 35"
+                    value={defaultFreeInquiriesBroker}
+                    onChange={(e) => setDefaultFreeInquiriesBroker(Number(e.target.value))}
+                    className="w-full rounded-xl border border-charcoal/10 bg-white px-3 py-2.5 text-xs text-charcoal outline-none focus:border-emerald-600 shadow-sm font-semibold"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate">Free Listing</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 10"
+                    value={defaultFreeListingsBroker}
+                    onChange={(e) => setDefaultFreeListingsBroker(Number(e.target.value))}
+                    className="w-full rounded-xl border border-charcoal/10 bg-white px-3 py-2.5 text-xs text-charcoal outline-none focus:border-emerald-600 shadow-sm font-semibold"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* AGENCY CONFIGURATION */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-[#f8faf9] border border-charcoal/10 flex flex-col gap-3.5">
+              <div className="flex items-center justify-between border-b border-charcoal/8 pb-2.5">
+                <span className="text-xs sm:text-sm font-bold text-gray-900 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block shadow-xs"></span>
+                  Agency Configuration
+                </span>
+                <span className="text-[10px] text-slate font-semibold uppercase tracking-wider">Corporate Real Estate Agencies</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate">Agency Trial (Days)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 3"
+                    value={defaultTrialDaysAgency}
+                    onChange={(e) => setDefaultTrialDaysAgency(Number(e.target.value))}
+                    className="w-full rounded-xl border border-charcoal/10 bg-white px-3 py-2.5 text-xs text-charcoal outline-none focus:border-emerald-600 shadow-sm font-semibold"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate">Free Inquiry</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 100"
+                    value={defaultFreeInquiriesAgency}
+                    onChange={(e) => setDefaultFreeInquiriesAgency(Number(e.target.value))}
+                    className="w-full rounded-xl border border-charcoal/10 bg-white px-3 py-2.5 text-xs text-charcoal outline-none focus:border-emerald-600 shadow-sm font-semibold"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate">Free Listing</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 15"
+                    value={defaultFreeListingsAgency}
+                    onChange={(e) => setDefaultFreeListingsAgency(Number(e.target.value))}
+                    className="w-full rounded-xl border border-charcoal/10 bg-white px-3 py-2.5 text-xs text-charcoal outline-none focus:border-emerald-600 shadow-sm font-semibold"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* BUYER CONFIGURATION */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-[#f8faf9] border border-charcoal/10 flex flex-col gap-3.5">
+              <div className="flex items-center justify-between border-b border-charcoal/8 pb-2.5">
+                <span className="text-xs sm:text-sm font-bold text-gray-900 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block shadow-xs"></span>
+                  Buyer Configuration
+                </span>
+                <span className="text-[10px] text-slate font-semibold uppercase tracking-wider">Property Seekers & Enquirers</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate">Buyer Trial (Days)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 30"
+                    value={defaultTrialDaysUser}
+                    onChange={(e) => setDefaultTrialDaysUser(Number(e.target.value))}
+                    className="w-full rounded-xl border border-charcoal/10 bg-white px-3 py-2.5 text-xs text-charcoal outline-none focus:border-emerald-600 shadow-sm font-semibold"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate">Buyer Free Inquiry Limit</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 20"
+                    value={defaultFreeInquiriesLimit}
+                    onChange={(e) => setDefaultFreeInquiriesLimit(Number(e.target.value))}
+                    className="w-full rounded-xl border border-charcoal/10 bg-white px-3 py-2.5 text-xs text-charcoal outline-none focus:border-emerald-600 shadow-sm font-semibold"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -1276,15 +1396,45 @@ export default function Settings() {
                     headers,
                     body: JSON.stringify({ value: String(defaultTrialDaysOwner) })
                   }),
+                  fetch(`${getApiUrl()}/api/admin/settings/default_free_inquiries_owner`, {
+                    method: "PUT",
+                    headers,
+                    body: JSON.stringify({ value: String(defaultFreeInquiriesOwner) })
+                  }),
+                  fetch(`${getApiUrl()}/api/admin/settings/default_free_listings_owner`, {
+                    method: "PUT",
+                    headers,
+                    body: JSON.stringify({ value: String(defaultFreeListingsOwner) })
+                  }),
                   fetch(`${getApiUrl()}/api/admin/settings/default_trial_days_broker`, {
                     method: "PUT",
                     headers,
                     body: JSON.stringify({ value: String(defaultTrialDaysBroker) })
                   }),
+                  fetch(`${getApiUrl()}/api/admin/settings/default_free_inquiries_broker`, {
+                    method: "PUT",
+                    headers,
+                    body: JSON.stringify({ value: String(defaultFreeInquiriesBroker) })
+                  }),
+                  fetch(`${getApiUrl()}/api/admin/settings/default_free_listings_broker`, {
+                    method: "PUT",
+                    headers,
+                    body: JSON.stringify({ value: String(defaultFreeListingsBroker) })
+                  }),
                   fetch(`${getApiUrl()}/api/admin/settings/default_trial_days_agency`, {
                     method: "PUT",
                     headers,
                     body: JSON.stringify({ value: String(defaultTrialDaysAgency) })
+                  }),
+                  fetch(`${getApiUrl()}/api/admin/settings/default_free_inquiries_agency`, {
+                    method: "PUT",
+                    headers,
+                    body: JSON.stringify({ value: String(defaultFreeInquiriesAgency) })
+                  }),
+                  fetch(`${getApiUrl()}/api/admin/settings/default_free_listings_agency`, {
+                    method: "PUT",
+                    headers,
+                    body: JSON.stringify({ value: String(defaultFreeListingsAgency) })
                   }),
                   fetch(`${getApiUrl()}/api/admin/settings/default_trial_days_user`, {
                     method: "PUT",
@@ -1295,20 +1445,10 @@ export default function Settings() {
                     method: "PUT",
                     headers,
                     body: JSON.stringify({ value: String(defaultFreeInquiriesLimit) })
-                  }),
-                  fetch(`${getApiUrl()}/api/admin/settings/featured_price`, {
-                    method: "PUT",
-                    headers,
-                    body: JSON.stringify({ value: String(featuredPrice) })
-                  }),
-                  fetch(`${getApiUrl()}/api/admin/settings/featured_text`, {
-                    method: "PUT",
-                    headers,
-                    body: JSON.stringify({ value: featuredText })
                   })
                 ]);
 
-                alert("Role-based trial and inquiry limit settings updated successfully!");
+                alert("Role-based trial, free inquiry, and listing settings updated successfully!");
                 if (window.innerWidth < 1024) setActiveTab("menu");
               } catch (err: any) {
                 alert(err.message || "Failed to update settings");

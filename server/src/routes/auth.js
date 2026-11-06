@@ -203,8 +203,8 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: "Full Name, mobile number, and password are required" });
     }
 
-    const starter = await getStarterPackConfig();
     const userRole = (role && String(role).trim() && String(role).toLowerCase() !== "user") ? String(role).trim() : "Buyer";
+    const starter = await getStarterPackForRole(userRole);
 
     let existingQuery = "SELECT id, phone, email FROM users WHERE phone = ?";
     let queryParams = [trimmedPhone];
@@ -223,20 +223,18 @@ router.post("/register", async (req, res) => {
     }
 
     let trialEnds = null;
-    if (userRole === "Broker" || userRole === "Agency" || userRole === "Owner") {
-      const settingKey = userRole === "Agency" ? "default_trial_days_agency" : (userRole === "Broker" ? "default_trial_days_broker" : "default_trial_days");
-      const [[daysRow]] = await pool.query("SELECT `value` FROM settings WHERE `key` = ?", [settingKey]);
-      const defaultDays = daysRow ? parseInt(daysRow.value, 10) : (userRole === "Agency" ? 3 : 5);
+    const settingKey = userRole === "Agency" ? "default_trial_days_agency" : (userRole === "Broker" ? "default_trial_days_broker" : (userRole === "Owner" ? "default_trial_days" : "default_trial_days_user"));
+    const [[daysRow]] = await pool.query("SELECT `value` FROM settings WHERE `key` = ?", [settingKey]);
+    const defaultDays = daysRow ? parseInt(daysRow.value, 10) : (userRole === "Agency" ? 3 : (userRole === "Buyer" || userRole === "User" ? 30 : 5));
 
-      const date = new Date();
-      date.setDate(date.getDate() + defaultDays);
-      trialEnds = date;
-    }
+    const date = new Date();
+    date.setDate(date.getDate() + defaultDays);
+    trialEnds = date;
 
     const passwordHash = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
-      "INSERT INTO users (name, email, phone, password_hash, role, enquiry_credits_left, listing_slots_left) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [trimmedName, trimmedEmail, trimmedPhone, passwordHash, userRole, starter.enquiryTokens, starter.listingSlots]
+      "INSERT INTO users (name, email, phone, password_hash, role, enquiry_credits_left, listing_slots_left, trial_ends_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [trimmedName, trimmedEmail, trimmedPhone, passwordHash, userRole, starter.enquiryTokens, starter.listingSlots, trialEnds]
     );
 
     const newUserId = result.insertId;
