@@ -113,6 +113,11 @@ export default function Settings() {
     const val = localStorage.getItem("sparrow_enable_home_hero_banner");
     return val !== "false";
   });
+  const [enablePopularLocations, setEnablePopularLocations] = useState<boolean>(() => {
+    const val = localStorage.getItem("sparrow_enable_popular_locations");
+    return val !== "false";
+  });
+  const [togglingPopularLocations, setTogglingPopularLocations] = useState(false);
   const [locationsList, setLocationsList] = useState<{ id: number; name: string; state?: string; image_url: string }[]>([]);
   const [newLocationName, setNewLocationName] = useState("");
   const [newLocationState, setNewLocationState] = useState("Kerala");
@@ -780,6 +785,18 @@ export default function Settings() {
       })
       .catch(err => console.error("Error loading enable_home_hero_banner setting:", err));
 
+    // Fetch enable_popular_locations setting
+    fetch(`${getApiUrl()}/api/admin/settings/enable_popular_locations`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.value !== null && data.value !== undefined) {
+          const isEnabled = data.value === "true" || data.value === true || data.value === "1";
+          setEnablePopularLocations(isEnabled);
+          localStorage.setItem("sparrow_enable_popular_locations", String(isEnabled));
+        }
+      })
+      .catch(err => console.error("Error loading enable_popular_locations setting:", err));
+
     // Fetch enable_schedule_visit setting
     fetch(`${getApiUrl()}/api/admin/settings/enable_schedule_visit`)
       .then(res => res.json())
@@ -939,6 +956,22 @@ export default function Settings() {
       alert(err.message || "Failed to update home hero banner visibility.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleTogglePopularLocations() {
+    const newValue = !enablePopularLocations;
+    setTogglingPopularLocations(true);
+    try {
+      await adminApi.updateSetting("enable_popular_locations", String(newValue));
+      setEnablePopularLocations(newValue);
+      localStorage.setItem("sparrow_enable_popular_locations", String(newValue));
+      window.dispatchEvent(new Event("sparrow-banners-updated"));
+      alert(`Popular Locations slider ${newValue ? "enabled (visible on mobile home)" : "disabled (hidden on mobile home)"} successfully!`);
+    } catch (err: any) {
+      alert(err.message || "Failed to update Popular Locations visibility.");
+    } finally {
+      setTogglingPopularLocations(false);
     }
   }
 
@@ -2704,9 +2737,30 @@ export default function Settings() {
 
         {/* Existing Locations List Card */}
         <div className="bg-white border border-charcoal/5 rounded-3xl p-5 shadow-sm text-left">
-          <div className="mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-charcoal/5 pb-4 mb-4">
+            <div>
             <h2 className="font-display font-extrabold text-base text-black">Current Top Locations</h2>
             <p className="text-[10px] text-slate mt-0.5">Manage existing locations listed on the popular locations slider.</p>
+            </div>
+
+            {/* Enable/Disable Entire Popular Locations Section */}
+            <div className="flex items-center gap-3 bg-slate-50/80 border border-charcoal/10 px-3.5 py-2.5 rounded-2xl shrink-0">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={enablePopularLocations}
+                  onChange={handleTogglePopularLocations}
+                  disabled={togglingPopularLocations}
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-charcoal/20 cursor-pointer accent-emerald-600"
+                />
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-bold text-ink">Popular Locations Slider</span>
+                  <span className={`text-[9px] font-bold ${enablePopularLocations ? "text-emerald-700" : "text-rose-600"}`}>
+                    {togglingPopularLocations ? "Updating..." : enablePopularLocations ? "✓ Enabled (Visible on Home)" : "✕ Disabled (Hidden on Home)"}
+                  </span>
+                </div>
+              </label>
+            </div>
           </div>
 
           {loadingLocations ? (

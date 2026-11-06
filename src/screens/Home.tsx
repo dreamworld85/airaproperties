@@ -28,7 +28,7 @@ const MOCK_AGENTS = [
 
 export default function Home() {
   const { user } = useAuth();
-  const { mobileLogoUrl, welcomeBannerUrl } = useBrand();
+  const { mobileLogoUrl, welcomeBannerUrl, isPopularLocationsEnabled } = useBrand();
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1000);
 
   useEffect(() => {
@@ -399,7 +399,7 @@ export default function Home() {
           )}
 
           {/* Popular Locations dynamic list row */}
-          {activeCategory === "All" && topLocations.length > 0 && (
+          {isPopularLocationsEnabled && activeCategory === "All" && topLocations.length > 0 && (
             <section className="mt-8 mb-6 text-left select-none animate-fade-in">
               <div className="flex items-center justify-between px-5 mb-3.5">
                 <h2 className="font-display font-semibold text-[16px] tracking-wide text-ink">Popular Locations</h2>
