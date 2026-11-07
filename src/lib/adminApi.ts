@@ -50,6 +50,10 @@ export interface AdminProperty {
   uploader_avatar?: string | null;
   uploader_phone?: string | null;
   uploader_email?: string | null;
+  contact_number?: string | null;
+  whatsapp_number?: string | null;
+  owner_name?: string | null;
+  owner_phone?: string | null;
   title: string;
   propertyType?: string;
   property_type?: string;

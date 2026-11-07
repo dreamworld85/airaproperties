@@ -34,7 +34,7 @@ import {
   UploadCloud
 } from "lucide-react";
 import { adminApi, AdminProperty } from "@/lib/adminApi";
-import { mediaUrl, api, ApiPropertyType } from "@/lib/api";
+import { mediaUrl, api, ApiPropertyType, getApiUrl } from "@/lib/api";
 
 const statusOptions = [
   { label: "All Statuses", value: "All" },
@@ -341,30 +341,35 @@ export default function PropertyList() {
   const getShareDetails = (p: AdminProperty) => {
     const siteUrl = window.location.origin;
     const propertyLink = `${siteUrl}/property/${p.id}`;
+    const shareUrl = `${getApiUrl()}/api/share/property/${p.id}`;
     const firstImage = p.images && p.images.length > 0 ? p.images[0] : null;
     const fullImageUrl = firstImage ? mediaUrl(firstImage) : "";
     const pType = p.property_type || p.propertyType || "Property";
     const pPrice = formatPrice(p.price);
     const pLocation = [p.address, p.district, p.state].filter(Boolean).join(", ");
-    const uploader = p.uploader_name || "Owner";
+    const uploader = p.uploader_name || p.owner_name || "Owner";
     const userType = p.listing_role || p.user_role || "Owner";
+    const contactPhone = p.contact_number || (p as any).contactNumber || p.uploader_phone || p.whatsapp_number || (p as any).whatsappNumber || (p as any).owner_phone || "";
+    
     const specsList: string[] = [];
     if (p.bedrooms) specsList.push(`${p.bedrooms} Beds`);
     if (p.bathrooms) specsList.push(`${p.bathrooms} Baths`);
     if (p.area_sqft || p.areaSqft) specsList.push(`${p.area_sqft || p.areaSqft} sq.ft`);
     const specsText = specsList.length > 0 ? `\n📐 Specs: ${specsList.join(" • ")}` : "";
     const photoLine = fullImageUrl ? `\n📸 Photo: ${fullImageUrl}` : "";
+    const contactLine = contactPhone ? `\n📞 Contact: ${contactPhone}` : "";
 
     const messageText = `🏡 *${p.title}*\n` +
+      `🏷️ Property Type: ${pType} (${p.purpose || "For Sale"})\n` +
       `📍 Location: ${pLocation}\n` +
-      `🏷️ Type: ${pType} (${p.purpose || "For Sale"})\n` +
       `💰 Price: ${pPrice}${specsText}\n` +
-      `👤 Listed by: ${uploader} (${userType})${photoLine}\n\n` +
-      `🔗 View Full Listing:\n${propertyLink}`;
+      `👤 Listed by: ${uploader} (${userType})${contactLine}${photoLine}\n\n` +
+      `🔗 View Full Listing & Details:\n${propertyLink}`;
 
     return {
       title: p.title,
       link: propertyLink,
+      shareUrl,
       imageUrl: fullImageUrl,
       messageText,
       price: pPrice,
@@ -373,6 +378,7 @@ export default function PropertyList() {
       purpose: p.purpose || "For Sale",
       uploader,
       userType,
+      contactPhone,
     };
   };
 
@@ -434,11 +440,26 @@ export default function PropertyList() {
     window.open(waUrl, "_blank");
   };
 
-  // Facebook share
-  const handleShareFacebook = (p: AdminProperty) => {
-    const { link } = getShareDetails(p);
-    const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`;
-    window.open(fbUrl, "_blank", "width=600,height=500");
+  // Facebook share with full details & photo
+  const handleShareFacebook = async (p: AdminProperty) => {
+    const { link, shareUrl, messageText, title, location, type, price, contactPhone, imageUrl, purpose } = getShareDetails(p);
+
+    // Auto-copy details and contact to clipboard so user can effortlessly paste into "What's on your mind"
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(messageText);
+      }
+      if (imageUrl) {
+        await copyImageToClipboard(imageUrl);
+      }
+      setShareNotice("📋 Property type, location, photo & contact number copied! (Paste into \"What's on your mind\" if Facebook doesn't auto-fill).");
+    } catch (e) {
+      // Ignore clipboard fail
+    }
+
+    const fbQuote = `${title}\n🏷️ ${type} (${purpose}) in ${location}\n💰 Price: ${price}\n📞 Contact: ${contactPhone || "Available on listing"}\n🔗 ${link}`;
+    const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(fbQuote)}`;
+    window.open(fbUrl, "_blank", "width=620,height=580");
   };
 
   // Twitter/X share

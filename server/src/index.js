@@ -1587,6 +1587,105 @@ app.get(["/apk", "/apk/"], (_req, res) => {
   `);
 });
 
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// GET /api/share/property/:id - Dynamic SSR OpenGraph card for Facebook, WhatsApp, Twitter, etc.
+app.get("/api/share/property/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [[property]] = await pool.query(
+      `SELECT p.*, u.name as uploader_name, u.phone as uploader_phone
+       FROM properties p
+       LEFT JOIN users u ON p.owner_id = u.id
+       WHERE p.id = ?`,
+      [id]
+    );
+
+    if (!property) {
+      return res.redirect("https://airaproperties.in");
+    }
+
+    // Fetch primary image
+    const [mediaRows] = await pool.query(
+      "SELECT url FROM property_media WHERE property_id = ? ORDER BY sort_order ASC LIMIT 1",
+      [id]
+    );
+
+    let imageUrl = "https://airaproperties.in/images/aira-main-logo.png";
+    if (mediaRows.length > 0 && mediaRows[0].url) {
+      const rawUrl = mediaRows[0].url;
+      if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+        imageUrl = rawUrl;
+      } else {
+        imageUrl = `https://api.airaproperties.in${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`;
+      }
+    }
+
+    const pType = property.property_type || "Property";
+    const pLocation = [property.address, property.district, property.state].filter(Boolean).join(", ");
+    const contact = property.contact_number || property.whatsapp_number || property.uploader_phone || "";
+    const contactText = contact ? ` • Contact: ${contact}` : "";
+    const pPrice = property.price ? `₹${Number(property.price).toLocaleString("en-IN")}` : "";
+    const pTitle = `${pType} in ${property.district || property.state || "Kerala"} - ${property.title}`;
+    const pDesc = `${pTitle} • ${pPrice} • ${property.purpose || "For Sale"} • Location: ${pLocation}${contactText} • Aira Properties`;
+    const targetUrl = `https://airaproperties.in/property/${id}`;
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(pTitle)}</title>
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Aira Properties" />
+  <meta property="og:url" content="${targetUrl}" />
+  <meta property="og:title" content="${escapeHtml(pTitle)}" />
+  <meta property="og:description" content="${escapeHtml(pDesc)}" />
+  <meta property="og:image" content="${imageUrl}" />
+  <meta property="og:image:secure_url" content="${imageUrl}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="${escapeHtml(pTitle)}" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="${targetUrl}" />
+  <meta name="twitter:title" content="${escapeHtml(pTitle)}" />
+  <meta name="twitter:description" content="${escapeHtml(pDesc)}" />
+  <meta name="twitter:image" content="${imageUrl}" />
+
+  <!-- Instant Browser Redirect to Property Page -->
+  <meta http-equiv="refresh" content="0;url=${targetUrl}" />
+  <script>
+    window.location.replace("${targetUrl}");
+  </script>
+</head>
+<body style="font-family: system-ui, -apple-system, sans-serif; background: #FAF8F3; padding: 40px; text-align: center; color: #0F3D3E;">
+  <div style="max-width: 450px; margin: 0 auto; background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+    <img src="${imageUrl}" style="width: 100%; height: 220px; object-fit: cover; border-radius: 12px; margin-bottom: 16px;" alt="Property" />
+    <h2 style="margin: 0 0 8px 0; font-size: 18px;">${escapeHtml(pTitle)}</h2>
+    <p style="margin: 0 0 16px 0; font-size: 14px; color: #666;">${escapeHtml(pDesc)}</p>
+    <a href="${targetUrl}" style="display: inline-block; background: #1B5E4F; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">View Property on Aira Properties</a>
+  </div>
+</body>
+</html>`);
+  } catch (err) {
+    console.error("SHARE PROPERTY ERROR:", err);
+    res.redirect(`https://airaproperties.in/property/${req.params.id}`);
+  }
+});
+
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 // GET /api/property-types (Public Property Types getter)
