@@ -42,6 +42,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("All");
+  const [mobileCategories, setMobileCategories] = useState<{ label: string; type: string; icon: string }[]>(categories);
+  const [allPropertyTypes, setAllPropertyTypes] = useState<string[]>([]);
   const [bannerUrl, setBannerUrl] = useState(() => {
     return localStorage.getItem("sparrow_welcome_banner") || "/kerala_house_banner.jpg";
   });
@@ -297,7 +299,7 @@ export default function Home() {
 
       {/* Categories Horizontal Rounded Card Blocks */}
       <div className="px-5 mt-5 flex gap-2.5 overflow-x-auto no-scrollbar select-none z-10 relative">
-        {categories.map((cat) => {
+        {mobileCategories.map((cat) => {
           const isActive = activeCategory === cat.label || activeCategory === cat.type;
           return (
             <button
@@ -475,7 +477,7 @@ export default function Home() {
                   Property Type
                 </label>
                 <div className="flex flex-wrap gap-2.5">
-                  {["House", "Villa", "Apartment", "Land", "Commercial Space"].map((type) => {
+                  {(allPropertyTypes.length > 0 ? allPropertyTypes : ["House", "Independent House / Villa", "Apartment", "Plot / Land", "Commercial Space"]).map((type) => {
                     const active = filterTypes.includes(type);
                     return (
                       <button

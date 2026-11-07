@@ -16,7 +16,7 @@ import {
   LayoutGrid,
   Sparkles
 } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, mediaUrl } from "@/lib/api";
 import CustomFilterDropdown from "./CustomFilterDropdown";
 import { INDIAN_STATES, getDistrictsForState, getAllDistricts, getStateForDistrict } from "@/lib/indiaLocationData";
 
@@ -84,6 +84,7 @@ export default function DesktopHeader({
   const [propertyType, setPropertyType] = useState(initialType);
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [dynamicTypes, setDynamicTypes] = useState<string[]>(availableTypes || []);
+  const [categoryItems, setCategoryItems] = useState(CATEGORY_ITEMS);
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -122,6 +123,19 @@ export default function DesktopHeader({
         .then((types) => {
           if (types && types.length > 0) {
             setDynamicTypes(types.map(t => t.name));
+            const pcTypes = types.filter(t => Boolean(t.show_pc_header));
+            if (pcTypes.length > 0) {
+              const dynamicCats = [
+                { key: "All", label: "All Properties", icon: "/images/all-properties.svg", type: "All Types" },
+                ...pcTypes.map(t => ({
+                  key: t.name,
+                  label: t.name,
+                  icon: t.icon_url?.startsWith("/images/") ? t.icon_url : (t.icon_url ? mediaUrl(t.icon_url) : "/images/villa.svg"),
+                  type: t.name
+                }))
+              ];
+              setCategoryItems(dynamicCats);
+            }
           } else {
             api.fetchProperties({})
               .then((data) => {
@@ -215,11 +229,12 @@ export default function DesktopHeader({
 
           {/* Category Icons Horizontal Bar */}
           <div className="hidden min-[1150px]:flex items-center gap-3 overflow-x-auto py-1 px-2 no-scrollbar">
-            {CATEGORY_ITEMS.map((cat) => {
+            {categoryItems.map((cat) => {
               const isSelected =
                 activeCategory === cat.key ||
                 activeCategory === cat.label ||
                 propertyType === cat.type ||
+                propertyType === cat.key ||
                 (cat.key === "All" && (propertyType === "All Types" || !propertyType || propertyType === "All"));
               return (
                 <button

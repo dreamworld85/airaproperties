@@ -1598,9 +1598,9 @@ router.get("/property-types", async (req, res) => {
 });
 
 // POST /api/admin/property-types (Admin Protected)
-router.post("/property-types", async (req, res) => {
+router.post("/property-types", upload.single("icon"), async (req, res) => {
   try {
-    const { name, category, for_sale, for_rent } = req.body;
+    const { name, category, for_sale, for_rent, show_pc_header, show_mobile_header, icon_url } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ message: "Property type name is required." });
     }
@@ -1608,6 +1608,15 @@ router.post("/property-types", async (req, res) => {
     const cleanCategory = ["Residential", "Commercial", "Both"].includes(category) ? category : "Residential";
     const forSaleVal = for_sale === false || for_sale === "false" || for_sale === 0 || for_sale === "0" ? 0 : 1;
     const forRentVal = for_rent === false || for_rent === "false" || for_rent === 0 || for_rent === "0" ? 0 : 1;
+    const showPcVal = show_pc_header === true || show_pc_header === "true" || show_pc_header === 1 || show_pc_header === "1" ? 1 : 0;
+    const showMobileVal = show_mobile_header === true || show_mobile_header === "true" || show_mobile_header === 1 || show_mobile_header === "1" ? 1 : 0;
+
+    let finalIcon = "/images/villa.svg";
+    if (req.file) {
+      finalIcon = `/uploads/${req.file.filename}`;
+    } else if (icon_url && icon_url.trim()) {
+      finalIcon = icon_url.trim();
+    }
 
     // Check if duplicate
     const [[existing]] = await pool.query("SELECT id FROM property_types WHERE LOWER(name) = LOWER(?)", [cleanName]);
@@ -1616,8 +1625,8 @@ router.post("/property-types", async (req, res) => {
     }
 
     const [result] = await pool.query(
-      "INSERT INTO property_types (name, category, for_sale, for_rent) VALUES (?, ?, ?, ?)",
-      [cleanName, cleanCategory, forSaleVal, forRentVal]
+      "INSERT INTO property_types (name, category, icon_url, show_pc_header, show_mobile_header, for_sale, for_rent) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [cleanName, cleanCategory, finalIcon, showPcVal, showMobileVal, forSaleVal, forRentVal]
     );
 
     res.json({
@@ -1626,6 +1635,9 @@ router.post("/property-types", async (req, res) => {
       id: result.insertId,
       name: cleanName,
       category: cleanCategory,
+      icon_url: finalIcon,
+      show_pc_header: showPcVal,
+      show_mobile_header: showMobileVal,
       for_sale: forSaleVal,
       for_rent: forRentVal
     });
@@ -1635,10 +1647,10 @@ router.post("/property-types", async (req, res) => {
 });
 
 // PUT /api/admin/property-types/:id (Admin Protected)
-router.put("/property-types/:id", async (req, res) => {
+router.put("/property-types/:id", upload.single("icon"), async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, category, for_sale, for_rent } = req.body;
+    const { name, category, for_sale, for_rent, show_pc_header, show_mobile_header, icon_url } = req.body;
     const [[existing]] = await pool.query("SELECT * FROM property_types WHERE id = ?", [id]);
     if (!existing) {
       return res.status(404).json({ message: "Property type not found." });
@@ -1646,15 +1658,37 @@ router.put("/property-types/:id", async (req, res) => {
 
     const updatedName = name && name.trim() ? name.trim() : existing.name;
     const updatedCategory = category && ["Residential", "Commercial", "Both"].includes(category) ? category : existing.category;
-    const updatedForSale = for_sale !== undefined ? (for_sale ? 1 : 0) : existing.for_sale;
-    const updatedForRent = for_rent !== undefined ? (for_rent ? 1 : 0) : existing.for_rent;
+    const updatedForSale = for_sale !== undefined ? (for_sale === true || for_sale === "true" || for_sale === 1 || for_sale === "1" ? 1 : 0) : existing.for_sale;
+    const updatedForRent = for_rent !== undefined ? (for_rent === true || for_rent === "true" || for_rent === 1 || for_rent === "1" ? 1 : 0) : existing.for_rent;
+    const updatedShowPc = show_pc_header !== undefined ? (show_pc_header === true || show_pc_header === "true" || show_pc_header === 1 || show_pc_header === "1" ? 1 : 0) : existing.show_pc_header;
+    const updatedShowMobile = show_mobile_header !== undefined ? (show_mobile_header === true || show_mobile_header === "true" || show_mobile_header === 1 || show_mobile_header === "1" ? 1 : 0) : existing.show_mobile_header;
+
+    let updatedIcon = existing.icon_url;
+    if (req.file) {
+      updatedIcon = `/uploads/${req.file.filename}`;
+    } else if (icon_url !== undefined && icon_url !== null) {
+      updatedIcon = icon_url.trim();
+    }
 
     await pool.query(
-      "UPDATE property_types SET name = ?, category = ?, for_sale = ?, for_rent = ? WHERE id = ?",
-      [updatedName, updatedCategory, updatedForSale, updatedForRent, id]
+      "UPDATE property_types SET name = ?, category = ?, icon_url = ?, show_pc_header = ?, show_mobile_header = ?, for_sale = ?, for_rent = ? WHERE id = ?",
+      [updatedName, updatedCategory, updatedIcon, updatedShowPc, updatedShowMobile, updatedForSale, updatedForRent, id]
     );
 
-    res.json({ success: true, message: "Property type updated successfully." });
+    res.json({
+      success: true,
+      message: "Property type updated successfully.",
+      propertyType: {
+        id: Number(id),
+        name: updatedName,
+        category: updatedCategory,
+        icon_url: updatedIcon,
+        show_pc_header: updatedShowPc,
+        show_mobile_header: updatedShowMobile,
+        for_sale: updatedForSale,
+        for_rent: updatedForRent
+      }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

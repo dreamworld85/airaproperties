@@ -267,7 +267,7 @@ export default function DetailsStep1() {
                   key={type}
                   type="button"
                   onClick={() => {
-                    const isApplicable = type === "Apartment" || type === "Independent House / Villa";
+                    const isApplicable = type === "Apartment" || type === "Independent House / Villa" || type === "House" || type === "Builder Floor";
                     update({
                       propertyType: type,
                       ...(!isApplicable ? { furnishing: "", propertyAge: "" } : {})
@@ -297,7 +297,7 @@ export default function DetailsStep1() {
         </div>
 
         {/* Section 3.1: Furnishing (Enabled for Apartment or Independent House / Villa) */}
-        {(form.propertyType === "Apartment" || form.propertyType === "Independent House / Villa") && (
+        {(form.propertyType === "Apartment" || form.propertyType === "Independent House / Villa" || form.propertyType === "House" || form.propertyType === "Builder Floor") && (
           <div className="flex flex-col gap-2 pt-0.5 animate-fade-in">
             <span className="text-sm font-bold text-[#091F40]">Furnishing</span>
             <div className="flex items-center gap-7 pt-0.5">
@@ -342,7 +342,7 @@ export default function DetailsStep1() {
         )}
 
         {/* Section 3.2: Property Age (Enabled for Apartment or Independent House / Villa) */}
-        {(form.propertyType === "Apartment" || form.propertyType === "Independent House / Villa") && (
+        {(form.propertyType === "Apartment" || form.propertyType === "Independent House / Villa" || form.propertyType === "House" || form.propertyType === "Builder Floor") && (
           <div className="flex flex-col gap-2 pt-1 animate-fade-in">
             <span className="text-sm font-bold text-[#091F40]">Property Age</span>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2.5 pt-0.5">

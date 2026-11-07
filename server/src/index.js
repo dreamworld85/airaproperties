@@ -741,35 +741,65 @@ async function checkDbMigration() {
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL UNIQUE,
         category VARCHAR(50) NOT NULL DEFAULT 'Residential',
+        icon_url VARCHAR(500) NULL,
+        show_pc_header TINYINT(1) NOT NULL DEFAULT 0,
+        show_mobile_header TINYINT(1) NOT NULL DEFAULT 0,
         for_sale TINYINT(1) NOT NULL DEFAULT 1,
         for_rent TINYINT(1) NOT NULL DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
+    // Ensure columns exist if table was already created
+    const [ptCols] = await pool.query("SHOW COLUMNS FROM property_types");
+    const ptColNames = ptCols.map(c => c.Field);
+    if (!ptColNames.includes("icon_url")) {
+      console.log("Adding icon_url column to property_types...");
+      await pool.query("ALTER TABLE property_types ADD COLUMN icon_url VARCHAR(500) NULL");
+    }
+    if (!ptColNames.includes("show_pc_header")) {
+      console.log("Adding show_pc_header column to property_types...");
+      await pool.query("ALTER TABLE property_types ADD COLUMN show_pc_header TINYINT(1) NOT NULL DEFAULT 0");
+    }
+    if (!ptColNames.includes("show_mobile_header")) {
+      console.log("Adding show_mobile_header column to property_types...");
+      await pool.query("ALTER TABLE property_types ADD COLUMN show_mobile_header TINYINT(1) NOT NULL DEFAULT 0");
+    }
+
     const [existingTypes] = await pool.query("SELECT COUNT(*) as count FROM property_types");
     if (existingTypes[0].count === 0) {
       console.log("Seeding default property types...");
       const defaultTypes = [
-        ['Apartment', 'Residential', 1, 1],
-        ['Independent House / Villa', 'Residential', 1, 1],
-        ['Builder Floor', 'Residential', 1, 1],
-        ['Plot / Land', 'Both', 1, 1],
-        ['1 RK/ Studio Apartment', 'Residential', 1, 1],
-        ['Farmhouse', 'Residential', 1, 0],
-        ['Serviced Apartment', 'Residential', 0, 1],
-        ['Office Space', 'Commercial', 1, 1],
-        ['Retail Shop', 'Commercial', 1, 1],
-        ['Warehouse', 'Commercial', 1, 1],
-        ['Co-working Space', 'Commercial', 0, 1],
-        ['Other', 'Both', 1, 1]
+        ['Apartment', 'Residential', '/images/Apartment.svg', 1, 1, 1, 1],
+        ['Independent House / Villa', 'Residential', '/images/villa.svg', 1, 1, 1, 1],
+        ['Plot / Land', 'Both', '/images/villa.svg', 1, 1, 1, 1],
+        ['House', 'Residential', '/images/house.svg', 1, 1, 1, 1],
+        ['Builder Floor', 'Residential', '/images/house.svg', 0, 0, 1, 1],
+        ['1 RK/ Studio Apartment', 'Residential', '/images/Apartment.svg', 0, 0, 1, 1],
+        ['Farmhouse', 'Residential', '/images/villa.svg', 0, 0, 1, 0],
+        ['Serviced Apartment', 'Residential', '/images/Apartment.svg', 0, 0, 0, 1],
+        ['Office Space', 'Commercial', '/images/Apartment.svg', 0, 0, 1, 1],
+        ['Retail Shop', 'Commercial', '/images/Apartment.svg', 0, 0, 1, 1],
+        ['Warehouse', 'Commercial', '/images/Apartment.svg', 0, 0, 1, 1],
+        ['Co-working Space', 'Commercial', '/images/Apartment.svg', 0, 0, 0, 1],
+        ['Other', 'Both', '/images/all-properties.svg', 0, 0, 1, 1]
       ];
       for (const item of defaultTypes) {
         await pool.query(
-          "INSERT IGNORE INTO property_types (name, category, for_sale, for_rent) VALUES (?, ?, ?, ?)",
+          "INSERT IGNORE INTO property_types (name, category, icon_url, show_pc_header, show_mobile_header, for_sale, for_rent) VALUES (?, ?, ?, ?, ?, ?, ?)",
           item
         );
       }
+    } else {
+      // Ensure House exists if not present
+      await pool.query(
+        "INSERT IGNORE INTO property_types (name, category, icon_url, show_pc_header, show_mobile_header, for_sale, for_rent) VALUES ('House', 'Residential', '/images/house.svg', 1, 1, 1, 1)"
+      );
+      // Update default icons and header flags for key types if currently NULL or empty
+      await pool.query("UPDATE property_types SET icon_url = '/images/Apartment.svg', show_pc_header = 1, show_mobile_header = 1 WHERE name = 'Apartment' AND (icon_url IS NULL OR icon_url = '')");
+      await pool.query("UPDATE property_types SET icon_url = '/images/villa.svg', show_pc_header = 1, show_mobile_header = 1 WHERE name = 'Independent House / Villa' AND (icon_url IS NULL OR icon_url = '')");
+      await pool.query("UPDATE property_types SET icon_url = '/images/villa.svg', show_pc_header = 1, show_mobile_header = 1 WHERE name = 'Plot / Land' AND (icon_url IS NULL OR icon_url = '')");
+      await pool.query("UPDATE property_types SET icon_url = '/images/house.svg', show_pc_header = 1, show_mobile_header = 1 WHERE name = 'House' AND (icon_url IS NULL OR icon_url = '')");
     }
     console.log("Database property_types table verified.");
 

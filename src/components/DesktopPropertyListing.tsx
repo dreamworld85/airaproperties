@@ -83,7 +83,7 @@ export default function DesktopPropertyListing({
       location: params.get("q") || params.get("location") || "",
       state: params.get("state") || "All States (India)",
       district: params.get("district") || "All Districts",
-      propertyType: params.get("type") || "All Types"
+      propertyType: params.get("propertyType") || params.get("type") || "All Types"
     });
   }, [location.search]);
 

@@ -127,13 +127,28 @@ export default function Settings() {
   const [newLocationFile, setNewLocationFile] = useState<File | null>(null);
   const [newLocationPreview, setNewLocationPreview] = useState<string | null>(null);
   const [loadingLocations, setLoadingLocations] = useState(false);
-  const [propertyTypesList, setPropertyTypesList] = useState<{ id: number; name: string; category: string; for_sale: number | boolean; for_rent: number | boolean; created_at?: string }[]>([]);
+  const [propertyTypesList, setPropertyTypesList] = useState<{ id: number; name: string; category: string; icon_url?: string; show_pc_header?: number | boolean; show_mobile_header?: number | boolean; for_sale: number | boolean; for_rent: number | boolean; created_at?: string }[]>([]);
   const [newTypeName, setNewTypeName] = useState("");
+  const [newTypeIconFile, setNewTypeIconFile] = useState<File | null>(null);
+  const [newTypeIconPreview, setNewTypeIconPreview] = useState<string | null>(null);
+  const [newTypeShowPc, setNewTypeShowPc] = useState(false);
+  const [newTypeShowMobile, setNewTypeShowMobile] = useState(false);
   const [newTypeCategory, setNewTypeCategory] = useState<"Residential" | "Commercial" | "Both">("Residential");
   const [newTypeForSale, setNewTypeForSale] = useState(true);
   const [newTypeForRent, setNewTypeForRent] = useState(true);
   const [loadingPropertyTypes, setLoadingPropertyTypes] = useState(false);
   const [savingPropertyType, setSavingPropertyType] = useState(false);
+
+  // Edit property type state
+  const [editingType, setEditingType] = useState<any | null>(null);
+  const [editTypeName, setEditTypeName] = useState("");
+  const [editTypeIconFile, setEditTypeIconFile] = useState<File | null>(null);
+  const [editTypeIconPreview, setEditTypeIconPreview] = useState<string | null>(null);
+  const [editTypeShowPc, setEditTypeShowPc] = useState(false);
+  const [editTypeShowMobile, setEditTypeShowMobile] = useState(false);
+  const [editTypeCategory, setEditTypeCategory] = useState<"Residential" | "Commercial" | "Both">("Residential");
+  const [editTypeForSale, setEditTypeForSale] = useState(true);
+  const [editTypeForRent, setEditTypeForRent] = useState(true);
 
   const [landingHeroTitle, setLandingHeroTitle] = useState("");
   const [interstitialSettings, setInterstitialSettings] = useState<any>(null);
@@ -1019,6 +1034,12 @@ export default function Settings() {
     }
   }
 
+  const getPropertyTypeIconSrc = (url?: string) => {
+    if (!url) return "/images/villa.svg";
+    if (url.startsWith("/images/") || url.startsWith("http://") || url.startsWith("https://")) return url;
+    return mediaUrl(url);
+  };
+
   async function handleAddPropertyType(e: React.FormEvent) {
     e.preventDefault();
     if (!newTypeName.trim()) {
@@ -1027,17 +1048,68 @@ export default function Settings() {
     }
     setSavingPropertyType(true);
     try {
-      await adminApi.addPropertyType({
-        name: newTypeName.trim(),
-        category: newTypeCategory,
-        for_sale: newTypeForSale,
-        for_rent: newTypeForRent,
-      });
+      const formData = new FormData();
+      formData.append("name", newTypeName.trim());
+      formData.append("category", newTypeCategory);
+      formData.append("for_sale", String(newTypeForSale));
+      formData.append("for_rent", String(newTypeForRent));
+      formData.append("show_pc_header", String(newTypeShowPc));
+      formData.append("show_mobile_header", String(newTypeShowMobile));
+      if (newTypeIconFile) {
+        formData.append("icon", newTypeIconFile);
+      }
+      await adminApi.addPropertyType(formData);
       setNewTypeName("");
+      setNewTypeIconFile(null);
+      setNewTypeIconPreview(null);
+      setNewTypeShowPc(false);
+      setNewTypeShowMobile(false);
       await loadPropertyTypes();
       alert("Property type added successfully!");
     } catch (err: any) {
       alert(err.message || "Failed to add property type.");
+    } finally {
+      setSavingPropertyType(false);
+    }
+  }
+
+  function openEditPropertyType(t: any) {
+    setEditingType(t);
+    setEditTypeName(t.name || "");
+    setEditTypeIconFile(null);
+    setEditTypeIconPreview(t.icon_url || null);
+    setEditTypeShowPc(Boolean(t.show_pc_header));
+    setEditTypeShowMobile(Boolean(t.show_mobile_header));
+    setEditTypeCategory(t.category || "Residential");
+    setEditTypeForSale(t.for_sale === 1 || t.for_sale === true);
+    setEditTypeForRent(t.for_rent === 1 || t.for_rent === true);
+  }
+
+  async function handleSaveEditPropertyType(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingType) return;
+    if (!editTypeName.trim()) {
+      alert("Please enter a property type name.");
+      return;
+    }
+    setSavingPropertyType(true);
+    try {
+      const formData = new FormData();
+      formData.append("name", editTypeName.trim());
+      formData.append("category", editTypeCategory);
+      formData.append("for_sale", String(editTypeForSale));
+      formData.append("for_rent", String(editTypeForRent));
+      formData.append("show_pc_header", String(editTypeShowPc));
+      formData.append("show_mobile_header", String(editTypeShowMobile));
+      if (editTypeIconFile) {
+        formData.append("icon", editTypeIconFile);
+      }
+      await adminApi.updatePropertyType(editingType.id, formData);
+      setEditingType(null);
+      await loadPropertyTypes();
+      alert("Property type updated successfully!");
+    } catch (err: any) {
+      alert(err.message || "Failed to update property type.");
     } finally {
       setSavingPropertyType(false);
     }
@@ -2897,7 +2969,7 @@ export default function Settings() {
           <h3 className="font-display font-bold text-sm text-ink">Back to Menu</h3>
         </div>
 
-        {/* Add Property Type Form Card */}
+        {/* Add Property Type Form Card - Designed as per user mockup Image 2 */}
         <form onSubmit={handleAddPropertyType} className="bg-white border border-charcoal/5 rounded-3xl p-6 shadow-sm flex flex-col gap-5">
           <div className="border-b border-charcoal/5 pb-4">
             <div className="flex items-center gap-2">
@@ -2909,26 +2981,80 @@ export default function Settings() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-ink">Property Type Name</label>
-            <input 
-              type="text"
-              placeholder="e.g. Penthouse, Duplex, Farmhouse, Studio Apartment"
-              value={newTypeName}
-              onChange={(e) => setNewTypeName(e.target.value)}
-              className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-blue-500 transition-colors"
-              required
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Left: Property Type Name */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-ink">Property Type Name</label>
+              <input 
+                type="text"
+                placeholder="e.g. Independent House / Villa"
+                value={newTypeName}
+                onChange={(e) => setNewTypeName(e.target.value)}
+                className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-blue-500 transition-colors"
+                required
+              />
+            </div>
+
+            {/* Right: Upload SVG or PNG Icon */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-ink">Upload SVG or PNG Icon</label>
+              <div className="flex items-center gap-3">
+                <input 
+                  type="file"
+                  accept=".svg,.png,image/svg+xml,image/png"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setNewTypeIconFile(file);
+                      setNewTypeIconPreview(URL.createObjectURL(file));
+                    }
+                  }}
+                  className="text-xs text-slate file:mr-2.5 file:py-2 file:px-3.5 file:rounded-xl file:border file:border-slate-200 file:text-xs file:font-semibold file:bg-slate-50 file:text-ink hover:file:bg-slate-100 cursor-pointer border border-charcoal/10 rounded-2xl p-1.5 flex-1 bg-slate-50/50"
+                />
+                <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 border border-charcoal/10 shrink-0 overflow-hidden shadow-xs">
+                  <img 
+                    src={newTypeIconPreview || "/images/villa.svg"} 
+                    alt="Icon preview" 
+                    className="w-6 h-6 object-contain" 
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Category */}
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-ink">Property Category</label>
+          {/* Show In Frontend Checkboxes */}
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-ink">Show In frontend</label>
+            <div className="flex items-center gap-6 p-3 bg-slate-50/50 border border-charcoal/10 rounded-2xl">
+              <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={newTypeShowPc}
+                  onChange={(e) => setNewTypeShowPc(e.target.checked)}
+                  className="w-4 h-4 rounded text-blue-600 accent-blue-600 cursor-pointer"
+                />
+                <span>Show PC header</span>
+              </label>
+              <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={newTypeShowMobile}
+                  onChange={(e) => setNewTypeShowMobile(e.target.checked)}
+                  className="w-4 h-4 rounded text-blue-600 accent-blue-600 cursor-pointer"
+                />
+                <span>Show Mobile Header</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Collapsible/Advanced Category options */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-semibold text-slate">Property Category</label>
               <select
                 value={newTypeCategory}
                 onChange={(e) => setNewTypeCategory(e.target.value as any)}
-                className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-blue-500 transition-colors"
+                className="text-xs text-ink border border-charcoal/10 p-2.5 rounded-xl bg-slate-50/50 focus:outline-none focus:border-blue-500 transition-colors"
               >
                 <option value="Residential">Residential</option>
                 <option value="Commercial">Commercial</option>
@@ -2936,27 +3062,26 @@ export default function Settings() {
               </select>
             </div>
 
-            {/* Purpose applicability checkboxes */}
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-ink">Available For Purpose</label>
-              <div className="flex items-center gap-4 p-2.5 bg-slate-50 border border-charcoal/10 rounded-2xl">
-                <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-semibold text-slate">Available For</label>
+              <div className="flex items-center gap-4 p-2 bg-slate-50/50 border border-charcoal/10 rounded-xl">
+                <label className="flex items-center gap-1.5 text-xs font-medium text-ink cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={newTypeForSale}
                     onChange={(e) => setNewTypeForSale(e.target.checked)}
-                    className="w-4 h-4 rounded text-blue-600 accent-blue-600 cursor-pointer"
+                    className="w-3.5 h-3.5 rounded text-blue-600 accent-blue-600 cursor-pointer"
                   />
-                  <span>For Sale</span>
+                  <span>Sale</span>
                 </label>
-                <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer">
+                <label className="flex items-center gap-1.5 text-xs font-medium text-ink cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={newTypeForRent}
                     onChange={(e) => setNewTypeForRent(e.target.checked)}
-                    className="w-4 h-4 rounded text-blue-600 accent-blue-600 cursor-pointer"
+                    className="w-3.5 h-3.5 rounded text-blue-600 accent-blue-600 cursor-pointer"
                   />
-                  <span>For Rent / Lease</span>
+                  <span>Rent / Lease</span>
                 </label>
               </div>
             </div>
@@ -2965,13 +3090,13 @@ export default function Settings() {
           <button
             type="submit"
             disabled={savingPropertyType}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer text-center"
+            className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer text-center"
           >
             <span>{savingPropertyType ? "Adding Property Type..." : "Add Property Type"}</span>
           </button>
         </form>
 
-        {/* Current Property Types List Card */}
+        {/* Current Property Types List Card - Matching user mockup Image 2 */}
         <div className="bg-white border border-charcoal/5 rounded-3xl p-6 shadow-sm text-left">
           <div className="flex items-center justify-between border-b border-charcoal/5 pb-4 mb-4">
             <div>
@@ -2996,44 +3121,189 @@ export default function Settings() {
               {propertyTypesList.map((t) => (
                 <div 
                   key={t.id} 
-                  className="flex items-center justify-between p-3 rounded-2xl border border-charcoal/10 bg-slate-50/60 shadow-sm hover:border-blue-200 transition-colors"
+                  className="flex items-center justify-between p-3.5 rounded-2xl border border-charcoal/10 bg-white shadow-xs hover:border-blue-200 transition-all group"
                 >
                   <div className="flex flex-col min-w-0 pr-2">
                     <span className="text-xs font-bold text-ink truncate block">{t.name}</span>
-                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                        t.category === "Commercial" ? "bg-purple-100 text-purple-700" :
-                        t.category === "Both" ? "bg-blue-100 text-blue-700" :
-                        "bg-emerald-100 text-emerald-800"
-                      }`}>
-                        {t.category}
-                      </span>
-                      {Boolean(t.for_sale) && (
-                        <span className="text-[9px] font-medium text-slate-500 bg-white border border-slate-200 px-1 rounded">
-                          Sale
+                    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => openEditPropertyType(t)}
+                        className="px-2 py-0.5 bg-[#E8F5E9] text-[#2E7D32] hover:bg-[#C8E6C9] rounded-md text-[11px] font-semibold transition-all cursor-pointer border border-[#A5D6A7]"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePropertyType(t.id, t.name)}
+                        disabled={savingPropertyType}
+                        className="px-2 py-0.5 bg-[#FFEBEE] text-[#C62828] hover:bg-[#FFCDD2] rounded-md text-[11px] font-semibold transition-all cursor-pointer border border-[#EF9A9A]"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                    {/* Header tags */}
+                    <div className="flex items-center gap-1 mt-1.5">
+                      {Boolean(t.show_pc_header) && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 bg-blue-50 text-blue-700 border border-blue-200 rounded">
+                          PC Header
                         </span>
                       )}
-                      {Boolean(t.for_rent) && (
-                        <span className="text-[9px] font-medium text-slate-500 bg-white border border-slate-200 px-1 rounded">
-                          Rent
+                      {Boolean(t.show_mobile_header) && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded">
+                          Mobile
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleDeletePropertyType(t.id, t.name)}
-                    disabled={savingPropertyType}
-                    className="px-2.5 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-[10px] font-bold transition-all cursor-pointer shrink-0"
-                  >
-                    Delete
-                  </button>
+                  <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 border border-charcoal/5 shrink-0 overflow-hidden p-1">
+                    <img 
+                      src={getPropertyTypeIconSrc(t.icon_url)} 
+                      alt={t.name} 
+                      className="w-7 h-7 object-contain"
+                    />
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
+
+        {/* Edit Property Type Modal */}
+        {editingType && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-xl border border-charcoal/10 flex flex-col gap-4 animate-scale-up">
+              <div className="flex items-center justify-between border-b border-charcoal/5 pb-3">
+                <h3 className="font-display font-bold text-base text-ink">Edit Property Type</h3>
+                <button 
+                  onClick={() => setEditingType(null)}
+                  className="text-slate hover:text-ink text-sm font-bold cursor-pointer p-1"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveEditPropertyType} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-ink">Property Type Name</label>
+                  <input 
+                    type="text"
+                    value={editTypeName}
+                    onChange={(e) => setEditTypeName(e.target.value)}
+                    className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-blue-500"
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-ink">Change SVG or PNG Icon</label>
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="file"
+                      accept=".svg,.png,image/svg+xml,image/png"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setEditTypeIconFile(file);
+                          setEditTypeIconPreview(URL.createObjectURL(file));
+                        }
+                      }}
+                      className="text-xs text-slate file:mr-2.5 file:py-2 file:px-3.5 file:rounded-xl file:border file:border-slate-200 file:text-xs file:font-semibold file:bg-slate-50 file:text-ink hover:file:bg-slate-100 cursor-pointer border border-charcoal/10 rounded-2xl p-1.5 flex-1 bg-slate-50/50"
+                    />
+                    <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 border border-charcoal/10 shrink-0 overflow-hidden shadow-xs">
+                      <img 
+                        src={editTypeIconPreview ? (editTypeIconPreview.startsWith("blob:") ? editTypeIconPreview : getPropertyTypeIconSrc(editTypeIconPreview)) : "/images/villa.svg"} 
+                        alt="Icon preview" 
+                        className="w-6 h-6 object-contain" 
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-ink">Show In Frontend</label>
+                  <div className="flex items-center gap-6 p-3 bg-slate-50/50 border border-charcoal/10 rounded-2xl">
+                    <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={editTypeShowPc}
+                        onChange={(e) => setEditTypeShowPc(e.target.checked)}
+                        className="w-4 h-4 rounded text-blue-600 accent-blue-600 cursor-pointer"
+                      />
+                      <span>Show PC header</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={editTypeShowMobile}
+                        onChange={(e) => setEditTypeShowMobile(e.target.checked)}
+                        className="w-4 h-4 rounded text-blue-600 accent-blue-600 cursor-pointer"
+                      />
+                      <span>Show Mobile Header</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-semibold text-slate">Category</label>
+                    <select
+                      value={editTypeCategory}
+                      onChange={(e) => setEditTypeCategory(e.target.value as any)}
+                      className="text-xs text-ink border border-charcoal/10 p-2.5 rounded-xl bg-slate-50/50 focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="Residential">Residential</option>
+                      <option value="Commercial">Commercial</option>
+                      <option value="Both">Both</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-semibold text-slate">Available For</label>
+                    <div className="flex items-center gap-3 p-2 bg-slate-50/50 border border-charcoal/10 rounded-xl">
+                      <label className="flex items-center gap-1 text-xs font-medium text-ink cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={editTypeForSale}
+                          onChange={(e) => setEditTypeForSale(e.target.checked)}
+                          className="w-3.5 h-3.5 rounded text-blue-600 accent-blue-600"
+                        />
+                        <span>Sale</span>
+                      </label>
+                      <label className="flex items-center gap-1 text-xs font-medium text-ink cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={editTypeForRent}
+                          onChange={(e) => setEditTypeForRent(e.target.checked)}
+                          className="w-3.5 h-3.5 rounded text-blue-600 accent-blue-600"
+                        />
+                        <span>Rent</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingType(null)}
+                    className="px-4 py-2 text-xs font-bold text-slate hover:bg-slate-100 rounded-xl cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingPropertyType}
+                    className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-md cursor-pointer disabled:opacity-50"
+                  >
+                    {savingPropertyType ? "Saving..." : "Save Changes"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

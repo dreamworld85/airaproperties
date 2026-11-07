@@ -443,18 +443,38 @@ export const adminApi = {
     return res.json();
   },
 
-  async addPropertyType(data: { name: string; category?: string; for_sale?: boolean; for_rent?: boolean }): Promise<any> {
+  async addPropertyType(data: FormData | { name: string; category?: string; for_sale?: boolean; for_rent?: boolean; show_pc_header?: boolean; show_mobile_header?: boolean; icon_url?: string }): Promise<any> {
+    const isFormData = data instanceof FormData;
+    const headers = getAdminHeaders();
+    if (!isFormData) {
+      headers["Content-Type"] = "application/json";
+    }
     const res = await fetch(`${API_URL}/api/admin/property-types`, {
       method: "POST",
-      headers: {
-        ...getAdminHeaders(),
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
+      headers,
+      body: isFormData ? data : JSON.stringify(data),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || "Failed to add property type.");
+    }
+    return res.json();
+  },
+
+  async updatePropertyType(id: number, data: FormData | { name?: string; category?: string; for_sale?: boolean; for_rent?: boolean; show_pc_header?: boolean; show_mobile_header?: boolean; icon_url?: string }): Promise<any> {
+    const isFormData = data instanceof FormData;
+    const headers = getAdminHeaders();
+    if (!isFormData) {
+      headers["Content-Type"] = "application/json";
+    }
+    const res = await fetch(`${API_URL}/api/admin/property-types/${id}`, {
+      method: "PUT",
+      headers,
+      body: isFormData ? data : JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || "Failed to update property type.");
     }
     return res.json();
   },

@@ -50,6 +50,9 @@ export interface ApiPropertyType {
   id: number;
   name: string;
   category: "Residential" | "Commercial" | "Both" | string;
+  icon_url?: string;
+  show_pc_header?: number | boolean;
+  show_mobile_header?: number | boolean;
   for_sale: number | boolean;
   for_rent: number | boolean;
   created_at?: string;
@@ -333,9 +336,19 @@ export const api = {
     if (params.purpose) {
       list = list.filter((p) => p.purpose === params.purpose);
     }
-    if (params.propertyType && params.propertyType !== "All Types") {
+    if (params.propertyType && params.propertyType !== "All Types" && params.propertyType !== "All") {
       const types = params.propertyType.split(",").map((t) => t.trim().toLowerCase());
-      list = list.filter((p) => types.includes((p.propertyType || "").toLowerCase()));
+      list = list.filter((p) => {
+        const pt = (p.propertyType || "").toLowerCase();
+        return types.some((t) => {
+          if (pt === t) return true;
+          if (t === "villa" && (pt.includes("villa") || pt.includes("house"))) return true;
+          if (t === "land" && (pt.includes("land") || pt.includes("plot"))) return true;
+          if (t === "house" && (pt.includes("house") || pt.includes("villa") || pt.includes("floor"))) return true;
+          if (t === "apartment" && (pt.includes("apartment") || pt.includes("studio"))) return true;
+          return false;
+        });
+      });
     }
     if (params.district) {
       list = list.filter((p) => (p.district || "").toLowerCase() === params.district.toLowerCase());
