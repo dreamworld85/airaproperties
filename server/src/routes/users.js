@@ -232,20 +232,98 @@ router.post("/me/banner", requireAuth, upload.single("banner"), async (req, res)
   }
 });
 
+// Helper to automatically sync Facebook and Instagram post comments for a specific user's properties
+async function syncSocialCommentsForOwner(ownerId) {
+  try {
+    const [tokenRow] = await pool.query("SELECT `value` FROM settings WHERE `key` = 'facebook_page_access_token'");
+    const accessToken = tokenRow[0]?.value || process.env.FB_PAGE_ACCESS_TOKEN;
+    if (!accessToken) return;
+
+    // Only get properties owned by THIS specific user that have an active social post ID
+    const [properties] = await pool.query(
+      `SELECT id, fb_post_id, ig_post_id FROM properties WHERE owner_id = ? AND (fb_post_id IS NOT NULL OR ig_post_id IS NOT NULL)`,
+      [ownerId]
+    );
+
+    for (const prop of properties) {
+      // 1. Sync Facebook comments for this property
+      if (prop.fb_post_id) {
+        try {
+          const res = await fetch(`https://graph.facebook.com/v21.0/${prop.fb_post_id}/comments?access_token=${accessToken}&limit=50`);
+          const data = await res.json();
+          if (Array.isArray(data?.data)) {
+            for (const c of data.data) {
+              if (!c.id) continue;
+              const [[existing]] = await pool.query("SELECT id FROM enquiries WHERE external_id = ?", [c.id]);
+              if (!existing) {
+                const commentTime = c.created_time ? new Date(c.created_time) : new Date();
+                const commenterName = c.from?.name || "Facebook User";
+                await pool.query(
+                  `INSERT INTO enquiries (property_id, visitor_id, name, phone, email, message, source, external_id, post_id, created_at)
+                   VALUES (?, NULL, ?, NULL, NULL, ?, 'facebook', ?, ?, ?)`,
+                  [prop.id, commenterName, c.message || "Enquired on Facebook", c.id, prop.fb_post_id, commentTime]
+                );
+              }
+            }
+          }
+        } catch (fbErr) {
+          console.warn(`Could not sync FB comments for property ${prop.id}:`, fbErr.message);
+        }
+      }
+
+      // 2. Sync Instagram comments for this property
+      if (prop.ig_post_id) {
+        try {
+          const res = await fetch(`https://graph.facebook.com/v21.0/${prop.ig_post_id}/comments?access_token=${accessToken}&limit=50`);
+          const data = await res.json();
+          if (Array.isArray(data?.data)) {
+            for (const c of data.data) {
+              if (!c.id) continue;
+              const [[existing]] = await pool.query("SELECT id FROM enquiries WHERE external_id = ?", [c.id]);
+              if (!existing) {
+                const commentTime = c.created_time ? new Date(c.created_time) : new Date();
+                const commenterName = c.from?.username || c.from?.name || "Instagram User";
+                await pool.query(
+                  `INSERT INTO enquiries (property_id, visitor_id, name, phone, email, message, source, external_id, post_id, created_at)
+                   VALUES (?, NULL, ?, NULL, NULL, ?, 'instagram', ?, ?, ?)`,
+                  [prop.id, commenterName, c.message || "Enquired on Instagram", c.id, prop.ig_post_id, commentTime]
+                );
+              }
+            }
+          }
+        } catch (igErr) {
+          console.warn(`Could not sync IG comments for property ${prop.id}:`, igErr.message);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("syncSocialCommentsForOwner error:", err.message);
+  }
+}
+
+// POST /api/users/me/sync-social-enquiries — manually trigger social enquiries sync for current user
+router.post("/me/sync-social-enquiries", requireAuth, async (req, res) => {
+  try {
+    await syncSocialCommentsForOwner(req.userId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/users/me/stats — dashboard totals + recent visitors, across all of the
 // user's properties. Backs the Visitors & Enquiries screen.
 router.get("/me/stats", requireAuth, async (req, res) => {
   try {
+    // Sync Facebook and Instagram comments for this user's properties before loading stats
+    await syncSocialCommentsForOwner(req.userId);
+
     const [[viewsRow]] = await pool.query(
       `SELECT COUNT(*) AS totalViews FROM property_views pv
        JOIN properties p ON p.id = pv.property_id WHERE p.owner_id = ?`,
       [req.userId]
     );
-    const [[enquiriesRow]] = await pool.query(
-      `SELECT COUNT(*) AS totalEnquiries FROM enquiries e
-       JOIN properties p ON p.id = e.property_id WHERE p.owner_id = ?`,
-      [req.userId]
-    );
+
     const accessCheck = await checkUserAccess(req.userId);
     const roleLower = String(accessCheck.role || "").toLowerCase();
     const isTrialExpired = (roleLower === "broker" || roleLower === "agency") && !accessCheck.hasAccess;
@@ -258,6 +336,9 @@ router.get("/me/stats", requireAuth, async (req, res) => {
          COALESCE(NULLIF(e.phone, ''), u.phone, '') AS visitorPhone,
          COALESCE(NULLIF(e.email, ''), u.email, '') AS visitorEmail,
          e.message AS message,
+         COALESCE(e.source, 'web') AS source,
+         e.external_id AS externalId,
+         e.post_id AS postId,
          p.id AS propertyId,
          p.title AS propertyTitle,
          p.price AS propertyPrice,
@@ -267,9 +348,13 @@ router.get("/me/stats", requireAuth, async (req, res) => {
        JOIN properties p ON p.id = e.property_id
        LEFT JOIN users u ON u.id = e.visitor_id
        WHERE p.owner_id = ?
-       ORDER BY e.created_at DESC LIMIT 50`,
+       ORDER BY e.created_at DESC LIMIT 100`,
       [req.userId]
     );
+
+    const webCount = recentVisitors.filter(v => (v.source || 'web') === 'web').length;
+    const facebookCount = recentVisitors.filter(v => v.source === 'facebook').length;
+    const instagramCount = recentVisitors.filter(v => v.source === 'instagram').length;
 
     const processedVisitors = recentVisitors.map(v => {
       if (isTrialExpired) {
@@ -280,6 +365,9 @@ router.get("/me/stats", requireAuth, async (req, res) => {
           visitorPhone: "+91 XXXXX XXXXX",
           visitorEmail: "locked@keralarealty.com",
           message: v.message ? "Enquiry message hidden. Top up tokens to view." : null,
+          source: v.source || "web",
+          externalId: v.externalId,
+          postId: v.postId,
           propertyId: v.propertyId,
           propertyTitle: v.propertyTitle,
           propertyPrice: v.propertyPrice,
@@ -296,7 +384,10 @@ router.get("/me/stats", requireAuth, async (req, res) => {
 
     res.json({
       totalViews: viewsRow.totalViews,
-      totalEnquiries: enquiriesRow.totalEnquiries,
+      totalEnquiries: recentVisitors.length,
+      webCount,
+      facebookCount,
+      instagramCount,
       recentVisitors: processedVisitors,
       isTrialExpired,
       hasTrial: accessCheck.hasTrial,

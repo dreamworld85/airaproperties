@@ -135,6 +135,9 @@ export interface ApiReview {
 export interface ApiDashboardStats {
   totalViews: number;
   totalEnquiries: number;
+  webCount?: number;
+  facebookCount?: number;
+  instagramCount?: number;
   recentVisitors: {
     enquiryId?: number;
     visitorName: string;
@@ -142,6 +145,9 @@ export interface ApiDashboardStats {
     visitorPhone?: string | null;
     visitorEmail?: string | null;
     message?: string | null;
+    source?: "web" | "facebook" | "instagram";
+    externalId?: string | null;
+    postId?: string | null;
     propertyId?: number;
     propertyTitle: string;
     propertyPrice?: number;
@@ -568,6 +574,14 @@ export const api = {
   async fetchMyStats() {
     const res = await fetch(`${API_URL}/api/users/me/stats`, { headers: authHeaders() });
     return handle<ApiDashboardStats>(res);
+  },
+
+  async syncSocialEnquiries() {
+    const res = await fetch(`${API_URL}/api/users/me/sync-social-enquiries`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    return handle<{ success: boolean }>(res);
   },
 
   async fetchPublicProfile(userIdOrSlug: number | string) {

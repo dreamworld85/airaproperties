@@ -16,7 +16,10 @@ import {
   RefreshCw,
   Clock,
   Mail,
-  UserCheck
+  UserCheck,
+  Globe,
+  Instagram,
+  ExternalLink
 } from "lucide-react";
 import { api, ApiDashboardStats, mediaUrl } from "@/lib/api";
 import Header from "@/components/Header";
@@ -59,6 +62,8 @@ export default function VisitorsEnquiries() {
   const [stats, setStats] = useState<ApiDashboardStats | null>(null);
   const [sentEnquiries, setSentEnquiries] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<"received" | "sent">("received");
+  const [sourceFilter, setSourceFilter] = useState<"all" | "web" | "facebook" | "instagram">("all");
+  const [isSyncingSocial, setIsSyncingSocial] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,8 +115,17 @@ export default function VisitorsEnquiries() {
   const isBrokerOrAgency = user?.role === "Broker" || user?.role === "Agency";
   const isSubscribed = user?.subscriptionStatus === "active";
 
-  // Filter received visitors
+  // Counts for the 3 Enquiry Sections
+  const webCount = stats?.webCount ?? (stats?.recentVisitors || []).filter(v => (v.source || "web") === "web").length;
+  const fbCount = stats?.facebookCount ?? (stats?.recentVisitors || []).filter(v => v.source === "facebook").length;
+  const igCount = stats?.instagramCount ?? (stats?.recentVisitors || []).filter(v => v.source === "instagram").length;
+  const totalReceivedCount = (stats?.recentVisitors || []).length;
+
+  // Filter received visitors by Search and 3 Channels (Web, Facebook, Instagram)
   const filteredVisitors = (stats?.recentVisitors || []).filter((v) => {
+    if (sourceFilter !== "all" && (v.source || "web") !== sourceFilter) {
+      return false;
+    }
     if (!searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase();
     return (
@@ -296,6 +310,84 @@ export default function VisitorsEnquiries() {
         {/* TAB 1: RECEIVED ENQUIRIES */}
         {!loading && activeTab === "received" && (
           <div className="flex flex-col gap-4">
+            {/* 3 Received Enquiry Sections: Web Enquiry, Facebook Enquiry, Instagram Enquiry */}
+            <div className="flex flex-wrap items-center gap-2 p-1.5 bg-white border border-gray-200/80 rounded-2xl shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setSourceFilter("all")}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  sourceFilter === "all"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <span>All Enquiries</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  sourceFilter === "all" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
+                }`}>
+                  {totalReceivedCount}
+                </span>
+              </button>
+
+              {/* 1. WEB ENQUIRY */}
+              <button
+                type="button"
+                onClick={() => setSourceFilter("web")}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  sourceFilter === "web"
+                    ? "bg-[#1B5E4F] text-white shadow-xs"
+                    : "text-emerald-800 hover:bg-emerald-50"
+                }`}
+              >
+                <Globe size={13} className={sourceFilter === "web" ? "text-emerald-200" : "text-emerald-600"} />
+                <span>Web Enquiry</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  sourceFilter === "web" ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-800"
+                }`}>
+                  {webCount}
+                </span>
+              </button>
+
+              {/* 2. FACEBOOK ENQUIRY */}
+              <button
+                type="button"
+                onClick={() => setSourceFilter("facebook")}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  sourceFilter === "facebook"
+                    ? "bg-[#1877F2] text-white shadow-xs"
+                    : "text-[#1877F2] hover:bg-blue-50"
+                }`}
+              >
+                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+                <span>Facebook Enquiry</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  sourceFilter === "facebook" ? "bg-white/20 text-white" : "bg-blue-100 text-[#1877F2]"
+                }`}>
+                  {fbCount}
+                </span>
+              </button>
+
+              {/* 3. INSTAGRAM ENQUIRY */}
+              <button
+                type="button"
+                onClick={() => setSourceFilter("instagram")}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  sourceFilter === "instagram"
+                    ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-xs"
+                    : "text-pink-700 hover:bg-pink-50"
+                }`}
+              >
+                <Instagram size={13} className={sourceFilter === "instagram" ? "text-pink-200" : "text-pink-600"} />
+                <span>Instagram Enquiry</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  sourceFilter === "instagram" ? "bg-white/20 text-white" : "bg-pink-100 text-pink-700"
+                }`}>
+                  {igCount}
+                </span>
+              </button>
+            </div>
             {filteredVisitors.length === 0 ? (
               <div className="bg-white border border-gray-200/80 rounded-2xl p-12 text-center shadow-xs flex flex-col items-center justify-center gap-3">
                 <div className="w-14 h-14 rounded-full bg-emerald-50 text-[#1B5E4F] flex items-center justify-center">
@@ -349,14 +441,31 @@ export default function VisitorsEnquiries() {
                         </div>
                       </div>
 
-                      {/* Enquiry Type Badge */}
-                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full shrink-0 ${
-                        isClickAction
-                          ? "bg-amber-50 text-amber-800 border border-amber-200"
-                          : "bg-blue-50 text-blue-800 border border-blue-200"
-                      }`}>
-                        {isClickAction ? "Contact Click" : "Direct Message"}
-                      </span>
+                      {/* Enquiry Type & Platform Source Badge */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {v.source === "facebook" ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#1877F2] bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full">
+                            <svg className="w-3 h-3 fill-[#1877F2]" viewBox="0 0 24 24">
+                              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                            </svg>
+                            <span>Facebook Comment</span>
+                          </span>
+                        ) : v.source === "instagram" ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-pink-700 bg-pink-50 border border-pink-200 px-2.5 py-1 rounded-full">
+                            <Instagram size={11} className="text-pink-600" />
+                            <span>Instagram Enquiry</span>
+                          </span>
+                        ) : (
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${
+                            isClickAction
+                              ? "bg-amber-50 text-amber-800 border border-amber-200"
+                              : "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                          }`}>
+                            <Globe size={10} className="text-emerald-600" />
+                            <span>{isClickAction ? "Contact Click" : "Web Enquiry"}</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Middle Row: Property Strip (Image + Title + Price) */}

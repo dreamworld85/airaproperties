@@ -123,10 +123,20 @@ async function checkDbMigration() {
 
     // Ensure columns exist if table was already created
     await pool.query(`
+      ALTER TABLE properties 
+        ADD COLUMN IF NOT EXISTS fb_post_id VARCHAR(100) NULL,
+        ADD COLUMN IF NOT EXISTS ig_post_id VARCHAR(100) NULL;
+    `).catch(() => {});
+
+    await pool.query(`
       ALTER TABLE enquiries 
+        MODIFY COLUMN visitor_id INT NULL,
         ADD COLUMN IF NOT EXISTS name VARCHAR(255) NULL AFTER visitor_id,
         ADD COLUMN IF NOT EXISTS phone VARCHAR(50) NULL AFTER name,
-        ADD COLUMN IF NOT EXISTS email VARCHAR(255) NULL AFTER phone;
+        ADD COLUMN IF NOT EXISTS email VARCHAR(255) NULL AFTER phone,
+        ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT 'web',
+        ADD COLUMN IF NOT EXISTS external_id VARCHAR(120) NULL,
+        ADD COLUMN IF NOT EXISTS post_id VARCHAR(120) NULL;
     `).catch(() => {});
 
     await pool.query(`
