@@ -236,20 +236,43 @@ router.post("/me/banner", requireAuth, upload.single("banner"), async (req, res)
 async function syncSocialCommentsForOwner(ownerId) {
   try {
     const [tokenRow] = await pool.query("SELECT `value` FROM settings WHERE `key` = 'facebook_page_access_token'");
+    const [pageIdRow] = await pool.query("SELECT `value` FROM settings WHERE `key` = 'facebook_page_id'");
     const accessToken = tokenRow[0]?.value || process.env.FB_PAGE_ACCESS_TOKEN;
+    const pageId = pageIdRow[0]?.value || process.env.FB_PAGE_ID || "1385544157967865";
     if (!accessToken) return;
 
-    // Only get properties owned by THIS specific user that have an active social post ID
+    // 1. AUTO-MATCH: Scan recent Facebook page posts to link any post containing property URL to properties table
+    try {
+      const postsRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/posts?fields=id,message,created_time&limit=25&access_token=${accessToken}`);
+      const postsData = await postsRes.json();
+      if (Array.isArray(postsData?.data)) {
+        for (const post of postsData.data) {
+          if (!post.message) continue;
+          const match = post.message.match(/airaproperties\.in\/property\/(\d+)/i);
+          if (match && match[1]) {
+            const matchedPropertyId = parseInt(match[1], 10);
+            await pool.query(
+              "UPDATE properties SET fb_post_id = ? WHERE id = ? AND (fb_post_id IS NULL OR fb_post_id = '')",
+              [post.id, matchedPropertyId]
+            ).catch(() => {});
+          }
+        }
+      }
+    } catch (scanErr) {
+      console.warn("Auto-matching FB posts error:", scanErr.message);
+    }
+
+    // 2. Fetch properties owned by THIS specific user that have an active social post ID
     const [properties] = await pool.query(
       `SELECT id, fb_post_id, ig_post_id FROM properties WHERE owner_id = ? AND (fb_post_id IS NOT NULL OR ig_post_id IS NOT NULL)`,
       [ownerId]
     );
 
     for (const prop of properties) {
-      // 1. Sync Facebook comments for this property
+      // Sync Facebook comments for this property
       if (prop.fb_post_id) {
         try {
-          const res = await fetch(`https://graph.facebook.com/v21.0/${prop.fb_post_id}/comments?access_token=${accessToken}&limit=50`);
+          const res = await fetch(`https://graph.facebook.com/v21.0/${prop.fb_post_id}/comments?fields=id,message,created_time,from&access_token=${accessToken}&limit=50`);
           const data = await res.json();
           if (Array.isArray(data?.data)) {
             for (const c of data.data) {
@@ -257,7 +280,7 @@ async function syncSocialCommentsForOwner(ownerId) {
               const [[existing]] = await pool.query("SELECT id FROM enquiries WHERE external_id = ?", [c.id]);
               if (!existing) {
                 const commentTime = c.created_time ? new Date(c.created_time) : new Date();
-                const commenterName = c.from?.name || "Facebook User";
+                const commenterName = c.from?.name || "Facebook Buyer";
                 await pool.query(
                   `INSERT INTO enquiries (property_id, visitor_id, name, phone, email, message, source, external_id, post_id, created_at)
                    VALUES (?, NULL, ?, NULL, NULL, ?, 'facebook', ?, ?, ?)`,
@@ -271,10 +294,10 @@ async function syncSocialCommentsForOwner(ownerId) {
         }
       }
 
-      // 2. Sync Instagram comments for this property
+      // Sync Instagram comments for this property
       if (prop.ig_post_id) {
         try {
-          const res = await fetch(`https://graph.facebook.com/v21.0/${prop.ig_post_id}/comments?access_token=${accessToken}&limit=50`);
+          const res = await fetch(`https://graph.facebook.com/v21.0/${prop.ig_post_id}/comments?fields=id,message,created_time,from&access_token=${accessToken}&limit=50`);
           const data = await res.json();
           if (Array.isArray(data?.data)) {
             for (const c of data.data) {
@@ -282,7 +305,7 @@ async function syncSocialCommentsForOwner(ownerId) {
               const [[existing]] = await pool.query("SELECT id FROM enquiries WHERE external_id = ?", [c.id]);
               if (!existing) {
                 const commentTime = c.created_time ? new Date(c.created_time) : new Date();
-                const commenterName = c.from?.username || c.from?.name || "Instagram User";
+                const commenterName = c.from?.username || c.from?.name || "Instagram Buyer";
                 await pool.query(
                   `INSERT INTO enquiries (property_id, visitor_id, name, phone, email, message, source, external_id, post_id, created_at)
                    VALUES (?, NULL, ?, NULL, NULL, ?, 'instagram', ?, ?, ?)`,

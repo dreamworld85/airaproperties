@@ -1082,6 +1082,9 @@ router.post("/properties/:id/facebook-publish", async (req, res) => {
     const postId = fbRes.post_id || fbRes.id;
     const postUrl = `https://www.facebook.com/${postId}`;
 
+    // Save post ID directly to properties table so comments map to this property's owner
+    await pool.query("UPDATE properties SET fb_post_id = ? WHERE id = ?", [postId, id]).catch(e => console.error(e));
+
     return res.json({
       success: true,
       postId,
@@ -1090,6 +1093,72 @@ router.post("/properties/:id/facebook-publish", async (req, res) => {
     });
   } catch (err) {
     console.error("Facebook post error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/social/sync-comments — sync Facebook post comments across all properties
+router.post("/social/sync-comments", async (req, res) => {
+  try {
+    const [tokenRow] = await pool.query("SELECT `value` FROM settings WHERE `key` = 'facebook_page_access_token'");
+    const [pageIdRow] = await pool.query("SELECT `value` FROM settings WHERE `key` = 'facebook_page_id'");
+    const accessToken = tokenRow[0]?.value || process.env.FB_PAGE_ACCESS_TOKEN;
+    const pageId = pageIdRow[0]?.value || process.env.FB_PAGE_ID || "1385544157967865";
+
+    if (!accessToken) {
+      return res.status(400).json({ error: "Facebook access token not configured." });
+    }
+
+    // 1. Auto-match recent posts to properties
+    let matchedPosts = 0;
+    try {
+      const postsRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/posts?fields=id,message,created_time&limit=25&access_token=${accessToken}`);
+      const postsData = await postsRes.json();
+      if (Array.isArray(postsData?.data)) {
+        for (const post of postsData.data) {
+          if (!post.message) continue;
+          const match = post.message.match(/airaproperties\.in\/property\/(\d+)/i);
+          if (match && match[1]) {
+            const propId = parseInt(match[1], 10);
+            await pool.query("UPDATE properties SET fb_post_id = ? WHERE id = ?", [post.id, propId]);
+            matchedPosts++;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Post scan error:", e.message);
+    }
+
+    // 2. Sync comments for all properties
+    const [properties] = await pool.query("SELECT id, fb_post_id, owner_id FROM properties WHERE fb_post_id IS NOT NULL");
+    let syncedComments = 0;
+    for (const prop of properties) {
+      try {
+        const cRes = await fetch(`https://graph.facebook.com/v21.0/${prop.fb_post_id}/comments?fields=id,message,created_time,from&access_token=${accessToken}&limit=50`);
+        const cData = await cRes.json();
+        if (Array.isArray(cData?.data)) {
+          for (const c of cData.data) {
+            if (!c.id) continue;
+            const [[existing]] = await pool.query("SELECT id FROM enquiries WHERE external_id = ?", [c.id]);
+            if (!existing) {
+              const commentTime = c.created_time ? new Date(c.created_time) : new Date();
+              const commenterName = c.from?.name || "Facebook Buyer";
+              await pool.query(
+                `INSERT INTO enquiries (property_id, visitor_id, name, phone, email, message, source, external_id, post_id, created_at)
+                 VALUES (?, NULL, ?, NULL, NULL, ?, 'facebook', ?, ?, ?)`,
+                [prop.id, commenterName, c.message || "Enquired on Facebook", c.id, prop.fb_post_id, commentTime]
+              );
+              syncedComments++;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(`Error syncing comments for property ${prop.id}:`, err.message);
+      }
+    }
+
+    res.json({ success: true, matchedPosts, syncedComments });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
