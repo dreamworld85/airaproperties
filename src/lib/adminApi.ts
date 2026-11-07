@@ -445,7 +445,9 @@ export const adminApi = {
 
   async addPropertyType(data: FormData | { name: string; category?: string; for_sale?: boolean; for_rent?: boolean; show_pc_header?: boolean; show_mobile_header?: boolean; icon_url?: string }): Promise<any> {
     const isFormData = data instanceof FormData;
-    const headers = getAdminHeaders();
+    const headers: Record<string, string> = {
+      "x-admin-auth": localStorage.getItem("kerala_realty_admin_token") || "",
+    };
     if (!isFormData) {
       headers["Content-Type"] = "application/json";
     }
@@ -463,7 +465,9 @@ export const adminApi = {
 
   async updatePropertyType(id: number, data: FormData | { name?: string; category?: string; for_sale?: boolean; for_rent?: boolean; show_pc_header?: boolean; show_mobile_header?: boolean; icon_url?: string }): Promise<any> {
     const isFormData = data instanceof FormData;
-    const headers = getAdminHeaders();
+    const headers: Record<string, string> = {
+      "x-admin-auth": localStorage.getItem("kerala_realty_admin_token") || "",
+    };
     if (!isFormData) {
       headers["Content-Type"] = "application/json";
     }
@@ -475,6 +479,22 @@ export const adminApi = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || "Failed to update property type.");
+    }
+    return res.json();
+  },
+
+  async reorderPropertyTypes(order: number[]): Promise<any> {
+    const res = await fetch(`${API_URL}/api/admin/property-types/reorder`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "x-admin-auth": localStorage.getItem("kerala_realty_admin_token") || "",
+      },
+      body: JSON.stringify({ order }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || "Failed to reorder property types.");
     }
     return res.json();
   },

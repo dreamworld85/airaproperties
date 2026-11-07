@@ -1590,7 +1590,7 @@ router.delete("/top-locations/:id", async (req, res) => {
 // GET /api/admin/property-types (Public / Admin)
 router.get("/property-types", async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM property_types ORDER BY id ASC");
+    const [rows] = await pool.query("SELECT * FROM property_types ORDER BY sort_order ASC, id ASC");
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1641,6 +1641,26 @@ router.post("/property-types", upload.single("icon"), async (req, res) => {
       for_sale: forSaleVal,
       for_rent: forRentVal
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/property-types/reorder (Admin Protected)
+router.put("/property-types/reorder", async (req, res) => {
+  try {
+    const { order, items } = req.body;
+    const orderList = Array.isArray(order) ? order : (Array.isArray(items) ? items.map(i => i.id) : []);
+    if (!orderList || orderList.length === 0) {
+      return res.status(400).json({ message: "Order list is required." });
+    }
+
+    for (let i = 0; i < orderList.length; i++) {
+      const typeId = orderList[i];
+      await pool.query("UPDATE property_types SET sort_order = ? WHERE id = ?", [i + 1, typeId]);
+    }
+
+    res.json({ success: true, message: "Property types reordered successfully." });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

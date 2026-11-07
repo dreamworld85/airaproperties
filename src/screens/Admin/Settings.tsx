@@ -25,7 +25,10 @@ import {
   Key,
   Code,
   Sparkles,
-  Building2
+  Building2,
+  GripVertical,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { api, mediaUrl, getApiUrl } from "@/lib/api";
@@ -149,6 +152,11 @@ export default function Settings() {
   const [editTypeCategory, setEditTypeCategory] = useState<"Residential" | "Commercial" | "Both">("Residential");
   const [editTypeForSale, setEditTypeForSale] = useState(true);
   const [editTypeForRent, setEditTypeForRent] = useState(true);
+
+  // Drag and drop & ordering state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [reordering, setReordering] = useState(false);
+  const [orderSavedMsg, setOrderSavedMsg] = useState(false);
 
   const [landingHeroTitle, setLandingHeroTitle] = useState("");
   const [interstitialSettings, setInterstitialSettings] = useState<any>(null);
@@ -1114,6 +1122,59 @@ export default function Settings() {
       setSavingPropertyType(false);
     }
   }
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(index));
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === dropIndex) return;
+
+    const updated = [...propertyTypesList];
+    const [moved] = updated.splice(draggedIndex, 1);
+    updated.splice(dropIndex, 0, moved);
+
+    setPropertyTypesList(updated);
+    setDraggedIndex(null);
+    await savePropertyTypesOrder(updated);
+  };
+
+  const handleMoveType = async (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= propertyTypesList.length) return;
+
+    const updated = [...propertyTypesList];
+    const temp = updated[index];
+    updated[index] = updated[targetIndex];
+    updated[targetIndex] = temp;
+
+    setPropertyTypesList(updated);
+    await savePropertyTypesOrder(updated);
+  };
+
+  const savePropertyTypesOrder = async (items: any[]) => {
+    setReordering(true);
+    try {
+      const orderIds = items.map((t) => t.id);
+      await adminApi.reorderPropertyTypes(orderIds);
+      setOrderSavedMsg(true);
+      setTimeout(() => setOrderSavedMsg(false), 2500);
+    } catch (err: any) {
+      console.error("Failed to save property types order:", err);
+      alert(err.message || "Failed to save order.");
+      await loadPropertyTypes();
+    } finally {
+      setReordering(false);
+    }
+  };
 
   async function handleDeletePropertyType(id: number, name: string) {
     if (!window.confirm(`Are you sure you want to delete property type "${name}"?`)) {
@@ -3096,17 +3157,29 @@ export default function Settings() {
           </button>
         </form>
 
-        {/* Current Property Types List Card - Matching user mockup Image 2 */}
+        {/* Current Property Types List Card - Matching user mockup Image 2 with Drag & Reorder */}
         <div className="bg-white border border-charcoal/5 rounded-3xl p-6 shadow-sm text-left">
-          <div className="flex items-center justify-between border-b border-charcoal/5 pb-4 mb-4">
+          <div className="flex items-center justify-between border-b border-charcoal/5 pb-4 mb-4 gap-2 flex-wrap">
             <div>
-              <h2 className="font-display font-extrabold text-base text-black">Current Property Types</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="font-display font-extrabold text-base text-black">Current Property Types</h2>
+                {orderSavedMsg && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full border border-emerald-300 animate-fade-in">
+                    ✓ Order Saved!
+                  </span>
+                )}
+                {reordering && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full border border-blue-200 animate-pulse">
+                    Saving Order...
+                  </span>
+                )}
+              </div>
               <p className="text-[10px] text-slate mt-0.5">
-                Existing types available on Add Property page and search filters ({propertyTypesList.length} types).
+                Drag cards or click arrows (▲ / ▼) to set the order shown on frontend (PC & Mobile header).
               </p>
             </div>
             <span className="text-[10px] font-bold px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-200">
-              Active in System
+              {propertyTypesList.length} Active in System
             </span>
           </div>
 
@@ -3118,14 +3191,56 @@ export default function Settings() {
             <p className="text-xs text-slate py-4 text-center">No property types found.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {propertyTypesList.map((t) => (
+              {propertyTypesList.map((t, index) => (
                 <div 
-                  key={t.id} 
-                  className="flex items-center justify-between p-3.5 rounded-2xl border border-charcoal/10 bg-white shadow-xs hover:border-blue-200 transition-all group"
+                  key={t.id}
+                  draggable={true}
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDrop={(e) => handleDrop(e, index)}
+                  className={`flex items-center justify-between p-3 rounded-2xl border transition-all group select-none ${
+                    draggedIndex === index
+                      ? "opacity-40 border-dashed border-blue-500 bg-blue-50/40"
+                      : "border-charcoal/10 bg-white shadow-xs hover:border-blue-300 hover:shadow-sm"
+                  }`}
                 >
-                  <div className="flex flex-col min-w-0 pr-2">
+                  {/* Left: Drag Handle + Order Arrows + Index */}
+                  <div className="flex items-center gap-1.5 mr-2">
+                    <div 
+                      className="cursor-grab active:cursor-grabbing text-slate/40 hover:text-slate p-0.5 rounded transition-colors"
+                      title="Drag to reorder"
+                    >
+                      <GripVertical size={16} />
+                    </div>
+                    <div className="flex flex-col">
+                      <button
+                        type="button"
+                        onClick={() => handleMoveType(index, "up")}
+                        disabled={index === 0 || reordering}
+                        className="p-0.5 hover:bg-slate-100 rounded text-slate/50 hover:text-slate disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed transition-colors"
+                        title="Move Up"
+                      >
+                        <ArrowUp size={10} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMoveType(index, "down")}
+                        disabled={index === propertyTypesList.length - 1 || reordering}
+                        className="p-0.5 hover:bg-slate-100 rounded text-slate/50 hover:text-slate disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed transition-colors"
+                        title="Move Down"
+                      >
+                        <ArrowDown size={10} />
+                      </button>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate/50 w-3 text-center">
+                      {index + 1}
+                    </span>
+                  </div>
+
+                  {/* Middle: Name + Action buttons + Header tags */}
+                  <div className="flex flex-col min-w-0 flex-1 pr-2">
                     <span className="text-xs font-bold text-ink truncate block">{t.name}</span>
-                    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                       <button
                         type="button"
                         onClick={() => openEditPropertyType(t)}
@@ -3157,6 +3272,7 @@ export default function Settings() {
                     </div>
                   </div>
 
+                  {/* Right: Icon Thumbnail */}
                   <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 border border-charcoal/5 shrink-0 overflow-hidden p-1">
                     <img 
                       src={getPropertyTypeIconSrc(t.icon_url)} 

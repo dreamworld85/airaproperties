@@ -53,6 +53,7 @@ export interface ApiPropertyType {
   icon_url?: string;
   show_pc_header?: number | boolean;
   show_mobile_header?: number | boolean;
+  sort_order?: number;
   for_sale: number | boolean;
   for_rent: number | boolean;
   created_at?: string;

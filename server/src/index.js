@@ -765,6 +765,11 @@ async function checkDbMigration() {
       console.log("Adding show_mobile_header column to property_types...");
       await pool.query("ALTER TABLE property_types ADD COLUMN show_mobile_header TINYINT(1) NOT NULL DEFAULT 0");
     }
+    if (!ptColNames.includes("sort_order")) {
+      console.log("Adding sort_order column to property_types...");
+      await pool.query("ALTER TABLE property_types ADD COLUMN sort_order INT NOT NULL DEFAULT 0");
+      await pool.query("UPDATE property_types SET sort_order = id WHERE sort_order = 0");
+    }
 
     const [existingTypes] = await pool.query("SELECT COUNT(*) as count FROM property_types");
     if (existingTypes[0].count === 0) {
@@ -1587,7 +1592,7 @@ app.get("/api/health", (_req, res) => res.json({ ok: true }));
 // GET /api/property-types (Public Property Types getter)
 app.get("/api/property-types", async (_req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM property_types ORDER BY id ASC");
+    const [rows] = await pool.query("SELECT * FROM property_types ORDER BY sort_order ASC, id ASC");
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
