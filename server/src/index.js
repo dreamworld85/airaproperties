@@ -800,6 +800,7 @@ async function checkDbMigration() {
       await pool.query("UPDATE property_types SET icon_url = '/images/villa.svg', show_pc_header = 1, show_mobile_header = 1 WHERE name = 'Independent House / Villa' AND (icon_url IS NULL OR icon_url = '')");
       await pool.query("UPDATE property_types SET icon_url = '/images/villa.svg', show_pc_header = 1, show_mobile_header = 1 WHERE name = 'Plot / Land' AND (icon_url IS NULL OR icon_url = '')");
       await pool.query("UPDATE property_types SET icon_url = '/images/house.svg', show_pc_header = 1, show_mobile_header = 1 WHERE name = 'House' AND (icon_url IS NULL OR icon_url = '')");
+      await pool.query("UPDATE property_types SET icon_url = '/images/villa.svg' WHERE icon_url IS NULL OR icon_url = ''");
     }
     console.log("Database property_types table verified.");
 
