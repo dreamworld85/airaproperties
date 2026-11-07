@@ -245,6 +245,45 @@ export default function Settings() {
     }
   };
 
+  // Facebook Auto-Post Configuration State
+  const [fbPageId, setFbPageId] = useState("1385544157967865");
+  const [fbAccessToken, setFbAccessToken] = useState("");
+  const [savingFbConfig, setSavingFbConfig] = useState(false);
+  const [fbSaveMessage, setFbSaveMessage] = useState<string | null>(null);
+
+  const loadFacebookConfig = async () => {
+    try {
+      const pageIdRes = await adminApi.getSetting("facebook_page_id").catch(() => ({ value: "" }));
+      const tokenRes = await adminApi.getSetting("facebook_page_access_token").catch(() => ({ value: "" }));
+      if (pageIdRes?.value) setFbPageId(pageIdRes.value);
+      if (tokenRes?.value) setFbAccessToken(tokenRes.value);
+    } catch (err) {
+      console.error("Failed to load Facebook config:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "site") {
+      loadFacebookConfig();
+    }
+  }, [activeTab]);
+
+  const handleSaveFacebookConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingFbConfig(true);
+    setFbSaveMessage(null);
+    try {
+      await adminApi.updateSetting("facebook_page_id", fbPageId.trim());
+      await adminApi.updateSetting("facebook_page_access_token", fbAccessToken.trim());
+      setFbSaveMessage("Facebook Page integration settings saved successfully!");
+      setTimeout(() => setFbSaveMessage(null), 4000);
+    } catch (err: any) {
+      alert(err.message || "Failed to save Facebook settings.");
+    } finally {
+      setSavingFbConfig(false);
+    }
+  };
+
   const loadPageSetting = async (pageId: string) => {
     setLoadingPageSetting(true);
     try {
@@ -2615,6 +2654,81 @@ export default function Settings() {
 
         {/* Brand Logos Management Section */}
         {renderBrandLogosCard()}
+
+        {/* Facebook Page Auto-Post Integration Card */}
+        <div className="bg-white border border-charcoal/5 rounded-3xl p-5 shadow-sm text-left">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#1877F2] text-white flex items-center justify-center shadow-xs">
+                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-display font-extrabold text-base text-black">Facebook Page Auto-Post Integration</h2>
+                  <span className="text-[10px] bg-blue-100 text-[#1877F2] font-bold px-2 py-0.5 rounded-full">1-Click Auto Post</span>
+                </div>
+                <p className="text-[10px] text-slate mt-0.5">Publish listings and photos directly to your Facebook Page with one click without logging in.</p>
+              </div>
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveFacebookConfig} className="space-y-4">
+            <div>
+              <label className="text-[11px] font-bold text-slate uppercase tracking-wider block mb-1">
+                Facebook Page ID
+              </label>
+              <input
+                type="text"
+                value={fbPageId}
+                onChange={(e) => setFbPageId(e.target.value)}
+                placeholder="e.g. 1385544157967865"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-charcoal/10 text-xs font-semibold focus:outline-emerald-500"
+                required
+              />
+              <p className="text-[10px] text-slate-400 mt-1">Your AiraProperties Facebook Page ID</p>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-slate uppercase tracking-wider block mb-1">
+                Page Access Token
+              </label>
+              <textarea
+                rows={3}
+                value={fbAccessToken}
+                onChange={(e) => setFbAccessToken(e.target.value)}
+                placeholder="Leave blank to use the system environment token, or paste an updated Page Access Token here"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-charcoal/10 text-xs font-mono focus:outline-emerald-500"
+              />
+              <p className="text-[10px] text-slate-400 mt-1">Requires pages_manage_posts and pages_read_engagement permissions.</p>
+            </div>
+
+            {fbSaveMessage && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                <span>{fbSaveMessage}</span>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                disabled={savingFbConfig}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+              >
+                {savingFbConfig ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <span>Save Facebook Settings</span>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
 
         <div className="bg-white border border-charcoal/5 rounded-3xl p-5 shadow-sm text-left">
           <div className="mb-4">

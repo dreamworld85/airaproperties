@@ -990,6 +990,110 @@ router.delete("/properties/:id", async (req, res) => {
   }
 });
 
+// POST /api/admin/properties/:id/facebook-publish
+router.post("/properties/:id/facebook-publish", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get Page ID and Token from DB settings or process.env
+    const [fbPageIdRow] = await pool.query("SELECT `value` FROM settings WHERE `key` = 'facebook_page_id'");
+    const [fbTokenRow] = await pool.query("SELECT `value` FROM settings WHERE `key` = 'facebook_page_access_token'");
+
+    const pageId = (fbPageIdRow.length > 0 && fbPageIdRow[0].value) ? fbPageIdRow[0].value : (process.env.FB_PAGE_ID || "1385544157967865");
+    const accessToken = (fbTokenRow.length > 0 && fbTokenRow[0].value) ? fbTokenRow[0].value : process.env.FB_PAGE_ACCESS_TOKEN;
+
+    if (!pageId || !accessToken) {
+      return res.status(400).json({ error: "Facebook Page ID or Access Token is missing. Please configure it in Settings." });
+    }
+
+    const [[property]] = await pool.query(
+      `SELECT p.*, u.name as uploader_name, u.phone as uploader_phone
+       FROM properties p
+       LEFT JOIN users u ON p.owner_id = u.id
+       WHERE p.id = ?`,
+      [id]
+    );
+
+    if (!property) {
+      return res.status(404).json({ error: "Property not found." });
+    }
+
+    // Fetch primary image
+    const [mediaRows] = await pool.query(
+      "SELECT url FROM property_media WHERE property_id = ? ORDER BY sort_order ASC LIMIT 1",
+      [id]
+    );
+
+    const pType = property.property_type || "Property";
+    const pLocation = [property.address, property.district, property.state].filter(Boolean).join(", ");
+    const contact = property.contact_number || property.whatsapp_number || property.uploader_phone || "";
+    const contactLine = contact ? `\n📞 Contact: ${contact}` : "";
+    const pPrice = property.price ? `₹${Number(property.price).toLocaleString("en-IN")}` : "Price on Request";
+    const listingUrl = `https://airaproperties.in/property/${id}`;
+
+    const specsList = [];
+    if (property.bedrooms) specsList.push(`${property.bedrooms} Beds`);
+    if (property.bathrooms) specsList.push(`${property.bathrooms} Baths`);
+    if (property.area_sqft) specsList.push(`${property.area_sqft} sq.ft`);
+    const specsText = specsList.length > 0 ? `\n📐 Specs: ${specsList.join(" • ")}` : "";
+
+    const caption = `🏡 ${property.title}\n` +
+      `🏷️ Property Type: ${pType} (${property.purpose || "For Sale"})\n` +
+      `📍 Location: ${pLocation}\n` +
+      `💰 Price: ${pPrice}${specsText}${contactLine}\n\n` +
+      `🔗 View Full Listing & Photos:\n${listingUrl}\n\n` +
+      `#AiraProperties #RealEstate #${(property.district || "Kerala").replace(/[^\w]/g, "")} #${(property.state || "India").replace(/[^\w]/g, "")}`;
+
+    let fbRes;
+    if (mediaRows.length > 0 && mediaRows[0].url) {
+      let fullImageUrl = mediaRows[0].url;
+      if (!fullImageUrl.startsWith("http://") && !fullImageUrl.startsWith("https://")) {
+        fullImageUrl = `https://api.airaproperties.in${fullImageUrl.startsWith("/") ? "" : "/"}${fullImageUrl}`;
+      }
+
+      const params = new URLSearchParams();
+      params.append("url", fullImageUrl);
+      params.append("caption", caption);
+      params.append("access_token", accessToken);
+
+      const response = await fetch(`https://graph.facebook.com/v21.0/${pageId}/photos`, {
+        method: "POST",
+        body: params,
+      });
+      fbRes = await response.json();
+    } else {
+      const params = new URLSearchParams();
+      params.append("message", caption);
+      params.append("link", listingUrl);
+      params.append("access_token", accessToken);
+
+      const response = await fetch(`https://graph.facebook.com/v21.0/${pageId}/feed`, {
+        method: "POST",
+        body: params,
+      });
+      fbRes = await response.json();
+    }
+
+    if (fbRes.error) {
+      console.error("Facebook publish error:", fbRes.error);
+      return res.status(400).json({ error: fbRes.error.message || "Failed to post on Facebook." });
+    }
+
+    const postId = fbRes.post_id || fbRes.id;
+    const postUrl = `https://www.facebook.com/${postId}`;
+
+    return res.json({
+      success: true,
+      postId,
+      postUrl,
+      message: "Property published to Facebook Page successfully!"
+    });
+  } catch (err) {
+    console.error("Facebook post error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/admin/reports
 router.get("/reports", async (req, res) => {
   try {

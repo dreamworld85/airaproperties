@@ -503,12 +503,24 @@ export const adminApi = {
     return res.json();
   },
 
-  async deletePropertyType(id: number): Promise<void> {
+    async deletePropertyType(id: number): Promise<void> {
     const res = await fetch(`${API_URL}/api/admin/property-types/${id}`, {
       method: "DELETE",
       headers: getAdminHeaders(),
     });
     if (!res.ok) throw new Error("Failed to delete property type.");
+    return res.json();
+  },
+
+  async publishToFacebook(id: number | string): Promise<{ success: boolean; postId: string; postUrl: string; message: string }> {
+    const res = await fetch(`${API_URL}/api/admin/properties/${id}/facebook-publish`, {
+      method: "POST",
+      headers: getAdminHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || err.message || "Failed to publish property to Facebook.");
+    }
     return res.json();
   },
 };

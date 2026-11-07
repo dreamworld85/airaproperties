@@ -155,6 +155,8 @@ export default function PropertyList() {
   const [sharingWithImage, setSharingWithImage] = useState(false);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
+  const [isPostingFb, setIsPostingFb] = useState<number | null>(null);
+  const [fbPostSuccess, setFbPostSuccess] = useState<{ propertyId: number; postUrl: string } | null>(null);
 
   // Edit Property Modal State (Admin editing images, youtube_url, status & details)
   const [allPropertyTypes, setAllPropertyTypes] = useState<string[]>(propertyTypes);
@@ -438,6 +440,21 @@ export default function PropertyList() {
     }
     const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(messageText)}`;
     window.open(waUrl, "_blank");
+  };
+
+  // 1-Click Auto-Post directly to Facebook Page
+  const handleAutoPostFacebook = async (p: AdminProperty) => {
+    try {
+      setIsPostingFb(p.id);
+      setShareNotice(null);
+      const res = await adminApi.publishToFacebook(p.id);
+      setFbPostSuccess({ propertyId: p.id, postUrl: res.postUrl });
+      setShareNotice(`🚀 Successfully published "${p.title}" to Facebook Page!`);
+    } catch (err: any) {
+      alert(`Failed to publish to Facebook: ${err.message}`);
+    } finally {
+      setIsPostingFb(null);
+    }
   };
 
   // Facebook share with full details & photo
@@ -930,6 +947,21 @@ export default function PropertyList() {
                                   <span>Share Details</span>
                                 </button>
 
+                                <button
+                                  type="button"
+                                  disabled={isPostingFb === p.id}
+                                  onClick={() => {
+                                    setActiveMenuId(null);
+                                    handleAutoPostFacebook(p);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer disabled:opacity-50"
+                                >
+                                  <svg className="w-3.5 h-3.5 fill-[#1877F2] shrink-0" viewBox="0 0 24 24">
+                                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                                  </svg>
+                                  <span>{isPostingFb === p.id ? "Posting to FB..." : "Post to FB Page"}</span>
+                                </button>
+
                                 <div className="border-t border-slate-100 my-1"></div>
 
                                 {/* SET STATUS matching screenshot */}
@@ -1118,6 +1150,18 @@ export default function PropertyList() {
                         title="Share on WhatsApp & Social Media (includes Photo)"
                       >
                         <Share2 size={14} />
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isPostingFb === p.id}
+                        onClick={() => handleAutoPostFacebook(p)}
+                        className="p-1.5 bg-blue-50 hover:bg-blue-100 text-[#1877F2] rounded-full transition-colors cursor-pointer disabled:opacity-50"
+                        title="Post directly to Facebook Page"
+                      >
+                        <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                        </svg>
                       </button>
                       <button
                         type="button"
@@ -1675,6 +1719,62 @@ export default function PropertyList() {
                   </>
                 )}
               </button>
+            </div>
+
+            {/* 1-CLICK DIRECT AUTO-POST TO FACEBOOK PAGE */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/90 rounded-2xl p-3.5 shadow-xs">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-[#1877F2] text-white flex items-center justify-center shadow-xs shrink-0">
+                    <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <h4 className="text-xs font-bold text-slate-900">Auto-Post to Facebook Page</h4>
+                      <span className="text-[9px] bg-blue-600 text-white font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider">Automated</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-tight mt-0.5">
+                      Posts photo, property type, location & contact directly to @AiraProperties without login
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={isPostingFb === shareProperty.id}
+                  onClick={() => handleAutoPostFacebook(shareProperty)}
+                  className="px-3.5 py-2 bg-[#1877F2] hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all active:scale-98 cursor-pointer disabled:opacity-60 shrink-0"
+                >
+                  {isPostingFb === shareProperty.id ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Posting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={13} className="text-amber-300" />
+                      <span>Post to FB Page</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              {fbPostSuccess && fbPostSuccess.propertyId === shareProperty.id && (
+                <div className="mt-2.5 p-2 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-800">
+                  <span className="font-semibold flex items-center gap-1">
+                    <CheckCircle2 size={14} className="text-emerald-600" />
+                    Posted to Facebook Page!
+                  </span>
+                  <a
+                    href={fbPostSuccess.postUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-bold underline text-blue-700 hover:text-blue-900 inline-flex items-center gap-0.5"
+                  >
+                    View on Facebook ↗
+                  </a>
+                </div>
+              )}
             </div>
 
             {/* 1-Click Social Media Channels */}
