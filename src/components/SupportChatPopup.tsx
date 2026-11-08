@@ -51,7 +51,7 @@ export default function SupportChatPopup({ onClose }: SupportChatPopupProps) {
         {/* Banner illustration */}
         <div className="w-full max-w-xs">
           <img
-            src="/images/support_bnner.svg"
+            src="/support_bnner.svg"
             alt="Support"
             className="w-full h-44 object-contain drop-shadow-sm"
           />
@@ -75,7 +75,7 @@ export default function SupportChatPopup({ onClose }: SupportChatPopupProps) {
             className="flex items-center gap-4 bg-white/80 backdrop-blur-sm rounded-2xl px-5 py-4 shadow-sm active:scale-[0.98] transition-all cursor-pointer border border-white/60 hover:shadow-md"
           >
             <div className="w-12 h-12 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center shrink-0">
-              <img src="/images/online-chat.svg" alt="24hr" className="w-8 h-8" />
+              <img src="/online-chat.svg" alt="24hr" className="w-8 h-8" />
             </div>
             <div className="min-w-0">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">24/7 Support</p>
@@ -93,7 +93,7 @@ export default function SupportChatPopup({ onClose }: SupportChatPopupProps) {
             className="flex items-center gap-4 bg-white/80 backdrop-blur-sm rounded-2xl px-5 py-4 shadow-sm active:scale-[0.98] transition-all cursor-pointer border border-white/60 hover:shadow-md"
           >
             <div className="w-12 h-12 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center shrink-0">
-              <img src="/images/whatsapp.svg" alt="WhatsApp" className="w-8 h-8" />
+              <img src="/whatsapp.svg" alt="WhatsApp" className="w-8 h-8" />
             </div>
             <div className="min-w-0">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">WhatsApp</p>
@@ -107,7 +107,7 @@ export default function SupportChatPopup({ onClose }: SupportChatPopupProps) {
             className="flex items-center gap-4 bg-white/80 backdrop-blur-sm rounded-2xl px-5 py-4 shadow-sm active:scale-[0.98] transition-all cursor-pointer border border-white/60 hover:shadow-md"
           >
             <div className="w-12 h-12 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0">
-              <img src="/images/message.svg" alt="Email" className="w-8 h-8" />
+              <img src="/message.svg" alt="Email" className="w-8 h-8" />
             
             </div>
             <div className="min-w-0">
