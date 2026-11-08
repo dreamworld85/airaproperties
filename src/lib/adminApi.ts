@@ -523,6 +523,61 @@ export const adminApi = {
     }
     return res.json();
   },
+
+  async getFbMarketplaceStatus(): Promise<{
+    success: boolean;
+    totalActiveListings: number;
+    feedUrlXml: string;
+    feedUrlCsv: string;
+    autoSync: boolean;
+    catalogId: string | null;
+    instructions: string[];
+  }> {
+    const res = await fetch(`${API_URL}/api/feeds/status`);
+    if (!res.ok) throw new Error("Failed to fetch Marketplace feed status");
+    return res.json();
+  },
+
+  async toggleFbMarketplaceAutoSync(): Promise<{ success: boolean; autoSync: boolean; message: string }> {
+    const res = await fetch(`${API_URL}/api/feeds/toggle-auto-sync`, {
+      method: "POST",
+      headers: getAdminHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to toggle Marketplace auto-sync");
+    return res.json();
+  },
+
+  async pushToFbMarketplace(propertyId: number | string): Promise<{
+    success: boolean;
+    marketplaceCreateUrl: string;
+    property: {
+      id: number;
+      title: string;
+      price: number;
+      formattedPrice: string;
+      isRent: boolean;
+      propertyType: string;
+      bedrooms: string | number;
+      bathrooms: string | number;
+      areaSqft: string | number;
+      location: string;
+      district: string;
+      description: string;
+      listingUrl: string;
+      images: string[];
+    };
+    directCatalogResult?: any;
+  }> {
+    const res = await fetch(`${API_URL}/api/feeds/push/${propertyId}`, {
+      method: "POST",
+      headers: getAdminHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || err.message || "Failed to push to Marketplace");
+    }
+    return res.json();
+  },
 };
 
 export interface AccountReportTransaction {

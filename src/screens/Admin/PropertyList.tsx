@@ -31,7 +31,10 @@ import {
   Sparkles,
   Send,
   Youtube,
-  UploadCloud
+  UploadCloud,
+  ShoppingBag,
+  Store,
+  RefreshCw
 } from "lucide-react";
 import { adminApi, AdminProperty } from "@/lib/adminApi";
 import { mediaUrl, api, ApiPropertyType, getApiUrl } from "@/lib/api";
@@ -158,6 +161,14 @@ export default function PropertyList() {
   const [isPostingFb, setIsPostingFb] = useState<number | null>(null);
   const [fbPostSuccess, setFbPostSuccess] = useState<{ propertyId: number; postUrl: string } | null>(null);
 
+  // Facebook Marketplace State
+  const [isPushingMarketplace, setIsPushingMarketplace] = useState<number | null>(null);
+  const [marketplaceModalData, setMarketplaceModalData] = useState<any | null>(null);
+  const [marketplaceAutoSync, setMarketplaceAutoSync] = useState(false);
+  const [marketplaceFeedUrl, setMarketplaceFeedUrl] = useState("https://api.airaproperties.in/api/feeds/facebook-marketplace.xml");
+  const [copiedMarketplaceField, setCopiedMarketplaceField] = useState<string | null>(null);
+  const [showFeedGuide, setShowFeedGuide] = useState(false);
+
   // Edit Property Modal State (Admin editing images, youtube_url, status & details)
   const [allPropertyTypes, setAllPropertyTypes] = useState<string[]>(propertyTypes);
   const [editPropertyItem, setEditPropertyItem] = useState<AdminProperty | null>(null);
@@ -191,6 +202,17 @@ export default function PropertyList() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    adminApi.getFbMarketplaceStatus()
+      .then((status) => {
+        if (status) {
+          setMarketplaceAutoSync(status.autoSync);
+          if (status.feedUrlXml) setMarketplaceFeedUrl(status.feedUrlXml);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     api.fetchPropertyTypes()
@@ -454,6 +476,72 @@ export default function PropertyList() {
       alert(`Failed to publish to Facebook: ${err.message}`);
     } finally {
       setIsPostingFb(null);
+    }
+  };
+
+  // Facebook Marketplace 1-Click Push
+  const handlePushFbMarketplace = async (p: AdminProperty) => {
+    try {
+      setIsPushingMarketplace(p.id);
+      setShareNotice(null);
+      const res = await adminApi.pushToFbMarketplace(p.id);
+
+      // Copy description to clipboard immediately
+      if (navigator.clipboard && res.property?.description) {
+        await navigator.clipboard.writeText(res.property.description).catch(() => {});
+      }
+
+      // Open Facebook Marketplace create page in a new window
+      if (res.marketplaceCreateUrl) {
+        window.open(res.marketplaceCreateUrl, "_blank");
+      }
+
+      setMarketplaceModalData(res);
+      setShareNotice("🚀 Opened Facebook Marketplace! Details copied. Paste directly into Marketplace.");
+    } catch (err: any) {
+      alert(`Failed to push to Facebook Marketplace: ${err.message}`);
+    } finally {
+      setIsPushingMarketplace(null);
+    }
+  };
+
+  // Toggle Automated Marketplace Sync
+  const handleToggleMarketplaceAutoSync = async () => {
+    try {
+      const res = await adminApi.toggleFbMarketplaceAutoSync();
+      setMarketplaceAutoSync(res.autoSync);
+      setShareNotice(res.message);
+    } catch (err: any) {
+      alert(`Failed to update auto-sync: ${err.message}`);
+    }
+  };
+
+  // Helper to copy specific field in Marketplace assistant
+  const copyMarketplaceValue = async (field: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedMarketplaceField(field);
+      setTimeout(() => setCopiedMarketplaceField(null), 2000);
+    } catch (err) {
+      console.error("Copy error:", err);
+    }
+  };
+
+  // Download all property images
+  const handleDownloadPropertyImages = async (images: string[], title: string) => {
+    if (!images || images.length === 0) return;
+    try {
+      for (let i = 0; i < Math.min(images.length, 5); i++) {
+        const link = document.createElement("a");
+        link.href = images[i];
+        link.download = `${title.replace(/[^a-zA-Z0-9]/g, "_")}_photo_${i + 1}.jpg`;
+        link.target = "_blank";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -1777,6 +1865,102 @@ export default function PropertyList() {
               )}
             </div>
 
+            {/* FACEBOOK MARKETPLACE 1-CLICK PUSH & AUTOMATION */}
+            <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border border-teal-200/90 rounded-2xl p-3.5 shadow-xs flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-600 to-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                    <Store size={20} className="text-white" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <h4 className="text-xs font-bold text-slate-900">Push FB Marketplace</h4>
+                      <span className="text-[9px] bg-teal-600 text-white font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider">Marketplace</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-tight mt-0.5">
+                      Pre-fills {shareProperty.purpose === "For Rent" ? "Rental" : "Sale"} details, photos & opens FB Marketplace create page
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={isPushingMarketplace === shareProperty.id}
+                  onClick={() => handlePushFbMarketplace(shareProperty)}
+                  className="px-3.5 py-2 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all active:scale-98 cursor-pointer disabled:opacity-60 shrink-0"
+                >
+                  {isPushingMarketplace === shareProperty.id ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Preparing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingBag size={13} className="text-teal-100" />
+                      <span>Push FB Marketplace</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Automated Marketplace Feed & Sync Toggle */}
+              <div className="pt-2.5 border-t border-teal-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleToggleMarketplaceAutoSync}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${marketplaceAutoSync ? "bg-emerald-600" : "bg-slate-300"}`}
+                    role="switch"
+                    aria-checked={marketplaceAutoSync}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${marketplaceAutoSync ? "translate-x-4" : "translate-x-0"}`}
+                    />
+                  </button>
+                  <div>
+                    <span className="font-bold text-slate-800 text-[11px]">
+                      Automated Marketplace:{" "}
+                      <span className={marketplaceAutoSync ? "text-emerald-700" : "text-slate-500"}>
+                        {marketplaceAutoSync ? "Active (Auto-Syncs All Listings)" : "Disabled"}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => copyMarketplaceValue("feedUrl", marketplaceFeedUrl)}
+                    className="px-2 py-1 bg-white hover:bg-slate-50 border border-teal-200 rounded-lg text-[10px] font-bold text-slate-700 flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95"
+                  >
+                    {copiedMarketplaceField === "feedUrl" ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                    <span>{copiedMarketplaceField === "feedUrl" ? "Copied Feed URL!" : "Copy Catalog Feed URL"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowFeedGuide(!showFeedGuide)}
+                    className="text-[10px] text-teal-800 hover:underline font-bold px-1"
+                  >
+                    {showFeedGuide ? "Hide Setup" : "Setup Guide"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Expandable Setup Guide */}
+              {showFeedGuide && (
+                <div className="mt-1 p-2.5 bg-white/80 border border-teal-100 rounded-xl text-[11px] text-slate-700 space-y-1">
+                  <p className="font-bold text-slate-900">How to automate Facebook Marketplace 24/7:</p>
+                  <ol className="list-decimal pl-4 space-y-0.5 text-[10px] text-slate-600">
+                    <li>Open <b>Meta Commerce Manager</b> (<a href="https://business.facebook.com/commerce" target="_blank" rel="noreferrer" className="text-blue-600 underline">business.facebook.com</a>).</li>
+                    <li>Under your Real Estate Catalog, go to <b>Data Sources → Add Items → Data Feed</b>.</li>
+                    <li>Select <b>Scheduled Feed</b> and paste this URL: <code className="bg-slate-100 px-1 rounded text-teal-800 select-all font-mono">{marketplaceFeedUrl}</code></li>
+                    <li>Meta will automatically scan and upload every property to Facebook Marketplace!</li>
+                  </ol>
+                </div>
+              )}
+            </div>
+
             {/* 1-Click Social Media Channels */}
             <div className="flex flex-col gap-2">
               <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
@@ -1908,6 +2092,153 @@ export default function PropertyList() {
                     <span>Copy Link Only</span>
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Facebook Marketplace Quick-Fill Assistant Modal */}
+      {marketplaceModalData && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="px-5 py-3.5 bg-gradient-to-r from-teal-600 to-emerald-600 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <Store size={20} className="text-white" />
+                <div>
+                  <h3 className="font-bold text-sm">FB Marketplace Listing Assistant</h3>
+                  <p className="text-[10px] text-teal-100">Click any field to copy & paste into Facebook Marketplace</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMarketplaceModalData(null)}
+                className="p-1 hover:bg-white/20 rounded-lg text-white transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 overflow-y-auto space-y-3.5 text-xs text-slate-800">
+              <div className="p-2.5 bg-teal-50 border border-teal-200 rounded-xl flex items-center justify-between">
+                <div className="min-w-0 pr-2">
+                  <p className="font-bold text-teal-900 text-xs truncate">{marketplaceModalData.property.title}</p>
+                  <p className="text-[10px] text-teal-700">{marketplaceModalData.property.formattedPrice} • {marketplaceModalData.property.propertyType} ({marketplaceModalData.property.isRent ? "For Rent" : "For Sale"})</p>
+                </div>
+                <a
+                  href={marketplaceModalData.marketplaceCreateUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] rounded-lg shrink-0 flex items-center gap-1 shadow-xs"
+                >
+                  <span>Go to FB Tab</span>
+                  <ExternalLink size={12} />
+                </a>
+              </div>
+
+              {/* Photos Download */}
+              {marketplaceModalData.property.images && marketplaceModalData.property.images.length > 0 && (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ImageIcon size={18} className="text-teal-600" />
+                    <div>
+                      <p className="font-bold text-xs">{marketplaceModalData.property.images.length} Photos Ready</p>
+                      <p className="text-[10px] text-slate-500">Download photos to drag & drop into Facebook</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadPropertyImages(marketplaceModalData.property.images, marketplaceModalData.property.title)}
+                    className="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg font-bold text-slate-700 flex items-center gap-1 text-[11px] shadow-2xs cursor-pointer active:scale-95"
+                  >
+                    <Download size={13} />
+                    <span>Download Photos</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Quick-Copy Fields */}
+              <div className="space-y-2">
+                <p className="font-bold text-[11px] text-slate-500 uppercase tracking-wider">Quick Copy Fields</p>
+
+                {/* Title */}
+                <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="min-w-0 pr-2">
+                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Title</span>
+                    <span className="font-semibold text-slate-800 truncate block">{marketplaceModalData.property.title}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => copyMarketplaceValue("title", marketplaceModalData.property.title)}
+                    className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg text-slate-700 font-bold flex items-center gap-1 text-[11px] shrink-0"
+                  >
+                    {copiedMarketplaceField === "title" ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                    <span>{copiedMarketplaceField === "title" ? "Copied" : "Copy"}</span>
+                  </button>
+                </div>
+
+                {/* Price */}
+                <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="min-w-0 pr-2">
+                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Price</span>
+                    <span className="font-semibold text-slate-800">{marketplaceModalData.property.price}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => copyMarketplaceValue("price", String(marketplaceModalData.property.price))}
+                    className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg text-slate-700 font-bold flex items-center gap-1 text-[11px] shrink-0"
+                  >
+                    {copiedMarketplaceField === "price" ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                    <span>{copiedMarketplaceField === "price" ? "Copied" : "Copy"}</span>
+                  </button>
+                </div>
+
+                {/* Location */}
+                <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="min-w-0 pr-2">
+                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Location / City</span>
+                    <span className="font-semibold text-slate-800 truncate block">{marketplaceModalData.property.district || marketplaceModalData.property.location}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => copyMarketplaceValue("location", marketplaceModalData.property.district || marketplaceModalData.property.location)}
+                    className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg text-slate-700 font-bold flex items-center gap-1 text-[11px] shrink-0"
+                  >
+                    {copiedMarketplaceField === "location" ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                    <span>{copiedMarketplaceField === "location" ? "Copied" : "Copy"}</span>
+                  </button>
+                </div>
+
+                {/* Full Description */}
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Full Description</span>
+                    <button
+                      type="button"
+                      onClick={() => copyMarketplaceValue("description", marketplaceModalData.property.description)}
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg text-slate-700 font-bold flex items-center gap-1 text-[11px]"
+                    >
+                      {copiedMarketplaceField === "description" ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                      <span>{copiedMarketplaceField === "description" ? "Copied All!" : "Copy Description"}</span>
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-600 line-clamp-3 bg-white p-2 rounded border border-slate-200/60 font-mono">
+                    {marketplaceModalData.property.description}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setMarketplaceModalData(null)}
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl cursor-pointer active:scale-95"
+              >
+                Close Assistant
               </button>
             </div>
           </div>

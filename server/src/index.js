@@ -33,6 +33,7 @@ import userRoutes from "./routes/users.js";
 import paymentRoutes from "./routes/payments.js";
 import builderRoutes from "./routes/builders.js";
 import propertyRequestRoutes from "./routes/propertyRequests.js";
+import feedRoutes from "./routes/feeds.js";
 
 // Auto-migrate database table columns for subscription offers
 async function checkDbMigration() {
@@ -1836,6 +1837,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/builders", builderRoutes);
 app.use("/api/property-requests", propertyRequestRoutes);
+app.use("/api/feeds", feedRoutes);
 
 // Serve frontend static build assets from dist if present
 const rootDistDir = path.resolve(process.cwd(), "..", "dist");
