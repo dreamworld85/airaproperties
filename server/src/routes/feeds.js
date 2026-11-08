@@ -14,16 +14,22 @@ function escapeXml(unsafe) {
     .replace(/'/g, "&apos;");
 }
 
-// Map Aira property types to Meta Home Listings property_type standard
+// Clean text for CDATA or description
+function cleanText(text) {
+  if (!text) return "";
+  return String(text).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "").trim();
+}
+
+// Map property type to clean category
 function mapMetaPropertyType(rawType) {
-  if (!rawType) return "other";
+  if (!rawType) return "Real Estate > Property";
   const t = rawType.toLowerCase();
-  if (t.includes("apartment") || t.includes("flat")) return "apartment";
-  if (t.includes("house") || t.includes("individual")) return "single_family";
-  if (t.includes("villa")) return "single_family";
-  if (t.includes("land") || t.includes("plot")) return "land";
-  if (t.includes("commercial") || t.includes("shop") || t.includes("office")) return "commercial";
-  return "other";
+  if (t.includes("apartment") || t.includes("flat")) return "Real Estate > Apartment";
+  if (t.includes("house") || t.includes("individual")) return "Real Estate > House";
+  if (t.includes("villa")) return "Real Estate > Villa";
+  if (t.includes("land") || t.includes("plot")) return "Real Estate > Land";
+  if (t.includes("commercial") || t.includes("shop") || t.includes("office")) return "Real Estate > Commercial";
+  return `Real Estate > ${rawType}`;
 }
 
 // Helper: Ensure full public media URL
@@ -68,120 +74,111 @@ async function getActivePropertiesWithMedia() {
 
 /**
  * GET /api/feeds/facebook-marketplace.xml
- * Meta Real Estate / Home Listings XML Feed for Meta Commerce Manager
- * Specification: Meta Home Listings Catalog Feed
+ * Standard Meta Commerce Manager Product/Catalog XML Feed (RSS 2.0 with Google namespace)
+ * This is the ONLY XML specification officially accepted by Meta Commerce Manager Data Feeds.
  */
 router.get("/facebook-marketplace.xml", async (req, res) => {
   try {
     const properties = await getActivePropertiesWithMedia();
 
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-    xml += `<listings>\n`;
-    xml += `  <title>Aira Properties Real Estate Marketplace Catalog Feed</title>\n`;
-    xml += `  <link rel="self" href="https://api.airaproperties.in/api/feeds/facebook-marketplace.xml"/>\n`;
+    xml += `<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">\n`;
+    xml += `  <channel>\n`;
+    xml += `    <title>Aira Properties Home Listings</title>\n`;
+    xml += `    <link>https://airaproperties.in</link>\n`;
+    xml += `    <description>Properties for sale and rent on Aira Properties</description>\n`;
 
     for (const p of properties) {
       const isRent = String(p.purpose || "").toLowerCase().includes("rent");
-      const availability = isRent ? "for_rent" : "for_sale";
-      const listingType = isRent ? "for_rent_by_agent" : "for_sale_by_agent";
-      const metaPropType = mapMetaPropertyType(p.property_type);
-      const primaryImage = p.mediaUrls.length > 0 ? p.mediaUrls[0] : "";
-      const priceNum = Math.round(Number(p.price) || 0);
+      const purposeLabel = isRent ? "For Rent" : "For Sale";
+      const productType = mapMetaPropertyType(p.property_type);
+      const primaryImage = p.mediaUrls.length > 0 ? p.mediaUrls[0] : "https://airaproperties.in/images/all-properties.svg";
+      const priceVal = Math.max(1, Math.round(Number(p.price) || 0));
+      const priceFormatted = `${priceVal}.00 INR`;
       const url = `https://airaproperties.in/property/${p.id}`;
+      const location = [p.address, p.district, p.state].filter(Boolean).join(", ") || "Kerala, India";
+      const contact = p.contact_number || p.whatsapp_number || p.uploader_phone || "+91 9495126132";
 
-      xml += `  <listing>\n`;
-      xml += `    <home_listing_id>${p.id}</home_listing_id>\n`;
-      xml += `    <name><![CDATA[${p.title}]]></name>\n`;
-      xml += `    <description><![CDATA[${(p.description || p.title || "").slice(0, 5000)}]]></description>\n`;
-      xml += `    <availability>${availability}</availability>\n`;
-      xml += `    <property_type>${metaPropType}</property_type>\n`;
-      xml += `    <listing_type>${listingType}</listing_type>\n`;
-      xml += `    <address format="simple">\n`;
-      xml += `      <component name="addr1"><![CDATA[${p.address || p.district || "Kerala"}]]></component>\n`;
-      xml += `      <component name="city"><![CDATA[${p.district || "Kerala"}]]></component>\n`;
-      xml += `      <component name="region"><![CDATA[${p.state || "Kerala"}]]></component>\n`;
-      xml += `      <component name="country">India</component>\n`;
-      xml += `      <component name="postal_code">${p.pincode || "673001"}</component>\n`;
-      xml += `    </address>\n`;
-      xml += `    <price>${priceNum} INR</price>\n`;
-      xml += `    <url>${escapeXml(url)}</url>\n`;
+      // Build rich description
+      const descParts = [
+        p.title,
+        `Type: ${p.property_type || "Property"} (${purposeLabel})`,
+        `Location: ${location}`,
+        `Price: ₹${priceVal.toLocaleString("en-IN")}${isRent ? " / month" : ""}`,
+      ];
+      if (p.bedrooms) descParts.push(`Bedrooms: ${p.bedrooms} BHK`);
+      if (p.bathrooms) descParts.push(`Bathrooms: ${p.bathrooms}`);
+      if (p.area_sqft) descParts.push(`Built-up Area: ${p.area_sqft} sq.ft`);
+      descParts.push(`Contact: ${contact}`);
+      if (p.description) {
+        descParts.push("\nDetails:\n" + p.description);
+      }
+      const fullDesc = cleanText(descParts.join("\n"));
 
-      if (primaryImage) {
-        xml += `    <image>\n`;
-        xml += `      <url>${escapeXml(primaryImage)}</url>\n`;
-        xml += `    </image>\n`;
-      }
+      xml += `    <item>\n`;
+      xml += `      <g:id>aira_${p.id}</g:id>\n`;
+      xml += `      <g:title><![CDATA[${cleanText(p.title).slice(0, 150)}]]></g:title>\n`;
+      xml += `      <g:description><![CDATA[${fullDesc.slice(0, 5000)}]]></g:description>\n`;
+      xml += `      <g:link>${escapeXml(url)}</g:link>\n`;
+      xml += `      <g:image_link>${escapeXml(primaryImage)}</g:image_link>\n`;
+      xml += `      <g:brand>AiraProperties</g:brand>\n`;
+      xml += `      <g:condition>new</g:condition>\n`;
+      xml += `      <g:availability>in stock</g:availability>\n`;
+      xml += `      <g:price>${priceFormatted}</g:price>\n`;
+      xml += `      <g:product_type><![CDATA[${productType}]]></g:product_type>\n`;
+      xml += `      <g:custom_label_0>${escapeXml(purposeLabel)}</g:custom_label_0>\n`;
+      xml += `      <g:custom_label_1>${escapeXml(p.district || "Kerala")}</g:custom_label_1>\n`;
+      xml += `      <g:custom_label_2>${escapeXml(p.bedrooms ? `${p.bedrooms} BHK` : p.property_type || "Property")}</g:custom_label_2>\n`;
+      xml += `      <g:custom_label_3>${escapeXml(p.area_sqft ? `${p.area_sqft} sqft` : "")}</g:custom_label_3>\n`;
+      xml += `      <g:custom_label_4>${escapeXml(contact)}</g:custom_label_4>\n`;
 
-      // Additional images up to 20
-      for (let i = 1; i < Math.min(p.mediaUrls.length, 20); i++) {
-        xml += `    <additional_image_link>${escapeXml(p.mediaUrls[i])}</additional_image_link>\n`;
-      }
-
-      if (p.bedrooms) {
-        xml += `    <num_beds>${Number(p.bedrooms)}</num_beds>\n`;
-      }
-      if (p.bathrooms) {
-        xml += `    <num_baths>${Number(p.bathrooms)}</num_baths>\n`;
-      }
-      if (p.area_sqft) {
-        xml += `    <area_size>${Math.round(Number(p.area_sqft))}</area_size>\n`;
-        xml += `    <area_unit>sq_ft</area_unit>\n`;
-      }
-      if (p.latitude) {
-        xml += `    <latitude>${p.latitude}</latitude>\n`;
-      }
-      if (p.longitude) {
-        xml += `    <longitude>${p.longitude}</longitude>\n`;
+      // Up to 10 additional images
+      for (let i = 1; i < Math.min(p.mediaUrls.length, 10); i++) {
+        xml += `      <g:additional_image_link>${escapeXml(p.mediaUrls[i])}</g:additional_image_link>\n`;
       }
 
-      xml += `  </listing>\n`;
+      xml += `    </item>\n`;
     }
 
-    xml += `</listings>`;
+    xml += `  </channel>\n`;
+    xml += `</rss>`;
 
     res.set("Content-Type", "application/xml; charset=utf-8");
-    res.set("Cache-Control", "public, max-age=300"); // 5 min cache
+    res.set("Cache-Control", "public, max-age=180");
     res.send(xml);
   } catch (err) {
-    console.error("Facebook Marketplace XML feed error:", err);
+    console.error("Facebook Marketplace RSS feed error:", err);
     res.status(500).set("Content-Type", "text/plain").send("Error generating feed: " + err.message);
   }
 });
 
 /**
  * GET /api/feeds/facebook-marketplace.csv
- * Meta Real Estate CSV Catalog Feed
+ * Standard Meta Commerce Manager Product/Catalog CSV Feed
  */
 router.get("/facebook-marketplace.csv", async (req, res) => {
   try {
     const properties = await getActivePropertiesWithMedia();
 
     const headers = [
-      "home_listing_id",
-      "name",
+      "id",
+      "title",
       "description",
       "availability",
-      "property_type",
-      "listing_type",
-      "address.addr1",
-      "address.city",
-      "address.region",
-      "address.country",
-      "address.postal_code",
+      "condition",
       "price",
-      "url",
-      "image[0].url",
-      "num_beds",
-      "num_baths",
-      "area_size",
-      "area_unit",
-      "latitude",
-      "longitude",
+      "link",
+      "image_link",
+      "brand",
+      "product_type",
+      "custom_label_0",
+      "custom_label_1",
+      "custom_label_2",
     ];
 
     const escapeCsv = (val) => {
       if (val === null || val === undefined) return '""';
-      const str = String(val).replace(/"/g, '""').replace(/\r?\n/g, " ");
+      const str = String(val).replace(/"/g, '""').replace(/\r?\n/g, " ").trim();
       return `"${str}"`;
     };
 
@@ -189,41 +186,34 @@ router.get("/facebook-marketplace.csv", async (req, res) => {
 
     for (const p of properties) {
       const isRent = String(p.purpose || "").toLowerCase().includes("rent");
-      const availability = isRent ? "for_rent" : "for_sale";
-      const listingType = isRent ? "for_rent_by_agent" : "for_sale_by_agent";
-      const metaPropType = mapMetaPropertyType(p.property_type);
-      const primaryImage = p.mediaUrls.length > 0 ? p.mediaUrls[0] : "";
-      const priceStr = `${Math.round(Number(p.price) || 0)} INR`;
+      const purposeLabel = isRent ? "For Rent" : "For Sale";
+      const productType = mapMetaPropertyType(p.property_type);
+      const primaryImage = p.mediaUrls.length > 0 ? p.mediaUrls[0] : "https://airaproperties.in/images/all-properties.svg";
+      const priceVal = Math.max(1, Math.round(Number(p.price) || 0));
+      const priceFormatted = `${priceVal}.00 INR`;
       const url = `https://airaproperties.in/property/${p.id}`;
 
       const row = [
-        escapeCsv(p.id),
-        escapeCsv(p.title),
-        escapeCsv((p.description || p.title || "").slice(0, 5000)),
-        escapeCsv(availability),
-        escapeCsv(metaPropType),
-        escapeCsv(listingType),
-        escapeCsv(p.address || p.district || "Kerala"),
-        escapeCsv(p.district || "Kerala"),
-        escapeCsv(p.state || "Kerala"),
-        escapeCsv("India"),
-        escapeCsv(p.pincode || "673001"),
-        escapeCsv(priceStr),
+        escapeCsv(`aira_${p.id}`),
+        escapeCsv(cleanText(p.title).slice(0, 150)),
+        escapeCsv(cleanText(p.description || p.title || "").slice(0, 5000)),
+        escapeCsv("in stock"),
+        escapeCsv("new"),
+        escapeCsv(priceFormatted),
         escapeCsv(url),
         escapeCsv(primaryImage),
-        escapeCsv(p.bedrooms || ""),
-        escapeCsv(p.bathrooms || ""),
-        escapeCsv(p.area_sqft || ""),
-        escapeCsv(p.area_sqft ? "sq_ft" : ""),
-        escapeCsv(p.latitude || ""),
-        escapeCsv(p.longitude || ""),
+        escapeCsv("AiraProperties"),
+        escapeCsv(productType),
+        escapeCsv(purposeLabel),
+        escapeCsv(p.district || "Kerala"),
+        escapeCsv(p.bedrooms ? `${p.bedrooms} BHK` : ""),
       ];
       rows.push(row.join(","));
     }
 
     res.set("Content-Type", "text/csv; charset=utf-8");
     res.set("Content-Disposition", 'attachment; filename="facebook-marketplace.csv"');
-    res.set("Cache-Control", "public, max-age=300");
+    res.set("Cache-Control", "public, max-age=180");
     res.send(rows.join("\n"));
   } catch (err) {
     console.error("Facebook Marketplace CSV feed error:", err);
@@ -233,7 +223,6 @@ router.get("/facebook-marketplace.csv", async (req, res) => {
 
 /**
  * GET /api/feeds/status
- * Check Facebook Marketplace feed status, total listings, and auto-sync state
  */
 router.get("/status", async (req, res) => {
   try {
@@ -260,10 +249,10 @@ router.get("/status", async (req, res) => {
       catalogId,
       instructions: [
         "1. Open Meta Commerce Manager: https://business.facebook.com/commerce",
-        "2. Select or create your Real Estate Catalog (home_listings)",
-        "3. Go to Data Sources -> Add Items -> Data Feed",
+        "2. Select your Catalogue (Aira Properties Home Listings)",
+        "3. Go to Catalogue -> Data Sources -> Add Items -> Data Feed",
         "4. Choose 'Scheduled Feed' and paste: https://api.airaproperties.in/api/feeds/facebook-marketplace.xml",
-        "5. Meta will automatically sync all active properties to Facebook Marketplace every hour/day!",
+        "5. Meta will automatically sync all active listings into your Catalogue and Marketplace!",
       ],
     });
   } catch (err) {
@@ -274,7 +263,6 @@ router.get("/status", async (req, res) => {
 
 /**
  * POST /api/feeds/toggle-auto-sync
- * Toggle automated marketplace sync setting in settings table
  */
 router.post("/toggle-auto-sync", async (req, res) => {
   try {
@@ -314,7 +302,6 @@ router.post("/toggle-auto-sync", async (req, res) => {
 
 /**
  * POST /api/feeds/push/:id
- * Prepares complete formatted Facebook Marketplace listing data for 1-click publishing
  */
 router.post("/push/:id", async (req, res) => {
   try {
@@ -371,58 +358,6 @@ router.post("/push/:id", async (req, res) => {
       .filter((line) => line !== null)
       .join("\n");
 
-    // Check if Meta Catalog ID & Token are configured for direct Graph API Batch Push
-    let directCatalogResult = null;
-    const [tokenRow] = await pool.query("SELECT `value` FROM settings WHERE `key` = 'facebook_page_access_token'");
-    const [catalogIdRow] = await pool.query("SELECT `value` FROM settings WHERE `key` = 'facebook_catalog_id'");
-    const catalogId = catalogIdRow[0]?.value;
-    const accessToken = tokenRow[0]?.value;
-
-    if (catalogId && accessToken && mediaUrls.length > 0) {
-      try {
-        const batchPayload = {
-          item_type: "PRODUCT_ITEM",
-          requests: [
-            {
-              method: "CREATE",
-              data: {
-                id: `aira_property_${p.id}`,
-                title: p.title,
-                description: formattedDescription,
-                price: `${pPrice} INR`,
-                link: listingUrl,
-                image_link: mediaUrls[0],
-                availability: isRent ? "for_rent" : "for_sale",
-                brand: "AiraProperties",
-                partner_product_location: locationStr,
-                partner_attribute_data: {
-                  property_type: mapMetaPropertyType(p.property_type),
-                  bed_bath: `${p.bedrooms || 1}_${p.bathrooms || 1}`,
-                  area_size: `${p.area_sqft || 0}SQFT`,
-                },
-              },
-            },
-          ],
-        };
-
-        const batchRes = await fetch(
-          `https://graph.facebook.com/v21.0/${catalogId}/items_batch`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify(batchPayload),
-          }
-        );
-        const batchData = await batchRes.json();
-        directCatalogResult = batchData;
-      } catch (catErr) {
-        console.warn("Direct Meta Catalog push note:", catErr.message);
-      }
-    }
-
     res.json({
       success: true,
       marketplaceCreateUrl,
@@ -442,7 +377,6 @@ router.post("/push/:id", async (req, res) => {
         listingUrl,
         images: mediaUrls,
       },
-      directCatalogResult,
     });
   } catch (err) {
     console.error("Push FB Marketplace error:", err);
