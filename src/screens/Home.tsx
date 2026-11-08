@@ -241,7 +241,7 @@ export default function Home() {
             aria-label="Support Chat"
             className="relative w-9 h-9 bg-white border border-charcoal/5 flex items-center justify-center rounded-full shadow-sm hover:bg-slate-50 transition-colors active:scale-95 cursor-pointer shrink-0"
           >
-            <img src="/online-chat.svg" alt="Support" className="w-5 h-5" />
+            <img src="/images/24-hours-service.svg" alt="Support" className="w-5 h-5" />
           </button>
 
           <button 
