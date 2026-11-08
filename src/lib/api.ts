@@ -584,6 +584,15 @@ export const api = {
     return handle<{ success: boolean }>(res);
   },
 
+  async replyFacebookComment(commentId: string, message: string) {
+    const res = await fetch(`${API_URL}/api/users/me/fb-reply`, {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ commentId, message }),
+    });
+    return handle<{ success: boolean; replyId?: string }>(res);
+  },
+
   async fetchPublicProfile(userIdOrSlug: number | string) {
     const res = await fetch(`${API_URL}/api/users/${userIdOrSlug}/profile`);
     return handle<ApiPublicProfile>(res);

@@ -334,6 +334,62 @@ router.post("/me/sync-social-enquiries", requireAuth, async (req, res) => {
   }
 });
 
+// POST /api/users/me/fb-reply -- reply to a Facebook comment on behalf of the page
+// Body: { commentId: string, message: string }
+// commentId can be the Facebook external_id OR the internal enquiry id
+router.post("/me/fb-reply", requireAuth, async (req, res) => {
+  try {
+    const { commentId, message } = req.body;
+    if (!commentId || !message || !message.trim()) {
+      return res.status(400).json({ error: "commentId and message are required." });
+    }
+
+    // Fetch page access token from settings
+    const [tokenRow] = await pool.query("SELECT `value` FROM settings WHERE `key` = 'facebook_page_access_token'");
+    const accessToken = tokenRow[0]?.value || process.env.FB_PAGE_ACCESS_TOKEN;
+    if (!accessToken) {
+      return res.status(400).json({ error: "Facebook page access token not configured." });
+    }
+
+    // Look up the enquiry: match by external_id OR by enquiry id (fallback)
+    const [[enquiry]] = await pool.query(
+      `SELECT e.id, e.external_id FROM enquiries e
+       JOIN properties p ON p.id = e.property_id
+       WHERE (e.external_id = ? OR e.id = ?) AND p.owner_id = ? AND e.source = 'facebook'
+       LIMIT 1`,
+      [commentId, commentId, req.userId]
+    );
+    if (!enquiry) {
+      return res.status(403).json({ error: "Comment not found or does not belong to your property." });
+    }
+
+    // Use the real Facebook comment ID (external_id) for Graph API
+    const fbCommentId = enquiry.external_id;
+    if (!fbCommentId) {
+      return res.status(400).json({ error: "This enquiry has no linked Facebook comment ID. Cannot reply." });
+    }
+
+    // Post reply to Facebook Graph API
+    const fbRes = await fetch(
+      `https://graph.facebook.com/v21.0/${fbCommentId}/comments`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: message.trim(), access_token: accessToken }),
+      }
+    );
+    const fbData = await fbRes.json();
+
+    if (fbData.error) {
+      return res.status(502).json({ error: fbData.error.message || "Facebook API error." });
+    }
+
+    res.json({ success: true, replyId: fbData.id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/users/me/stats — dashboard totals + recent visitors, across all of the
 // user's properties. Backs the Visitors & Enquiries screen.
 router.get("/me/stats", requireAuth, async (req, res) => {

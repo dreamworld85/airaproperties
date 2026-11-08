@@ -19,7 +19,9 @@ import {
   UserCheck,
   Globe,
   Instagram,
-  ExternalLink
+  ExternalLink,
+  CornerDownRight,
+  Loader2
 } from "lucide-react";
 import { api, ApiDashboardStats, mediaUrl } from "@/lib/api";
 import Header from "@/components/Header";
@@ -71,6 +73,12 @@ export default function VisitorsEnquiries() {
   const [copiedId, setCopiedId] = useState<string | number | null>(null);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1000);
 
+  // Facebook reply state: keyed by enquiryId or externalId
+  const [fbReplyText, setFbReplyText] = useState<Record<string, string>>({});
+  const [fbReplySending, setFbReplySending] = useState<Record<string, boolean>>({});
+  const [fbReplySent, setFbReplySent] = useState<Record<string, boolean>>({});
+  const [fbReplyError, setFbReplyError] = useState<Record<string, string | null>>({});
+
   useEffect(() => {
     const handleResize = () => {
       setIsDesktop(window.innerWidth >= 1000);
@@ -110,6 +118,30 @@ export default function VisitorsEnquiries() {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  // Update text for a specific FB reply input
+  const setReplyText = (cid: string, text: string) => {
+    setFbReplyText(prev => ({ ...prev, [cid]: text }));
+    setFbReplyError(prev => ({ ...prev, [cid]: "" }));
+  };
+
+  // Send reply to Facebook comment
+  const handleFbReply = async (cid: string) => {
+    const text = (fbReplyText[cid] || "").trim();
+    if (!text) return;
+    setFbReplySending(prev => ({ ...prev, [cid]: true }));
+    setFbReplyError(prev => ({ ...prev, [cid]: "" }));
+    try {
+      await api.replyFacebookComment(cid, text);
+      setFbReplyText(prev => ({ ...prev, [cid]: "" }));
+      setFbReplySending(prev => ({ ...prev, [cid]: false }));
+      setFbReplySent(prev => ({ ...prev, [cid]: true }));
+      setTimeout(() => setFbReplySent(prev => ({ ...prev, [cid]: false })), 3000);
+    } catch (err: any) {
+      setFbReplySending(prev => ({ ...prev, [cid]: false }));
+      setFbReplyError(prev => ({ ...prev, [cid]: err.message || "Failed to send reply." }));
+    }
   };
 
   const isBrokerOrAgency = user?.role === "Broker" || user?.role === "Agency";
@@ -508,6 +540,63 @@ export default function VisitorsEnquiries() {
                         </div>
                       </div>
                     )}
+
+                    {/* Facebook Reply Input — always show for Facebook source enquiries when not locked */}
+                    {v.source === "facebook" && !v.isLocked && (() => {
+                      const cid = String(v.externalId || v.enquiryId || i);
+                      const text = fbReplyText[cid] || "";
+                      const sending = !!fbReplySending[cid];
+                      const sent = !!fbReplySent[cid];
+                      const replyError = fbReplyError[cid] || "";
+                      return (
+                        <div className="mt-1 flex flex-col gap-2">
+                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#1877F2]">
+                            <CornerDownRight size={12} className="text-[#1877F2]" />
+                            <span>Reply on Facebook</span>
+                          </div>
+                          <div className="flex items-stretch gap-2">
+                            <input
+                              type="text"
+                              value={text}
+                              onChange={e => setReplyText(cid, e.target.value)}
+                              onKeyDown={e => { if (e.key === "Enter" && !sending) handleFbReply(cid); }}
+                              disabled={sending || sent}
+                              placeholder="Write a reply to this comment…"
+                              className="flex-1 px-3 py-2 bg-blue-50 border border-blue-200 focus:border-[#1877F2] rounded-xl text-xs outline-none transition font-medium placeholder:text-blue-300 disabled:opacity-60"
+                            />
+                            <button
+                              onClick={() => handleFbReply(cid)}
+                              disabled={sending || sent || !text.trim()}
+                              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+                                sent
+                                  ? "bg-emerald-500 text-white"
+                                  : "bg-[#1877F2] hover:bg-[#1565d8] text-white shadow-xs"
+                              }`}
+                            >
+                              {sending ? (
+                                <Loader2 size={13} className="animate-spin" />
+                              ) : sent ? (
+                                <>
+                                  <Check size={13} className="stroke-[3]" />
+                                  <span>Sent!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Send size={12} />
+                                  <span>Reply</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                          {replyError && (
+                            <p className="text-[11px] text-rose-600 font-semibold flex items-center gap-1">
+                              <AlertCircle size={11} />
+                              {replyError}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Contact Details & Action Buttons */}
                     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-3 mt-1">
