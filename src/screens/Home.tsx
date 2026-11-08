@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useBrand } from "@/lib/BrandContext";
 import { useNavigate } from "react-router-dom";
 import { INDIAN_STATES, getDistrictsForState, getAllDistricts } from "@/lib/indiaLocationData";
+import SupportChatPopup from "@/components/SupportChatPopup";
 
 const categories = [
   { label: "All", type: "All", icon: "/images/all-properties.svg" },
@@ -110,6 +111,7 @@ export default function Home() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const navigate = useNavigate();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [notifications, setNotifications] = useState<ApiNotification[]>([]);
 
   async function loadNotifications() {
@@ -261,6 +263,9 @@ export default function Home() {
           )}
         </div>
       </header>
+
+      {/* Support Chat Popup */}
+      {isSupportOpen && <SupportChatPopup onClose={() => setIsSupportOpen(false)} />}
 
       {/* Responsive Search Input Row */}
       <form 

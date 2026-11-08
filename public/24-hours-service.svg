@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <circle cx="24" cy="24" r="22" fill="#16a34a" opacity="0.12"/>
+  <circle cx="24" cy="24" r="22" stroke="#16a34a" stroke-width="2"/>
+  <text x="24" y="20" font-size="9" font-weight="bold" fill="#16a34a" text-anchor="middle" font-family="Arial">24</text>
+  <text x="24" y="31" font-size="6.5" font-weight="bold" fill="#16a34a" text-anchor="middle" font-family="Arial">HOURS</text>
+  <path d="M14 34 Q24 28 34 34" stroke="#16a34a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+</svg>
