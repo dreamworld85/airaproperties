@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Star, CheckCircle, MessageSquare, Send, ChevronDown, ChevronUp, User } from "lucide-react";
+import { Star, CheckCircle, MessageSquare, ChevronDown, ChevronUp, User } from "lucide-react";
 import { api, CustomerReviewItem } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -101,24 +101,24 @@ export default function CustomerReviewsSection({
 
   const activeRating = hoverRating !== null ? hoverRating : rating;
 
-  // Review Form Component matching attached image design
+  // Review Form Component: Left banner image + form (review_text_box.jpg is NOT shown here)
   const ReviewFormComponent = (
-    <div className="w-full bg-[#F3F4F6] rounded-3xl p-4 sm:p-6 lg:p-8 border border-gray-200/80 shadow-xs flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-8 overflow-hidden text-left">
+    <div className="w-full bg-[#F3F4F6] rounded-3xl p-4 sm:p-6 lg:p-8 border border-gray-200/80 shadow-xs flex flex-col md:flex-row items-center justify-between gap-6 lg:gap-10 overflow-hidden text-left">
       {/* Left side banner image */}
-      <div className="w-full lg:w-[320px] shrink-0 flex items-center justify-center">
+      <div className="w-full md:w-[320px] lg:w-[360px] shrink-0 flex items-center justify-center">
         <img
           src="/images/review_banner.jpg"
           onError={(e) => {
             (e.target as HTMLImageElement).src = "/review_banner.jpg";
           }}
           alt="The power of Reviews in building trust"
-          className="w-full max-w-[280px] lg:max-w-[320px] h-auto object-contain rounded-2xl shadow-xs"
+          className="w-full max-w-[300px] md:max-w-full h-auto object-contain rounded-2xl shadow-xs"
         />
       </div>
 
-      {/* Center form */}
-      <div className="flex-1 w-full max-w-xl flex flex-col justify-center">
-        <h3 className="font-display font-extrabold text-2xl sm:text-3xl text-gray-900 tracking-tight text-center lg:text-left">
+      {/* Center / Right form */}
+      <div className="flex-1 w-full max-w-2xl flex flex-col justify-center">
+        <h3 className="font-display font-extrabold text-2xl sm:text-3xl text-gray-900 tracking-tight text-center md:text-left">
           We'd love to <span className="text-[#2E7D32]">hear from you!</span>
         </h3>
 
@@ -214,18 +214,6 @@ export default function CustomerReviewsSection({
           </div>
         </form>
       </div>
-
-      {/* Right side feedback graphic */}
-      <div className="w-full lg:w-[320px] shrink-0 hidden md:flex items-center justify-center">
-        <img
-          src="/images/review_text_box.jpg"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = "/review_text_box.jpg";
-          }}
-          alt="Customer Feedback Preview"
-          className="w-full max-w-[280px] lg:max-w-[320px] h-auto object-contain rounded-2xl shadow-xs"
-        />
-      </div>
     </div>
   );
 
@@ -233,7 +221,7 @@ export default function CustomerReviewsSection({
     <section className="w-full flex flex-col gap-6 mt-6">
       {/* Success banner if submitted */}
       {successMessage && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl flex items-center gap-3 shadow-xs animate-fade-in">
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl flex items-center gap-3 shadow-xs animate-fade-in text-left">
           <CheckCircle className="text-emerald-600 shrink-0" size={20} />
           <div className="text-xs font-semibold leading-relaxed">
             {successMessage}
@@ -241,7 +229,7 @@ export default function CustomerReviewsSection({
         </div>
       )}
 
-      {/* IF THERE ARE CONFIRMED REVIEWS: SHOW FRONTEND REVIEWS LIST */}
+      {/* IF USER HAS REVIEW: SHOW review_text_box.jpg SECTION ALONGSIDE THE CONFIRMED REVIEWS */}
       {reviews.length > 0 ? (
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200/80 shadow-xs flex flex-col gap-6 text-left">
           {/* Header Row */}
@@ -252,7 +240,9 @@ export default function CustomerReviewsSection({
                   Verified Feedback
                 </span>
                 <span className="text-xs text-gray-400">•</span>
-                <span className="text-xs text-gray-500 font-medium">{reviews.length} Customer Reviews</span>
+                <span className="text-xs text-gray-500 font-medium">
+                  {reviews.length} {reviews.length === 1 ? "Customer Review" : "Customer Reviews"}
+                </span>
               </div>
               <h2 className="font-display font-bold text-xl sm:text-2xl text-gray-900 tracking-tight mt-1">
                 Customer Reviews
@@ -301,68 +291,94 @@ export default function CustomerReviewsSection({
             </div>
           )}
 
-          {/* Grid of Confirmed Reviews */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {reviews.map((r) => (
-              <div
-                key={r.id}
-                className="bg-[#FAF8F3] hover:bg-white border border-gray-200/70 hover:border-gray-300 rounded-2xl p-5 flex flex-col justify-between gap-3 shadow-xs hover:shadow-md transition-all text-left"
-              >
-                <div>
-                  {/* Reviewer Header */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-full bg-emerald-100 text-[#2E7D32] flex items-center justify-center font-bold text-sm shrink-0 border border-emerald-200">
-                        {r.reviewer_name ? r.reviewer_name.charAt(0).toUpperCase() : <User size={15} />}
+          {/* Reviews Row: review_text_box.jpg section + Customer Reviews Grid */}
+          <div className="flex flex-col lg:flex-row items-stretch gap-6">
+            {/* ONLY SHOWN WHEN USER HAS REVIEWS: review_text_box.jpg image section */}
+            <div className="w-full lg:w-[280px] shrink-0 bg-[#F3F4F6] rounded-2xl p-4 border border-gray-200 flex flex-col items-center justify-center text-center">
+              <img
+                src="/images/review_text_box.jpg"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/review_text_box.jpg";
+                }}
+                alt="Customer Reviews and Feedback"
+                className="w-full max-w-[240px] h-auto object-contain rounded-xl shadow-2xs"
+              />
+              <div className="mt-3">
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#2E7D32] block">
+                  Customer Ratings
+                </span>
+                <p className="text-xs text-gray-700 font-bold mt-0.5">
+                  {summary.averageRating.toFixed(1)} out of 5.0 Stars
+                </p>
+                <p className="text-[11px] text-gray-500 mt-0.5">
+                  Based on {reviews.length} verified {reviews.length === 1 ? "review" : "reviews"}
+                </p>
+              </div>
+            </div>
+
+            {/* Grid of Confirmed Reviews */}
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {reviews.map((r) => (
+                <div
+                  key={r.id}
+                  className="bg-[#FAF8F3] hover:bg-white border border-gray-200/70 hover:border-gray-300 rounded-2xl p-5 flex flex-col justify-between gap-3 shadow-xs hover:shadow-md transition-all text-left"
+                >
+                  <div>
+                    {/* Reviewer Header */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-full bg-emerald-100 text-[#2E7D32] flex items-center justify-center font-bold text-sm shrink-0 border border-emerald-200">
+                          {r.reviewer_name ? r.reviewer_name.charAt(0).toUpperCase() : <User size={15} />}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-xs sm:text-sm text-gray-900 truncate">
+                            {r.reviewer_name}
+                          </h4>
+                          <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
+                            <CheckCircle size={10} /> Verified Review
+                          </span>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-xs sm:text-sm text-gray-900 truncate">
-                          {r.reviewer_name}
-                        </h4>
-                        <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
-                          <CheckCircle size={10} /> Verified Review
-                        </span>
+
+                      {/* Star rating */}
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            size={12}
+                            className={
+                              star <= r.rating
+                                ? "text-emerald-600 fill-emerald-600"
+                                : "text-gray-300 fill-gray-300"
+                            }
+                          />
+                        ))}
                       </div>
                     </div>
 
-                    {/* Star rating */}
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                          key={star}
-                          size={12}
-                          className={
-                            star <= r.rating
-                              ? "text-emerald-600 fill-emerald-600"
-                              : "text-gray-300 fill-gray-300"
-                          }
-                        />
-                      ))}
-                    </div>
+                    {/* Comment */}
+                    <p className="text-xs text-gray-700 mt-3 leading-relaxed bg-white/70 p-3 rounded-xl border border-gray-100">
+                      "{r.comment}"
+                    </p>
                   </div>
 
-                  {/* Comment */}
-                  <p className="text-xs text-gray-700 mt-3 leading-relaxed bg-white/70 p-3 rounded-xl border border-gray-100">
-                    "{r.comment}"
-                  </p>
+                  {/* Footer with date */}
+                  <span className="text-[10px] text-gray-400 self-end font-medium">
+                    {r.created_at
+                      ? new Date(r.created_at).toLocaleDateString("en-IN", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })
+                      : ""}
+                  </span>
                 </div>
-
-                {/* Footer with date */}
-                <span className="text-[10px] text-gray-400 self-end font-medium">
-                  {r.created_at
-                    ? new Date(r.created_at).toLocaleDateString("en-IN", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })
-                    : ""}
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       ) : (
-        /* OR ELSE: IF NO REVIEWS YET, SHOW LEFT SIDE IMAGE, FORM, AND RIGHT SIDE IMAGE */
+        /* OR ELSE: IF NO REVIEWS YET, ONLY SHOW LEFT BANNER IMAGE AND FORM (NO review_text_box.jpg) */
         ReviewFormComponent
       )}
     </section>
