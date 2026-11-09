@@ -16,3 +16,4 @@ public/*.apk
 public/uploads/*.apk
 *.apk
 server/src/uploads/*.apk
+src/uploads/

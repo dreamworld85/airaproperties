@@ -20,6 +20,7 @@ import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import DesktopHeader from "@/components/DesktopHeader";
 import DesktopFooter from "@/components/DesktopFooter";
+import CustomerReviewsSection from "@/components/CustomerReviewsSection";
 import { useAuth } from "@/lib/AuthContext";
 
 export function toSlug(str: string): string {
@@ -343,6 +344,9 @@ export default function AgencyProfile() {
               </div>
             )}
           </div>
+
+          {/* Customer Reviews Row below property listed */}
+          <CustomerReviewsSection targetUserId={profile.id} targetUserName={profile.name} isOwnProfile={Boolean(isOwnerAgency)} />
         </main>
 
         <DesktopFooter />
@@ -455,6 +459,9 @@ export default function AgencyProfile() {
             ))}
           </div>
         )}
+
+        {/* Customer Reviews Row below property listed */}
+        <CustomerReviewsSection targetUserId={profile.id} targetUserName={profile.name} isOwnProfile={Boolean(isOwnerAgency)} />
       </div>
 
       <BottomNav />

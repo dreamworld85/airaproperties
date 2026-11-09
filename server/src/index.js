@@ -490,6 +490,27 @@ async function checkDbMigration() {
     `);
     console.log("Database property_reviews table verified.");
 
+    // Verify customer_reviews table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS customer_reviews (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        target_user_id INT NOT NULL,
+        reviewer_id INT NULL,
+        reviewer_name VARCHAR(120) NOT NULL,
+        reviewer_phone VARCHAR(50) NULL,
+        reviewer_email VARCHAR(160) NULL,
+        rating INT NOT NULL DEFAULT 5,
+        comment TEXT NOT NULL,
+        is_confirmed TINYINT(1) NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_target_user (target_user_id),
+        INDEX idx_reviewer (reviewer_id),
+        INDEX idx_confirmed (is_confirmed)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    console.log("Database customer_reviews table verified.");
+
     // Verify property_views table exists and has all columns
     await pool.query(`
       CREATE TABLE IF NOT EXISTS property_views (

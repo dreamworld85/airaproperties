@@ -1297,6 +1297,103 @@ router.get("/users/:id/reviews", async (req, res) => {
   }
 });
 
+// GET /api/admin/customer-reviews — List all customer reviews with target user and reviewer info
+router.get("/customer-reviews", async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT 
+        cr.id,
+        cr.target_user_id,
+        cr.reviewer_id,
+        cr.reviewer_name,
+        cr.reviewer_phone,
+        cr.reviewer_email,
+        cr.rating,
+        cr.comment,
+        cr.is_confirmed,
+        cr.created_at,
+        cr.updated_at,
+        u.name AS target_user_name,
+        u.email AS target_user_email,
+        u.phone AS target_user_phone,
+        u.role AS target_user_role,
+        u.agency_name AS target_agency_name,
+        ru.avatar_url AS reviewer_avatar
+       FROM customer_reviews cr
+       LEFT JOIN users u ON cr.target_user_id = u.id
+       LEFT JOIN users ru ON cr.reviewer_id = ru.id
+       ORDER BY cr.created_at DESC`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("Failed to fetch admin customer reviews:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/admin/customer-reviews/:id/toggle-confirm — Toggle confirmation status
+router.patch("/customer-reviews/:id/toggle-confirm", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [rows] = await pool.query("SELECT id, is_confirmed FROM customer_reviews WHERE id = ?", [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Review not found" });
+    }
+    const newStatus = rows[0].is_confirmed ? 0 : 1;
+    await pool.query("UPDATE customer_reviews SET is_confirmed = ? WHERE id = ?", [newStatus, id]);
+    res.json({ success: true, is_confirmed: newStatus });
+  } catch (err) {
+    console.error("Failed to toggle review confirmation:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/customer-reviews/:id — Edit review details
+router.put("/customer-reviews/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reviewer_name, reviewer_phone, reviewer_email, rating, comment, is_confirmed } = req.body;
+    
+    await pool.query(
+      `UPDATE customer_reviews 
+       SET reviewer_name = COALESCE(?, reviewer_name),
+           reviewer_phone = COALESCE(?, reviewer_phone),
+           reviewer_email = COALESCE(?, reviewer_email),
+           rating = COALESCE(?, rating),
+           comment = COALESCE(?, comment),
+           is_confirmed = COALESCE(?, is_confirmed)
+       WHERE id = ?`,
+      [
+        reviewer_name !== undefined ? reviewer_name : null,
+        reviewer_phone !== undefined ? reviewer_phone : null,
+        reviewer_email !== undefined ? reviewer_email : null,
+        rating !== undefined ? rating : null,
+        comment !== undefined ? comment : null,
+        is_confirmed !== undefined ? (is_confirmed ? 1 : 0) : null,
+        id
+      ]
+    );
+
+    res.json({ success: true, message: "Review updated successfully." });
+  } catch (err) {
+    console.error("Failed to update customer review:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/customer-reviews/:id — Permanently delete a customer review
+router.delete("/customer-reviews/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query("DELETE FROM customer_reviews WHERE id = ?", [id]);
+    res.json({ success: true, message: "Review deleted successfully." });
+  } catch (err) {
+    console.error("Failed to delete customer review:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // DELETE /api/admin/reviews/:id
 router.delete("/reviews/:id", async (req, res) => {
   try {

@@ -73,6 +73,26 @@ export interface AdminProperty {
   updated_at?: string;
 }
 
+export interface AdminCustomerReview {
+  id: number;
+  target_user_id: number;
+  reviewer_id?: number | null;
+  reviewer_name: string;
+  reviewer_phone?: string | null;
+  reviewer_email?: string | null;
+  rating: number;
+  comment: string;
+  is_confirmed: number;
+  created_at: string;
+  updated_at?: string;
+  target_user_name: string;
+  target_user_email?: string | null;
+  target_user_phone?: string | null;
+  target_user_role?: string | null;
+  target_agency_name?: string | null;
+  reviewer_avatar?: string | null;
+}
+
 export interface AdminReport {
   id: number;
   reason: string;
@@ -294,6 +314,49 @@ export const adminApi = {
     const res = await fetch(`${API_URL}/api/admin/users/${userId}/reviews`, { headers: getAdminHeaders() });
     if (!res.ok) throw new Error("Failed to load user reviews.");
     return res.json();
+  },
+
+    async getCustomerReviews(): Promise<AdminCustomerReview[]> {
+    const res = await fetch(`${API_URL}/api/admin/customer-reviews`, { headers: getAdminHeaders() });
+    if (!res.ok) throw new Error("Failed to load customer reviews.");
+    return res.json();
+  },
+
+  async toggleCustomerReviewConfirm(reviewId: number): Promise<{ success: boolean; is_confirmed: number }> {
+    const res = await fetch(`${API_URL}/api/admin/customer-reviews/${reviewId}/toggle-confirm`, {
+      method: "PATCH",
+      headers: getAdminHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to toggle review confirmation.");
+    return res.json();
+  },
+
+  async updateCustomerReview(
+    reviewId: number,
+    data: {
+      reviewer_name?: string;
+      reviewer_phone?: string;
+      reviewer_email?: string;
+      rating?: number;
+      comment?: string;
+      is_confirmed?: number | boolean;
+    }
+  ): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`${API_URL}/api/admin/customer-reviews/${reviewId}`, {
+      method: "PUT",
+      headers: getAdminHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to update review.");
+    return res.json();
+  },
+
+  async deleteCustomerReview(reviewId: number): Promise<void> {
+    const res = await fetch(`${API_URL}/api/admin/customer-reviews/${reviewId}`, {
+      method: "DELETE",
+      headers: getAdminHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to delete customer review.");
   },
 
   async deleteReview(reviewId: number | string): Promise<void> {

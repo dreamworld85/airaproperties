@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { pool } from "../db.js";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAuth, optionalAuth } from "../middleware/auth.js";
 import { checkUserAccess } from "../utils/access.js";
 import { getStarterPackConfig, getStarterPackForRole, activateStarterPlanForUser } from "../utils/starterPack.js";
 import { deleteUploadedFile } from "../utils/fileHelper.js";
@@ -838,6 +838,130 @@ router.get("/agents", async (req, res) => {
   } catch (err) {
     console.error("Failed to fetch agents:", err);
     res.status(500).json({ error: "Failed to fetch agents" });
+  }
+});
+
+// GET /api/users/:id/customer-reviews — Fetch confirmed customer reviews for user
+router.get("/:id/customer-reviews", async (req, res) => {
+  try {
+    let userRow = null;
+    const isNumeric = /^\d+$/.test(req.params.id);
+
+    if (isNumeric) {
+      const [rows] = await pool.query("SELECT id, name, role, agency_name FROM users WHERE id = ?", [req.params.id]);
+      if (rows.length > 0) userRow = rows[0];
+    }
+
+    if (!userRow) {
+      const targetSlug = toSlug(req.params.id);
+      const [allUsers] = await pool.query("SELECT id, name, role, agency_name FROM users WHERE name IS NOT NULL");
+      userRow = allUsers.find((r) => toSlug(r.name) === targetSlug);
+    }
+
+    if (!userRow) return res.status(404).json({ error: "User not found" });
+
+    // Fetch confirmed customer reviews
+    const [reviews] = await pool.query(
+      `SELECT 
+        cr.id,
+        cr.target_user_id,
+        cr.reviewer_id,
+        cr.reviewer_name,
+        cr.reviewer_phone,
+        cr.reviewer_email,
+        cr.rating,
+        cr.comment,
+        cr.is_confirmed,
+        cr.created_at,
+        u.avatar_url AS reviewer_avatar
+       FROM customer_reviews cr
+       LEFT JOIN users u ON cr.reviewer_id = u.id
+       WHERE cr.target_user_id = ? AND cr.is_confirmed = 1
+       ORDER BY cr.created_at DESC`,
+      [userRow.id]
+    );
+
+    const [[stats]] = await pool.query(
+      `SELECT COUNT(*) AS total, COALESCE(AVG(rating), 0) AS averageRating 
+       FROM customer_reviews 
+       WHERE target_user_id = ? AND is_confirmed = 1`,
+      [userRow.id]
+    );
+
+    res.json({
+      reviews,
+      summary: {
+        totalReviews: Number(stats?.total || 0),
+        averageRating: Number(Number(stats?.averageRating || 0).toFixed(1)),
+      }
+    });
+  } catch (err) {
+    console.error("Failed to fetch customer reviews:", err);
+    res.status(500).json({ error: "Failed to fetch customer reviews" });
+  }
+});
+
+// POST /api/users/:id/customer-reviews — Submit a customer review for a user
+router.post("/:id/customer-reviews", optionalAuth, async (req, res) => {
+  try {
+    let userRow = null;
+    const isNumeric = /^\d+$/.test(req.params.id);
+
+    if (isNumeric) {
+      const [rows] = await pool.query("SELECT id, name FROM users WHERE id = ?", [req.params.id]);
+      if (rows.length > 0) userRow = rows[0];
+    }
+
+    if (!userRow) {
+      const targetSlug = toSlug(req.params.id);
+      const [allUsers] = await pool.query("SELECT id, name FROM users WHERE name IS NOT NULL");
+      userRow = allUsers.find((r) => toSlug(r.name) === targetSlug);
+    }
+
+    if (!userRow) return res.status(404).json({ error: "Target user not found" });
+
+    const { rating, comment, reviewer_name, reviewer_phone, reviewer_email } = req.body;
+
+    if (!comment || !comment.trim()) {
+      return res.status(400).json({ error: "Review comments cannot be empty." });
+    }
+
+    let reviewerId = req.userId || null;
+    let reviewerName = (reviewer_name || "").trim();
+    let reviewerPhone = (reviewer_phone || "").trim();
+    let reviewerEmail = (reviewer_email || "").trim();
+
+    // If logged in, fetch user details if name/phone/email missing
+    if (reviewerId) {
+      const [[authUser]] = await pool.query("SELECT name, phone, email FROM users WHERE id = ?", [reviewerId]);
+      if (authUser) {
+        if (!reviewerName) reviewerName = authUser.name;
+        if (!reviewerPhone) reviewerPhone = authUser.phone || "";
+        if (!reviewerEmail) reviewerEmail = authUser.email || "";
+      }
+    }
+
+    if (!reviewerName) {
+      return res.status(400).json({ error: "Please provide your name." });
+    }
+
+    const starRating = Math.max(1, Math.min(5, Number(rating) || 5));
+
+    const [result] = await pool.query(
+      `INSERT INTO customer_reviews 
+       (target_user_id, reviewer_id, reviewer_name, reviewer_phone, reviewer_email, rating, comment, is_confirmed)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
+      [userRow.id, reviewerId, reviewerName, reviewerPhone, reviewerEmail, starRating, comment.trim()]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Thank you! Your review has been submitted and will be visible once approved by admin.",
+      reviewId: result.insertId,
+    });
+  } catch (err) {
+    console.error("Failed to submit customer review:", err);
+    res.status(500).json({ error: "Failed to submit customer review" });
   }
 });
 

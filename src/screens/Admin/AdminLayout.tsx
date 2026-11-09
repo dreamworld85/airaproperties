@@ -103,6 +103,7 @@ export default function AdminLayout() {
       subItems: [
         { label: "Reported Listings", path: "/admin/reports" },
         { label: "Account Section", path: "/admin/accounts" },
+        { label: "Customer review", path: "/admin/customer-reviews" },
       ]
     },
   ];
@@ -124,6 +125,7 @@ export default function AdminLayout() {
   else if (currentPath === "/admin/builder-inquiries") pageTitle = "Builder Partner Inquiries";
   else if (currentPath === "/admin/reports") pageTitle = "Reported Listings";
   else if (currentPath === "/admin/accounts") pageTitle = "Account Section";
+  else if (currentPath === "/admin/customer-reviews") pageTitle = "Customer Reviews";
   else if (currentPath === "/admin/enquiries") pageTitle = "User Enquiries";
   else if (currentPath === "/admin/analytics") pageTitle = "Analytics";
   else if (currentPath === "/admin/logs") pageTitle = "Activity Logs";

@@ -118,6 +118,28 @@ export interface ApiPropertyDetail extends ApiProperty {
   agencyDistrict?: string | null;
 }
 
+export interface CustomerReviewItem {
+  id: number;
+  target_user_id: number;
+  reviewer_id?: number | null;
+  reviewer_name: string;
+  reviewer_phone?: string | null;
+  reviewer_email?: string | null;
+  rating: number;
+  comment: string;
+  is_confirmed: number;
+  created_at: string;
+  reviewer_avatar?: string | null;
+}
+
+export interface CustomerReviewsResponse {
+  reviews: CustomerReviewItem[];
+  summary: {
+    totalReviews: number;
+    averageRating: number;
+  };
+}
+
 export interface ApiPublicProfile extends ApiUser {
   totalListings: number;
   distinctEnquirers: number;
@@ -591,6 +613,29 @@ export const api = {
       body: JSON.stringify({ commentId, message }),
     });
     return handle<{ success: boolean; replyId?: string }>(res);
+  },
+
+    async fetchCustomerReviews(userIdOrSlug: number | string): Promise<CustomerReviewsResponse> {
+    const res = await fetch(`${API_URL}/api/users/${userIdOrSlug}/customer-reviews`);
+    return handle<CustomerReviewsResponse>(res);
+  },
+
+  async submitCustomerReview(
+    userIdOrSlug: number | string,
+    data: {
+      rating: number;
+      comment: string;
+      reviewer_name: string;
+      reviewer_phone?: string;
+      reviewer_email?: string;
+    }
+  ): Promise<{ success: boolean; message: string; reviewId: number }> {
+    const res = await fetch(`${API_URL}/api/users/${userIdOrSlug}/customer-reviews`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    });
+    return handle<{ success: boolean; message: string; reviewId: number }>(res);
   },
 
   async fetchPublicProfile(userIdOrSlug: number | string) {

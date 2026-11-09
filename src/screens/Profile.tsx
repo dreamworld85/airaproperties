@@ -27,6 +27,7 @@ import { api, mediaUrl, ApiProperty } from "@/lib/api";
 import BottomNav from "@/components/BottomNav";
 import DesktopHeader from "@/components/DesktopHeader";
 import DesktopFooter from "@/components/DesktopFooter";
+import CustomerReviewsSection from "@/components/CustomerReviewsSection";
 import PropertyCard from "@/components/PropertyCard";
 import PropertyListCard from "@/components/PropertyListCard";
 import { toSlug } from "./AgencyProfile";
@@ -461,6 +462,10 @@ export default function Profile() {
               )}
             </div>
           )}
+
+          {user?.id && (
+            <CustomerReviewsSection targetUserId={user.id} targetUserName={user.name} isOwnProfile={true} />
+          )}
         </main>
 
         <DesktopFooter />
@@ -726,6 +731,12 @@ export default function Profile() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {user?.id && (
+        <div className="px-4">
+          <CustomerReviewsSection targetUserId={user.id} targetUserName={user.name} isOwnProfile={true} />
         </div>
       )}
 
