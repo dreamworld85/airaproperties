@@ -97,6 +97,8 @@ export interface ApiProperty {
   userWhatsapp?: string | null;
   contactNumber?: string | null;
   whatsappNumber?: string | null;
+  agencyName?: string | null;
+  brokerName?: string | null;
   latitude?: string | number | null;
   longitude?: string | number | null;
 }

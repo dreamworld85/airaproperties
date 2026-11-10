@@ -27,6 +27,17 @@ const MOCK_AGENTS = [
   { id: 9994, name: "Andrew", avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop", role: "Broker" }
 ];
 
+function matchesPhoneQuery(target?: string | null, searchDigits?: string): boolean {
+  if (!target || !searchDigits || searchDigits.length < 6) return false;
+  const t = target.replace(/\D/g, "");
+  const s = searchDigits.replace(/\D/g, "");
+  if (!t || !s) return false;
+  if (t.includes(s) || s.includes(t)) return true;
+  const t10 = t.length > 10 ? t.slice(-10) : t;
+  const s10 = s.length > 10 ? s.slice(-10) : s;
+  return t10 === s10 || (t10.length >= 6 && s10.includes(t10)) || (s10.length >= 6 && t10.includes(s10));
+}
+
 export default function Home() {
   const { user } = useAuth();
   const { mobileLogoUrl, welcomeBannerUrl, isPopularLocationsEnabled } = useBrand();
@@ -158,15 +169,19 @@ export default function Home() {
 
     const params: Record<string, string> = {};
     
-    if (appliedTypes.length > 0) {
-      params.propertyType = appliedTypes.join(",");
-    } else if (activeCategory !== "All") {
-      params.propertyType = activeCategory;
-    }
+    const queryDigits = searchQuery.replace(/\D/g, "");
+    const isPhoneSearch = queryDigits.length >= 6;
     
-    if (appliedPurpose) params.purpose = appliedPurpose;
-    if (appliedState) params.state = appliedState;
-    if (appliedDistrict) params.district = appliedDistrict;
+    if (!isPhoneSearch) {
+      if (appliedTypes.length > 0) {
+        params.propertyType = appliedTypes.join(",");
+      } else if (activeCategory !== "All") {
+        params.propertyType = activeCategory;
+      }
+      if (appliedPurpose) params.purpose = appliedPurpose;
+      if (appliedState) params.state = appliedState;
+      if (appliedDistrict) params.district = appliedDistrict;
+    }
     if (searchQuery.trim()) params.search = searchQuery.trim();
 
     api
@@ -179,17 +194,17 @@ export default function Home() {
   }, [activeCategory, appliedTypes, appliedPurpose, appliedState, appliedDistrict, searchQuery]);
 
   const filteredProperties = properties.filter((p) => {
-    if (!searchQuery) return true;
+    if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase().trim();
     const queryDigits = q.replace(/\D/g, "");
 
     const matchesPhone = queryDigits.length >= 6 && (
-      (p.contactNumber && p.contactNumber.replace(/\D/g, "").includes(queryDigits)) ||
-      (p.whatsappNumber && p.whatsappNumber.replace(/\D/g, "").includes(queryDigits)) ||
-      (p.ownerPhone && p.ownerPhone.replace(/\D/g, "").includes(queryDigits)) ||
-      (p.ownerWhatsapp && p.ownerWhatsapp.replace(/\D/g, "").includes(queryDigits)) ||
-      (p.userPhone && p.userPhone.replace(/\D/g, "").includes(queryDigits)) ||
-      (p.userWhatsapp && p.userWhatsapp.replace(/\D/g, "").includes(queryDigits))
+      matchesPhoneQuery(p.contactNumber, queryDigits) ||
+      matchesPhoneQuery(p.whatsappNumber, queryDigits) ||
+      matchesPhoneQuery(p.ownerPhone, queryDigits) ||
+      matchesPhoneQuery(p.ownerWhatsapp, queryDigits) ||
+      matchesPhoneQuery(p.userPhone, queryDigits) ||
+      matchesPhoneQuery(p.userWhatsapp, queryDigits)
     );
 
     return (
@@ -198,13 +213,9 @@ export default function Home() {
       p.address.toLowerCase().includes(q) ||
       p.district.toLowerCase().includes(q) ||
       (p.state && p.state.toLowerCase().includes(q)) ||
-      (p.contactNumber && p.contactNumber.toLowerCase().includes(q)) ||
-      (p.whatsappNumber && p.whatsappNumber.toLowerCase().includes(q)) ||
       (p.ownerName && p.ownerName.toLowerCase().includes(q)) ||
-      (p.ownerPhone && p.ownerPhone.toLowerCase().includes(q)) ||
-      (p.ownerWhatsapp && p.ownerWhatsapp.toLowerCase().includes(q)) ||
-      (p.userPhone && p.userPhone.toLowerCase().includes(q)) ||
-      (p.userWhatsapp && p.userWhatsapp.toLowerCase().includes(q))
+      (p.agencyName && p.agencyName.toLowerCase().includes(q)) ||
+      (p.brokerName && p.brokerName.toLowerCase().includes(q))
     );
   });
 
@@ -358,8 +369,32 @@ export default function Home() {
 
       {!loading && !error && (
         <>
-
-
+          {searchQuery.trim() ? (
+            <section className="px-5 pb-12 mt-6 animate-fade-in">
+              <div className="flex items-center justify-between mb-3.5">
+                <div>
+                  <h2 className="font-display font-semibold text-[16px] tracking-wide text-ink">
+                    Search Results ({filteredProperties.length})
+                  </h2>
+                  <p className="text-[11px] text-slate font-medium">
+                    Properties matching "{searchQuery}"
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg"
+                >
+                  Clear
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3.5">
+                {filteredProperties.map((p) => (
+                  <PropertyCard key={p.id} property={p} compact={true} />
+                ))}
+              </div>
+            </section>
+          ) : (
+            <>
           {/* Featured Estates Slider */}
           {activeCategory === "All" && filteredProperties.filter((p) => p.isFeatured).length > 0 && (
             <section className="mt-6 text-left select-none z-10 relative">
@@ -465,6 +500,8 @@ export default function Home() {
               ))}
             </div>
           </section>
+            </>
+          )}
         </>
       )}
 
@@ -552,6 +589,7 @@ export default function Home() {
                   options={[...INDIAN_STATES]}
                   value={filterState}
                   placeholder="All States"
+                  dropUp={true}
                   className="text-xs sm:text-[13.5px] pr-8 truncate"
                   onChange={(e) => {
                     const newState = e.target.value;
@@ -570,6 +608,7 @@ export default function Home() {
                   options={filterState ? getDistrictsForState(filterState) : getAllDistricts()}
                   value={filterDistrict}
                   placeholder={filterState ? `All in ${filterState}` : "All Districts"}
+                  dropUp={true}
                   className="text-xs sm:text-[13.5px] pr-8 truncate"
                   onChange={(e) => setFilterDistrict(e.target.value)}
                 />

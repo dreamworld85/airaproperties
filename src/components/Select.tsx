@@ -8,6 +8,7 @@ interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "onC
   error?: boolean;
   value?: string;
   onChange?: (e: any) => void;
+  dropUp?: boolean;
 }
 
 export default function Select({
@@ -19,6 +20,7 @@ export default function Select({
   className = "",
   value = "",
   onChange,
+  dropUp = false,
 }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -85,8 +87,14 @@ export default function Select({
         </div>
 
         {isOpen && (
-          <div className="absolute left-0 right-0 top-full mt-2 bg-white border border-gray-200 rounded-2xl shadow-2xl z-[99999] overflow-hidden py-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
-            <div className="max-h-60 overflow-y-auto px-1.5 space-y-0.5 no-scrollbar">
+          <div
+            className={`absolute left-0 right-0 ${
+              dropUp
+                ? "bottom-full mb-2 animate-in fade-in slide-in-from-bottom-2"
+                : "top-full mt-2 animate-in fade-in slide-in-from-top-2"
+            } bg-white border border-gray-200 rounded-2xl shadow-2xl z-[99999] overflow-hidden py-1.5 duration-200`}
+          >
+            <div className="max-h-56 overflow-y-auto px-1.5 space-y-0.5 no-scrollbar">
               {options.map((opt, idx) => {
                 const isSelected = value === opt;
                 return (

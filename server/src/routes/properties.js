@@ -101,7 +101,7 @@ router.get("/", optionalAuth, async (req, res) => {
 
     if (state && !isPhoneSearch) { clauses.push("p.state = ?"); params.push(state); }
     if (district && !isPhoneSearch) { clauses.push("p.district = ?"); params.push(district); }
-    if (propertyType) {
+    if (propertyType && !isPhoneSearch) {
       const rawTypes = (Array.isArray(propertyType) ? propertyType : String(propertyType).split(","))
         .map(t => t.trim())
         .filter(Boolean);
@@ -128,7 +128,7 @@ router.get("/", optionalAuth, async (req, res) => {
         params.push(...types);
       }
     }
-    if (purpose) { clauses.push("p.purpose = ?"); params.push(purpose); }
+    if (purpose && !isPhoneSearch) { clauses.push("p.purpose = ?"); params.push(purpose); }
     if (ownerId) { clauses.push("p.owner_id = ?"); params.push(ownerId); }
     
     if (search) {
@@ -151,14 +151,24 @@ router.get("/", optionalAuth, async (req, res) => {
           OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(p.contact_number, ''), ' ', ''), '-', ''), '+91', ''), '+', '') LIKE ?
           OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(p.contact_number, ''), ' ', ''), '-', ''), '+91', ''), '+', '') LIKE ?
           OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(p.whatsapp_number, ''), ' ', ''), '-', ''), '+91', ''), '+', '') LIKE ?
-          OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(p.whatsapp_number, ''), ' ', ''), '-', ''), '+91', ''), '+', '') LIKE ?`;
+          OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(p.whatsapp_number, ''), ' ', ''), '-', ''), '+91', ''), '+', '') LIKE ?
+          OR p.owner_id IN (
+            SELECT id FROM users 
+            WHERE phone LIKE ? OR whatsapp_number LIKE ?
+               OR phone LIKE ? OR whatsapp_number LIKE ?
+               OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(phone, ''), ' ', ''), '-', ''), '+91', ''), '+', '') LIKE ?
+               OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(whatsapp_number, ''), ' ', ''), '-', ''), '+91', ''), '+', '') LIKE ?
+          )`;
 
         phoneParams.push(
           digitWild, digitWild, digitWild, digitWild,
           digitWild, fullDigitWild,
           digitWild, fullDigitWild,
           digitWild, fullDigitWild,
-          digitWild, fullDigitWild
+          digitWild, fullDigitWild,
+          digitWild, digitWild,
+          fullDigitWild, fullDigitWild,
+          digitWild, digitWild
         );
       }
 

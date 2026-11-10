@@ -10,6 +10,17 @@ import { INDIAN_STATES, getDistrictsForState, getAllDistricts } from "@/lib/indi
 const propertyTypes = ["House", "Villa", "Apartment", "Land", "Commercial Space"];
 const purposes = ["For Sale", "For Rent", "For Lease"];
 
+function matchesPhoneQuery(target?: string | null, searchDigits?: string): boolean {
+  if (!target || !searchDigits || searchDigits.length < 6) return false;
+  const t = target.replace(/\D/g, "");
+  const s = searchDigits.replace(/\D/g, "");
+  if (!t || !s) return false;
+  if (t.includes(s) || s.includes(t)) return true;
+  const t10 = t.length > 10 ? t.slice(-10) : t;
+  const s10 = s.length > 10 ? s.slice(-10) : s;
+  return t10 === s10 || (t10.length >= 6 && s10.includes(t10)) || (s10.length >= 6 && t10.includes(s10));
+}
+
 export default function Search() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -90,11 +101,16 @@ export default function Search() {
     setError(null);
     setSearched(true);
 
+    const searchDigits = query.replace(/\D/g, "");
+    const isPhoneSearch = searchDigits.length >= 6;
+
     const params: Record<string, string> = {};
-    if (selectedState) params.state = selectedState;
-    if (district) params.district = district;
-    if (propertyType) params.propertyType = propertyType;
-    if (purpose) params.purpose = purpose;
+    if (!isPhoneSearch) {
+      if (selectedState) params.state = selectedState;
+      if (district) params.district = district;
+      if (propertyType) params.propertyType = propertyType;
+      if (purpose) params.purpose = purpose;
+    }
     if (query) params.search = query;
 
     api.fetchProperties(params)
@@ -107,29 +123,34 @@ export default function Search() {
 
   // Local filter by search query
   const results = rawResults.filter((p) => {
-    if (showFeaturedOnly) {
-      if (!p.isFeatured) return false;
-    } else {
-      const isAllowedFeaturedType = 
-        p.propertyType === "House" || 
-        p.propertyType === "Villa" || 
-        p.propertyType === "Apartment";
-      
-      if (p.isFeatured && !isAllowedFeaturedType) {
-        return false;
-      }
-    }
-    if (!query) return true;
     const q = query.toLowerCase().trim();
     const queryDigits = q.replace(/\D/g, "");
+    const isPhoneSearch = queryDigits.length >= 6;
 
-    const matchesPhone = queryDigits.length >= 6 && (
-      (p.contactNumber && p.contactNumber.replace(/\D/g, "").includes(queryDigits)) ||
-      (p.whatsappNumber && p.whatsappNumber.replace(/\D/g, "").includes(queryDigits)) ||
-      (p.ownerPhone && p.ownerPhone.replace(/\D/g, "").includes(queryDigits)) ||
-      (p.ownerWhatsapp && p.ownerWhatsapp.replace(/\D/g, "").includes(queryDigits)) ||
-      (p.userPhone && p.userPhone.replace(/\D/g, "").includes(queryDigits)) ||
-      (p.userWhatsapp && p.userWhatsapp.replace(/\D/g, "").includes(queryDigits))
+    if (!isPhoneSearch) {
+      if (showFeaturedOnly) {
+        if (!p.isFeatured) return false;
+      } else {
+        const isAllowedFeaturedType = 
+          p.propertyType === "House" || 
+          p.propertyType === "Villa" || 
+          p.propertyType === "Apartment";
+        
+        if (p.isFeatured && !isAllowedFeaturedType) {
+          return false;
+        }
+      }
+    }
+
+    if (!query.trim()) return true;
+
+    const matchesPhone = isPhoneSearch && (
+      matchesPhoneQuery(p.contactNumber, queryDigits) ||
+      matchesPhoneQuery(p.whatsappNumber, queryDigits) ||
+      matchesPhoneQuery(p.ownerPhone, queryDigits) ||
+      matchesPhoneQuery(p.ownerWhatsapp, queryDigits) ||
+      matchesPhoneQuery(p.userPhone, queryDigits) ||
+      matchesPhoneQuery(p.userWhatsapp, queryDigits)
     );
 
     return (
@@ -139,12 +160,8 @@ export default function Search() {
       p.district.toLowerCase().includes(q) ||
       (p.state && p.state.toLowerCase().includes(q)) ||
       (p.ownerName && p.ownerName.toLowerCase().includes(q)) ||
-      (p.contactNumber && p.contactNumber.toLowerCase().includes(q)) ||
-      (p.whatsappNumber && p.whatsappNumber.toLowerCase().includes(q)) ||
-      (p.ownerPhone && p.ownerPhone.toLowerCase().includes(q)) ||
-      (p.ownerWhatsapp && p.ownerWhatsapp.toLowerCase().includes(q)) ||
-      (p.userPhone && p.userPhone.toLowerCase().includes(q)) ||
-      (p.userWhatsapp && p.userWhatsapp.toLowerCase().includes(q))
+      (p.agencyName && p.agencyName.toLowerCase().includes(q)) ||
+      (p.brokerName && p.brokerName.toLowerCase().includes(q))
     );
   });
 
