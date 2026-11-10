@@ -316,9 +316,12 @@ export const adminApi = {
     return res.json();
   },
 
-    async getCustomerReviews(): Promise<AdminCustomerReview[]> {
+  async getCustomerReviews(): Promise<AdminCustomerReview[]> {
     const res = await fetch(`${API_URL}/api/admin/customer-reviews`, { headers: getAdminHeaders() });
-    if (!res.ok) throw new Error("Failed to load customer reviews.");
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || err.message || "Failed to load customer reviews.");
+    }
     return res.json();
   },
 

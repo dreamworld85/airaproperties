@@ -844,17 +844,36 @@ router.get("/agents", async (req, res) => {
 // GET /api/users/:id/customer-reviews — Fetch confirmed customer reviews for user
 router.get("/:id/customer-reviews", async (req, res) => {
   try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS customer_reviews (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        target_user_id INT NOT NULL,
+        reviewer_id INT NULL,
+        reviewer_name VARCHAR(120) NOT NULL,
+        reviewer_phone VARCHAR(50) NULL,
+        reviewer_email VARCHAR(160) NULL,
+        rating INT NOT NULL DEFAULT 5,
+        comment TEXT NOT NULL,
+        is_confirmed TINYINT(1) NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_target_user (target_user_id),
+        INDEX idx_reviewer (reviewer_id),
+        INDEX idx_confirmed (is_confirmed)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
     let userRow = null;
     const isNumeric = /^\d+$/.test(req.params.id);
 
     if (isNumeric) {
-      const [rows] = await pool.query("SELECT id, name, role, agency_name FROM users WHERE id = ?", [req.params.id]);
+      const [rows] = await pool.query("SELECT id, name, role FROM users WHERE id = ?", [req.params.id]);
       if (rows.length > 0) userRow = rows[0];
     }
 
     if (!userRow) {
       const targetSlug = toSlug(req.params.id);
-      const [allUsers] = await pool.query("SELECT id, name, role, agency_name FROM users WHERE name IS NOT NULL");
+      const [allUsers] = await pool.query("SELECT id, name, role FROM users WHERE name IS NOT NULL");
       userRow = allUsers.find((r) => toSlug(r.name) === targetSlug);
     }
 
@@ -904,6 +923,25 @@ router.get("/:id/customer-reviews", async (req, res) => {
 // POST /api/users/:id/customer-reviews — Submit a customer review for a user
 router.post("/:id/customer-reviews", optionalAuth, async (req, res) => {
   try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS customer_reviews (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        target_user_id INT NOT NULL,
+        reviewer_id INT NULL,
+        reviewer_name VARCHAR(120) NOT NULL,
+        reviewer_phone VARCHAR(50) NULL,
+        reviewer_email VARCHAR(160) NULL,
+        rating INT NOT NULL DEFAULT 5,
+        comment TEXT NOT NULL,
+        is_confirmed TINYINT(1) NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_target_user (target_user_id),
+        INDEX idx_reviewer (reviewer_id),
+        INDEX idx_confirmed (is_confirmed)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
     let userRow = null;
     const isNumeric = /^\d+$/.test(req.params.id);
 

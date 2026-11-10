@@ -1300,6 +1300,25 @@ router.get("/users/:id/reviews", async (req, res) => {
 // GET /api/admin/customer-reviews — List all customer reviews with target user and reviewer info
 router.get("/customer-reviews", async (req, res) => {
   try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS customer_reviews (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        target_user_id INT NOT NULL,
+        reviewer_id INT NULL,
+        reviewer_name VARCHAR(120) NOT NULL,
+        reviewer_phone VARCHAR(50) NULL,
+        reviewer_email VARCHAR(160) NULL,
+        rating INT NOT NULL DEFAULT 5,
+        comment TEXT NOT NULL,
+        is_confirmed TINYINT(1) NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_target_user (target_user_id),
+        INDEX idx_reviewer (reviewer_id),
+        INDEX idx_confirmed (is_confirmed)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
     const [rows] = await pool.query(
       `SELECT 
         cr.id,
@@ -1317,7 +1336,7 @@ router.get("/customer-reviews", async (req, res) => {
         u.email AS target_user_email,
         u.phone AS target_user_phone,
         u.role AS target_user_role,
-        u.agency_name AS target_agency_name,
+        IF(u.role = 'Agency', u.name, NULL) AS target_agency_name,
         ru.avatar_url AS reviewer_avatar
        FROM customer_reviews cr
        LEFT JOIN users u ON cr.target_user_id = u.id
