@@ -145,8 +145,8 @@ export default function PropertyListCard({
 
         {/* Bottom Overlay: White gradient with Posted Date */}
         {postedDate && (
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-white/90 via-white/50 to-transparent pt-4 pb-1.5 px-2 z-10 pointer-events-none flex items-end">
-            <span className="text-gray-900 font-bold italic text-[9.5px] sm:text-[10px] tracking-tight select-none">
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-white/90 via-white/50 to-transparent pt-[0.5rem] pb-[0.2rem] px-2 z-10 pointer-events-none flex items-end">
+            <span className="text-gray-900 font-normal italic text-[9px] sm:text-[9.5px] tracking-tight select-none">
               Posted: {postedDate}
             </span>
           </div>

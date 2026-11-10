@@ -139,8 +139,8 @@ export default function PropertyCard({
 
         {/* Bottom Overlay: White gradient with Posted Date */}
         {postedDate && (
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-white/90 via-white/50 to-transparent pt-7 pb-2 px-3 z-10 pointer-events-none flex items-end">
-            <span className="text-gray-900 font-bold italic text-[12px] sm:text-[13px] tracking-tight select-none">
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-white/90 via-white/50 to-transparent pt-[0.5rem] pb-[0.2rem] px-3 z-10 pointer-events-none flex items-end">
+            <span className="text-gray-900 font-normal italic text-[10px] sm:text-[11px] tracking-tight select-none">
               Posted: {postedDate}
             </span>
           </div>
