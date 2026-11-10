@@ -632,7 +632,7 @@ export const api = {
   ): Promise<{ success: boolean; message: string; reviewId: number }> {
     const res = await fetch(`${API_URL}/api/users/${userIdOrSlug}/customer-reviews`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify(data),
     });
     return handle<{ success: boolean; message: string; reviewId: number }>(res);
