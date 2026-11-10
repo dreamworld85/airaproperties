@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Star, CheckCircle, ChevronLeft, ChevronRight, User, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
+import { Star, CheckCircle, ChevronLeft, ChevronRight, User } from "lucide-react";
 import { api, CustomerReviewItem } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -30,7 +30,6 @@ export default function CustomerReviewsSection({
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [showReviewForm, setShowReviewForm] = useState(false);
 
   // Pre-fill user data if logged in
   useEffect(() => {
@@ -105,7 +104,6 @@ export default function CustomerReviewsSection({
         setPhone("");
         setEmail("");
       }
-      setShowReviewForm(false);
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to submit review. Please try again.");
     } finally {
@@ -116,7 +114,7 @@ export default function CustomerReviewsSection({
   const activeRating = hoverRating !== null ? hoverRating : rating;
   const currentReview = reviews.length > 0 ? reviews[currentSlide % reviews.length] : null;
 
-  // Review Form sub-component
+  // Review Form sub-component (Right Column)
   const ReviewFormElement = (
     <div className="flex flex-col justify-center text-left">
       <h3 className="font-display font-extrabold text-2xl sm:text-[26px] text-gray-900 tracking-tight leading-tight">
@@ -229,61 +227,39 @@ export default function CustomerReviewsSection({
         </div>
       )}
 
-      {/* CASE 1: IF NO REVIEWS EXIST YET -> JUST SHOW review_text_box.jpg */}
-      {reviews.length === 0 ? (
-        <div className="w-full bg-[#F3F4F6] rounded-3xl p-5 sm:p-8 border border-gray-200/80 shadow-xs flex flex-col items-center justify-center text-center">
+      {/* UNIFIED 3-COLUMN LAYOUT:
+          LEFT: review_banner.jpg |
+          MIDDLE: review_text_box.jpg (if no reviews) OR review comments + slider (if reviews exist) |
+          RIGHT: review form */}
+      <div className="w-full bg-[#F7F7F8] rounded-3xl p-4 sm:p-6 lg:p-7 border border-gray-200/80 shadow-xs flex flex-col lg:flex-row items-stretch gap-5 sm:gap-6 text-left overflow-hidden">
+        
+        {/* COLUMN 1: LEFT SIDE - review_banner.jpg */}
+        <div className="w-full lg:w-[28%] xl:w-[26%] shrink-0 flex items-center justify-center rounded-2xl overflow-hidden bg-white shadow-2xs border border-gray-100">
           <img
-            src="/images/review_text_box.jpg"
+            src="/images/review_banner.jpg"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = "https://airaproperties.in/images/review_text_box.jpg";
+              (e.target as HTMLImageElement).src = "https://airaproperties.in/images/review_banner.jpg";
             }}
-            alt="Customer Reviews"
-            onClick={() => !isOwnProfile && setShowReviewForm(!showReviewForm)}
-            className={`w-full max-w-2xl h-auto object-contain rounded-2xl shadow-xs ${
-              !isOwnProfile ? "cursor-pointer hover:opacity-95 transition" : ""
-            }`}
+            alt="The power of Reviews in building trust"
+            className="w-full h-full object-cover max-h-[360px] sm:max-h-[440px] rounded-2xl"
           />
-
-          {/* Toggle Write Review Button for visitors if no reviews yet */}
-          {!isOwnProfile && (
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={() => setShowReviewForm(!showReviewForm)}
-                className="px-6 py-2.5 bg-[#2E7D32] hover:bg-[#256629] text-white text-xs sm:text-sm font-bold rounded-full shadow-md flex items-center gap-2 transition active:scale-95 cursor-pointer mx-auto"
-              >
-                <MessageSquare size={16} />
-                <span>{showReviewForm ? "Close Review Form" : "Write a Review"}</span>
-                {showReviewForm ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </button>
-            </div>
-          )}
-
-          {/* Expandable Form if toggled */}
-          {showReviewForm && !isOwnProfile && (
-            <div className="w-full max-w-xl mt-6 text-left animate-fade-in bg-white rounded-3xl p-6 sm:p-8 border border-gray-200 shadow-sm">
-              {ReviewFormElement}
-            </div>
-          )}
         </div>
-      ) : (
-        /* CASE 2: IF REVIEWS ALREADY EXIST -> 3-COLUMN UNIFIED DESIGN:
-           LEFT: review_banner.jpg | MIDDLE: review with comments & slider | RIGHT: review form */
-        <div className="w-full bg-[#F7F7F8] rounded-3xl p-4 sm:p-6 lg:p-7 border border-gray-200/80 shadow-xs flex flex-col lg:flex-row items-stretch gap-5 sm:gap-6 text-left overflow-hidden">
-          
-          {/* COLUMN 1: LEFT SIDE - review_banner.jpg */}
-          <div className="w-full lg:w-[28%] xl:w-[26%] shrink-0 flex items-center justify-center rounded-2xl overflow-hidden bg-white shadow-2xs border border-gray-100">
+
+        {/* COLUMN 2: MIDDLE
+            - If NO review: show review_text_box.jpg
+            - If ALREADY HAVE review: show review with comments and slider */}
+        {reviews.length === 0 ? (
+          <div className="flex-1 min-w-0 flex items-center justify-center bg-[#FCFCFA] rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-gray-200/70 shadow-2xs overflow-hidden">
             <img
-              src="/images/review_banner.jpg"
+              src="/images/review_text_box.jpg"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = "https://airaproperties.in/images/review_banner.jpg";
+                (e.target as HTMLImageElement).src = "https://airaproperties.in/images/review_text_box.jpg";
               }}
-              alt="The power of Reviews in building trust"
-              className="w-full h-full object-cover max-h-[360px] sm:max-h-[440px] rounded-2xl"
+              alt="Feedback Box"
+              className="w-full h-auto max-h-[360px] sm:max-h-[440px] object-contain rounded-2xl"
             />
           </div>
-
-          {/* COLUMN 2: MIDDLE - REVIEW WITH COMMENTS + SLIDER */}
+        ) : (
           <div className="flex-1 min-w-0 flex flex-col justify-between bg-[#FCFCFA] rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-gray-200/70 shadow-2xs">
             {/* Top row: Customer Ratings Badge + Slider Controls */}
             <div className="flex items-start justify-between gap-3">
@@ -300,7 +276,7 @@ export default function CustomerReviewsSection({
                 </p>
               </div>
 
-              {/* Slider Next Button (Green square/pill button as in screenshot) */}
+              {/* Slider Next/Prev Buttons */}
               {reviews.length > 1 && (
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
@@ -392,27 +368,27 @@ export default function CustomerReviewsSection({
               </div>
             )}
           </div>
+        )}
 
-          {/* COLUMN 3: RIGHT SIDE - REVIEW FORM */}
-          {!isOwnProfile ? (
-            <div className="w-full lg:w-[38%] xl:w-[36%] shrink-0 flex flex-col justify-center bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-gray-200/80 shadow-2xs">
-              {ReviewFormElement}
+        {/* COLUMN 3: RIGHT SIDE - REVIEW FORM */}
+        {!isOwnProfile ? (
+          <div className="w-full lg:w-[38%] xl:w-[36%] shrink-0 flex flex-col justify-center bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-gray-200/80 shadow-2xs">
+            {ReviewFormElement}
+          </div>
+        ) : (
+          /* On user's own profile, show friendly verified review info */
+          <div className="w-full lg:w-[32%] shrink-0 flex flex-col justify-center items-center bg-white rounded-2xl sm:rounded-3xl p-6 border border-gray-200/80 shadow-2xs text-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#2E7D32] flex items-center justify-center border border-emerald-100">
+              <CheckCircle size={24} />
             </div>
-          ) : (
-            /* On user's own profile, show a clean message or stats instead of self-reviewing */
-            <div className="w-full lg:w-[32%] shrink-0 flex flex-col justify-center items-center bg-white rounded-2xl sm:rounded-3xl p-6 border border-gray-200/80 shadow-2xs text-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#2E7D32] flex items-center justify-center border border-emerald-100">
-                <CheckCircle size={24} />
-              </div>
-              <h4 className="font-bold text-base text-gray-900">Your Verified Reviews</h4>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Customers and clients can leave feedback directly on your public profile. Approved reviews are displayed here to build trust.
-              </p>
-            </div>
-          )}
+            <h4 className="font-bold text-base text-gray-900">Your Verified Reviews</h4>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Customers and clients can leave feedback directly on your public profile. Approved reviews are displayed here to build trust.
+            </p>
+          </div>
+        )}
 
-        </div>
-      )}
+      </div>
     </section>
   );
 }
