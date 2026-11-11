@@ -303,62 +303,83 @@ export default function MoreInfoStep3() {
 
         {/* Section 6: Price Details */}
         <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 mt-2">
-          <span className="text-sm font-bold text-[#091F40]">Price Details</span>
+          <span className="text-sm font-bold text-[#091F40]">Total Price Details</span>
           
-          <div className={`relative border rounded-[8px] px-4 pt-5 pb-2.5 bg-white flex items-center shadow-sm focus-within:border-[#59AD63] transition-all duration-150 ${
-            attemptedNext && !form.price ? "border-rose-500 bg-rose-50/5" : "border-[#59AD63]/30"
-          }`}>
-            <span className="absolute top-1.5 left-4 text-[10px] font-semibold text-slate/60 select-none">
-              ₹ Expected Price
-            </span>
-            <input
-              type="number"
-              placeholder="e.g. 5,000,000"
-              value={form.price || ""}
-              onChange={(e) => update({ price: e.target.value })}
-              className="flex-1 text-[13.5px] font-bold text-charcoal placeholder:text-slate/30 outline-none bg-transparent"
-            />
-          </div>
-          {form.price && Number(form.price) > 0 && (
-            <div className="text-[12.5px] font-bold text-[#59AD63] pl-1 animate-fade-in -mt-1 select-none flex items-center gap-1.5 flex-wrap">
-              <span>Total Price: ₹ {Math.round(Number(form.price)).toLocaleString("en-IN")}</span>
-              {(() => {
-                const num = Number(form.price);
-                let words = "";
-                if (num >= 10000000) {
-                  const cr = num / 10000000;
-                  words = `${cr.toFixed(2).replace(/\.00$/, "")} Crore${cr > 1 ? "s" : ""}`;
-                } else if (num >= 100000) {
-                  const lakh = num / 100000;
-                  words = `${lakh.toFixed(2).replace(/\.00$/, "")} Lakh${lakh > 1 ? "s" : ""}`;
-                } else if (num >= 1000) {
-                  const thousand = num / 1000;
-                  words = `${thousand.toFixed(2).replace(/\.00$/, "")} Thousand`;
-                }
-                return words ? (
-                  <span className="text-[11.5px] font-semibold text-slate-500">
-                    ({words})
-                  </span>
-                ) : null;
-              })()}
-              {(() => {
-                const num = Number(form.price);
-                const area = Number(form.carpetArea || form.areaSqft);
-                const unit = form.areaUnit || (isLand ? "Cents" : "sq.ft.");
-                if (num > 0 && area > 0) {
-                  const rate = Math.round(num / area);
-                  const unitSingular = unit.replace(/s$/, "");
-                  return (
-                    <span className="text-[11.5px] font-semibold text-[#091F40]/70 ml-1">
-                      • ₹ {rate.toLocaleString("en-IN")} / {unitSingular}
-                    </span>
-                  );
-                }
-                return null;
-              })()}
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <div className={`relative border rounded-[8px] px-4 pt-5 pb-2.5 bg-white flex items-center shadow-sm focus-within:border-[#59AD63] transition-all duration-150 ${
+                attemptedNext && !form.price ? "border-rose-500 bg-rose-50/5" : "border-[#59AD63]/30"
+              }`}>
+                <span className="absolute top-1.5 left-4 text-[10px] font-semibold text-slate/60 select-none">
+                  ₹ Expected Price
+                </span>
+                <input
+                  type="number"
+                  placeholder="e.g. 5,000,000"
+                  value={form.price || ""}
+                  onChange={(e) => update({ price: e.target.value })}
+                  className="flex-1 text-[13.5px] font-bold text-charcoal placeholder:text-slate/30 outline-none bg-transparent"
+                />
+              </div>
+              {form.price && Number(form.price) > 0 && (
+                <div className="text-[12px] font-bold text-[#59AD63] pl-1 animate-fade-in mt-1 select-none">
+                  {(() => {
+                    const num = Number(form.price);
+                    const formatted = Math.round(num).toLocaleString("en-IN");
+                    if (num >= 10000000) {
+                      const cr = num / 10000000;
+                      return `${formatted} (${cr.toFixed(2).replace(/\.00$/, "")} Cr)`;
+                    }
+                    if (num >= 100000) {
+                      const lakh = num / 100000;
+                      return `${formatted} (${lakh.toFixed(2).replace(/\.00$/, "")} L)`;
+                    }
+                    return formatted;
+                  })()}
+                </div>
+              )}
             </div>
-          )}
 
+            {/* Calculated Price per Cent / Unit (matching attached screenshot) */}
+            {(() => {
+              const numPrice = Number(form.price);
+              const numArea = Number(form.carpetArea || form.areaSqft);
+              const unit = (form.areaUnit || (isLand ? "Cents" : "sq.ft.")).toLowerCase();
+              
+              if (!numPrice || numPrice <= 0 || !numArea || numArea <= 0) return null;
+
+              let rate = 0;
+              let label = "Price per Cent";
+              
+              if (unit.includes("acre")) {
+                // 1 Acre = 100 Cents
+                const totalCents = numArea * 100;
+                rate = Math.round(numPrice / totalCents);
+                label = "Price per Cent";
+              } else if (unit.includes("cent")) {
+                rate = Math.round(numPrice / numArea);
+                label = "Price per Cent";
+              } else if (unit.includes("sq.yrd")) {
+                rate = Math.round(numPrice / numArea);
+                label = "Price per sq.yrd";
+              } else if (unit.includes("sq.m")) {
+                rate = Math.round(numPrice / numArea);
+                label = "Price per sq.m";
+              } else {
+                rate = Math.round(numPrice / numArea);
+                label = "Price per sq.ft";
+              }
+
+              return (
+                <div className="shrink-0 flex flex-col justify-center px-1">
+                  <span className="text-[13px] font-bold text-[#091F40] whitespace-nowrap">{label}</span>
+                  <span className="text-[18px] font-extrabold text-[#091F40] tracking-tight mt-0.5 whitespace-nowrap">
+                    ₹ {rate.toLocaleString("en-IN")}
+                  </span>
+                </div>
+              );
+            })()}
+          </div>
           <div className="flex flex-col gap-2.5 mt-1 pl-0.5">
             {/* Price Negotiable */}
             <label className="flex items-center gap-2.5 cursor-pointer select-none self-start">

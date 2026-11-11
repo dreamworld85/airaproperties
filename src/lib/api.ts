@@ -1008,67 +1008,52 @@ export function getLandAreaDetails(areaSqft: number, price?: number, explicitUni
   }
 
   let primary = "";
-  let secondary = "";
   let rateLabel = "RATE / CENT";
   let rateValue = "—";
   let pricePerCent = "—";
   let pricePerAcre = "—";
 
-  if (selectedUnit === "Cents") {
-    primary = `${cents} Cents`;
-    secondary = `${Math.round(sqft).toLocaleString("en-IN")} SqFt`;
-    rateLabel = "RATE / CENT";
-    if (price && cents > 0) {
-      const rate = Math.round(price / cents);
-      rateValue = `₹${rate} / Cent`;
-      pricePerCent = `₹${rate} / Cent`;
-    }
-  } else if (selectedUnit === "Acres") {
-    primary = `${acres} ${acres === 1 ? "Acre" : "Acres"}`;
-    secondary = `${cents} Cents`;
-    rateLabel = "RATE / ACRE";
-    if (price && acres > 0) {
-      const rate = Math.round(price / acres);
-      rateValue = `₹${rate} / Acre`;
-      pricePerAcre = `₹${rate} / Acre`;
-    }
-  } else if (selectedUnit === "sq.yrd.") {
-    primary = `${sqYrds} sq.yrd.`;
-    secondary = `${Math.round(sqft).toLocaleString("en-IN")} SqFt`;
-    rateLabel = "RATE / SQ.YRD";
-    if (price && sqYrds > 0) {
-      const rate = Math.round(price / sqYrds);
-      rateValue = `₹${rate} / sq.yrd.`;
-    }
-  } else if (selectedUnit === "sq.m.") {
-    primary = `${sqM} sq.m.`;
-    secondary = `${Math.round(sqft).toLocaleString("en-IN")} SqFt`;
-    rateLabel = "RATE / SQ.M";
-    if (price && sqM > 0) {
-      const rate = Math.round(price / sqM);
-      rateValue = `₹${rate} / sq.m.`;
-    }
-  } else {
-    // sq.ft.
-    primary = `${Math.round(sqft).toLocaleString("en-IN")} sq.ft.`;
-    secondary = `${cents} Cents`;
-    rateLabel = "RATE / SQ.FT";
-    if (price && sqft > 0) {
-      const rate = Math.round(price / sqft);
-      rateValue = `₹${rate} / sq.ft.`;
-    }
-  }
-
-  if (pricePerCent === "—" && price && cents > 0) {
+  if (price && cents > 0) {
     const rate = Math.round(price / cents);
     pricePerCent = `₹${rate} / Cent`;
   }
-  if (pricePerAcre === "—" && price && acres > 0) {
+  if (price && acres > 0) {
     const rate = Math.round(price / acres);
     pricePerAcre = `₹${rate} / Acre`;
   }
 
-  const fullDisplay = `${primary} (${secondary})`;
+  if (selectedUnit === "Cents") {
+    primary = `${cents} Cents`;
+    rateLabel = "RATE / CENT";
+    rateValue = pricePerCent;
+  } else if (selectedUnit === "Acres") {
+    primary = `${acres} ${acres === 1 ? "Acre" : "Acres"}`;
+    // For Acres as well, user requested to show 1 cent price
+    rateLabel = "RATE / CENT";
+    rateValue = pricePerCent;
+  } else if (selectedUnit === "sq.yrd.") {
+    primary = `${sqYrds} sq.yrd.`;
+    rateLabel = "RATE / SQ.YRD";
+    if (price && sqYrds > 0) {
+      rateValue = `₹${Math.round(price / sqYrds)} / sq.yrd.`;
+    }
+  } else if (selectedUnit === "sq.m.") {
+    primary = `${sqM} sq.m.`;
+    rateLabel = "RATE / SQ.M";
+    if (price && sqM > 0) {
+      rateValue = `₹${Math.round(price / sqM)} / sq.m.`;
+    }
+  } else {
+    // sq.ft.
+    primary = `${Math.round(sqft).toLocaleString("en-IN")} sq.ft.`;
+    rateLabel = "RATE / SQ.FT";
+    if (price && sqft > 0) {
+      rateValue = `₹${Math.round(price / sqft)} / sq.ft.`;
+    }
+  }
+
+  const secondary = primary;
+  const fullDisplay = primary;
 
   return {
     unit: selectedUnit,
