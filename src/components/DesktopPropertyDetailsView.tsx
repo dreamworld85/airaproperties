@@ -88,7 +88,7 @@ export default function DesktopPropertyDetailsView({
   }, [property]);
 
   const isLand = isLandProperty(property.propertyType);
-  const landArea = getLandAreaDetails(property.areaSqft, property.price);
+  const landArea = getLandAreaDetails(property.areaSqft, property.price, property.areaUnit || (property as any).area_unit);
 
   const formattedPropertyId = (() => {
     if (!property.id) return "P991131";
@@ -535,7 +535,7 @@ export default function DesktopPropertyDetailsView({
                     {property.areaSqft && (
                       <span className="flex items-center gap-1">
                         <Maximize className="w-3.5 h-3.5 text-gray-400" />
-                        Sqft: {property.areaSqft}
+                        Area: {landArea.primary}
                       </span>
                     )}
                   </>
@@ -682,30 +682,30 @@ export default function DesktopPropertyDetailsView({
                         <Maximize className="w-4 h-4" />
                       </div>
                       <div>
-                        <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Land Area</span>
-                        <span className="text-xs font-extrabold text-emerald-700">{landArea.primary}</span>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">{isLand ? "Land Area" : "Carpet Area"}</span>
+                        <span className="text-xs font-extrabold text-emerald-600">{landArea.primary}</span>
                       </div>
                     </div>
 
-                    {/* 4. Measure in Cents / Equivalent */}
+                    {/* 4. Total Price */}
                     <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
                       <div className="p-2 rounded-lg bg-white shrink-0 text-emerald-600 shadow-xs">
                         <Layers className="w-4 h-4" />
                       </div>
                       <div>
-                        <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">In Cents</span>
-                        <span className="text-xs font-extrabold text-gray-900">{landArea.secondary}</span>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">TOTAL PRICE</span>
+                        <span className="text-xs font-extrabold text-gray-900 truncate block">₹ {Math.round(property.price)}</span>
                       </div>
                     </div>
 
-                    {/* 5. Rate / Cent */}
+                    {/* 5. Rate */}
                     <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
                       <div className="p-2 rounded-lg bg-white shrink-0 text-emerald-600 shadow-xs">
                         <Tag className="w-4 h-4" />
                       </div>
                       <div>
-                        <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Rate / Cent</span>
-                        <span className="text-xs font-extrabold text-gray-900">{landArea.pricePerCent}</span>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">{landArea.rateLabel}</span>
+                        <span className="text-xs font-extrabold text-gray-900 truncate block">{landArea.rateValue}</span>
                       </div>
                     </div>
 
@@ -806,7 +806,7 @@ export default function DesktopPropertyDetailsView({
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Super Built-up</span>
-                        <span className="text-xs font-extrabold text-gray-900">{property.areaSqft} SqFt</span>
+                        <span className="text-xs font-extrabold text-gray-900">{landArea.primary}</span>
                       </div>
                     </div>
 
@@ -828,7 +828,7 @@ export default function DesktopPropertyDetailsView({
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Carpet Area</span>
-                        <span className="text-xs font-extrabold text-gray-900">{property.areaSqft} SqFt</span>
+                        <span className="text-xs font-extrabold text-gray-900">{landArea.primary}</span>
                       </div>
                     </div>
                   </>

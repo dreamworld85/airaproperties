@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Heart, Share2, Flag, Phone, MessageCircle, ChevronLeft, ChevronRight, MapPin, X, Star, Maximize, BedDouble, Bath, Compass, Eye, Download, Play, Shield, Award, Calendar, Check, Building, Users, CheckCircle2, Tag, Image as ImageIcon, Coins, Zap, Copy } from "lucide-react";
-import { api, ApiPropertyDetail, mediaUrl, formatArea, parseYouTubeVideo } from "@/lib/api";
+import { api, ApiPropertyDetail, mediaUrl, formatArea, getLandAreaDetails, parseYouTubeVideo } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import RoleBadge from "@/components/RoleBadge";
 import BottomNav from "@/components/BottomNav";
@@ -749,22 +749,20 @@ View Details: ${window.location.origin}/property/${property.id}`;
               {/* Area */}
               <div className="flex flex-col items-center justify-center text-center gap-1 border-r border-charcoal/5">
                 <Maximize size={16.5} className="text-forest/85" />
-                <span className="font-display font-medium text-[11px] xs:text-[12.5px] text-charcoal leading-none mt-0.5 truncate max-w-[95%]">
-                  {property.propertyType === "Plot / Land" || property.propertyType === "Land" ? (
-                    property.areaSqft >= 43560 
-                      ? `${Number((property.areaSqft / 43560).toFixed(2))}`
-                      : `${Number((property.areaSqft / 435.6).toFixed(2))}`
-                  ) : (
-                    property.areaSqft.toLocaleString()
-                  )}
-                </span>
-                <span className="text-[8px] xs:text-[9px] font-medium text-slate/75 uppercase tracking-wider">
-                  {property.propertyType === "Plot / Land" || property.propertyType === "Land" ? (
-                    property.areaSqft >= 43560 ? "Acres" : "Cents"
-                  ) : (
-                    "sq.ft"
-                  )}
-                </span>
+                {(() => {
+                  const landArea = getLandAreaDetails(property.areaSqft, property.price, property.areaUnit || (property as any).area_unit);
+                  const parts = landArea.primary.split(" ");
+                  return (
+                    <>
+                      <span className="font-display font-medium text-[11px] xs:text-[12.5px] text-charcoal leading-none mt-0.5 truncate max-w-[95%]">
+                        {parts[0]}
+                      </span>
+                      <span className="text-[8px] xs:text-[9px] font-medium text-slate/75 uppercase tracking-wider">
+                        {parts.slice(1).join(" ") || "sq.ft"}
+                      </span>
+                    </>
+                  );
+                })()}
               </div>
               {/* Type */}
               <div className="flex flex-col items-center justify-center text-center gap-1">

@@ -67,6 +67,7 @@ export interface ApiProperty {
   purpose: string;
   price: number;
   areaSqft: number;
+  areaUnit?: string | null;
   address: string;
   state?: string;
   district: string;
@@ -977,68 +978,115 @@ export function isLandProperty(propertyType?: string | null): boolean {
   return t === "land" || t === "plot / land" || t.includes("land") || t.includes("plot");
 }
 
-export function getLandAreaDetails(areaSqft: number, price?: number) {
+export function getLandAreaDetails(areaSqft: number, price?: number, explicitUnit?: string | null) {
   const sqft = Number(areaSqft) || 0;
-  const cents = sqft / 435.6;
-  const acres = sqft / 43560;
-  const hasAcres = acres >= 1;
+  const cents = Number((sqft / 435.6).toFixed(2));
+  const acres = Number((sqft / 43560).toFixed(2));
+  const sqYrds = Number((sqft / 9).toFixed(2));
+  const sqM = Number((sqft / 10.7639).toFixed(2));
 
-  const formattedAcres = Number(acres.toFixed(2));
-  const formattedCents = Number(cents.toFixed(cents % 1 === 0 ? 0 : 2));
+  const unitLower = (explicitUnit || "").toLowerCase().trim();
 
-  const primary = hasAcres 
-    ? `${formattedAcres} Acres` 
-    : `${formattedCents} Cents`;
+  let selectedUnit = "Cents";
+  if (unitLower.includes("acre")) {
+    selectedUnit = "Acres";
+  } else if (unitLower.includes("cent")) {
+    selectedUnit = "Cents";
+  } else if (unitLower.includes("sq.yrd") || unitLower.includes("yard")) {
+    selectedUnit = "sq.yrd.";
+  } else if (unitLower.includes("sq.m") || unitLower.includes("meter") || unitLower.includes("metre")) {
+    selectedUnit = "sq.m.";
+  } else if (unitLower.includes("sq.ft") || unitLower.includes("sqft") || unitLower.includes("feet") || unitLower.includes("foot")) {
+    selectedUnit = "sq.ft.";
+  } else {
+    // If not specified, default heuristics:
+    if (acres >= 1 && (acres % 1 === 0 || cents % 100 === 0)) {
+      selectedUnit = "Acres";
+    } else {
+      selectedUnit = "Cents";
+    }
+  }
 
-  const secondary = hasAcres 
-    ? `${formattedCents} Cents` 
-    : `${Math.round(sqft).toLocaleString("en-IN")} SqFt`;
-
-  const fullDisplay = hasAcres 
-    ? `${formattedAcres} Acres (${formattedCents} Cents)` 
-    : `${formattedCents} Cents (${Math.round(sqft).toLocaleString("en-IN")} SqFt)`;
-
+  let primary = "";
+  let secondary = "";
+  let rateLabel = "RATE / CENT";
+  let rateValue = "—";
   let pricePerCent = "—";
-  if (price && cents > 0) {
-    const rate = Math.round(price / cents);
-    if (rate >= 10000000) {
-      pricePerCent = `₹${(rate / 10000000).toFixed(2)} Cr / Cent`;
-    } else if (rate >= 100000) {
-      pricePerCent = `₹${(rate / 100000).toFixed(2)} L / Cent`;
-    } else {
-      pricePerCent = `₹${rate.toLocaleString("en-IN")} / Cent`;
+  let pricePerAcre = "—";
+
+  if (selectedUnit === "Cents") {
+    primary = `${cents} Cents`;
+    secondary = `${Math.round(sqft).toLocaleString("en-IN")} SqFt`;
+    rateLabel = "RATE / CENT";
+    if (price && cents > 0) {
+      const rate = Math.round(price / cents);
+      rateValue = `₹${rate} / Cent`;
+      pricePerCent = `₹${rate} / Cent`;
+    }
+  } else if (selectedUnit === "Acres") {
+    primary = `${acres} ${acres === 1 ? "Acre" : "Acres"}`;
+    secondary = `${cents} Cents`;
+    rateLabel = "RATE / ACRE";
+    if (price && acres > 0) {
+      const rate = Math.round(price / acres);
+      rateValue = `₹${rate} / Acre`;
+      pricePerAcre = `₹${rate} / Acre`;
+    }
+  } else if (selectedUnit === "sq.yrd.") {
+    primary = `${sqYrds} sq.yrd.`;
+    secondary = `${Math.round(sqft).toLocaleString("en-IN")} SqFt`;
+    rateLabel = "RATE / SQ.YRD";
+    if (price && sqYrds > 0) {
+      const rate = Math.round(price / sqYrds);
+      rateValue = `₹${rate} / sq.yrd.`;
+    }
+  } else if (selectedUnit === "sq.m.") {
+    primary = `${sqM} sq.m.`;
+    secondary = `${Math.round(sqft).toLocaleString("en-IN")} SqFt`;
+    rateLabel = "RATE / SQ.M";
+    if (price && sqM > 0) {
+      const rate = Math.round(price / sqM);
+      rateValue = `₹${rate} / sq.m.`;
+    }
+  } else {
+    // sq.ft.
+    primary = `${Math.round(sqft).toLocaleString("en-IN")} sq.ft.`;
+    secondary = `${cents} Cents`;
+    rateLabel = "RATE / SQ.FT";
+    if (price && sqft > 0) {
+      const rate = Math.round(price / sqft);
+      rateValue = `₹${rate} / sq.ft.`;
     }
   }
 
-  let pricePerAcre = "—";
-  if (price && acres > 0) {
-    const rate = Math.round(price / acres);
-    if (rate >= 10000000) {
-      pricePerAcre = `₹${(rate / 10000000).toFixed(2)} Cr / Acre`;
-    } else if (rate >= 100000) {
-      pricePerAcre = `₹${(rate / 100000).toFixed(2)} L / Acre`;
-    } else {
-      pricePerAcre = `₹${rate.toLocaleString("en-IN")} / Acre`;
-    }
+  if (pricePerCent === "—" && price && cents > 0) {
+    const rate = Math.round(price / cents);
+    pricePerCent = `₹${rate} / Cent`;
   }
+  if (pricePerAcre === "—" && price && acres > 0) {
+    const rate = Math.round(price / acres);
+    pricePerAcre = `₹${rate} / Acre`;
+  }
+
+  const fullDisplay = `${primary} (${secondary})`;
 
   return {
-    cents: formattedCents,
-    acres: formattedAcres,
+    unit: selectedUnit,
+    cents,
+    acres,
     primary,
     secondary,
     fullDisplay,
+    rateLabel,
+    rateValue,
     pricePerCent,
     pricePerAcre
   };
 }
 
-export function formatArea(areaSqft: number, propertyType?: string): string {
-  if (isLandProperty(propertyType)) {
-    const details = getLandAreaDetails(areaSqft);
-    return details.primary;
-  }
-  return `${(Number(areaSqft) || 0).toLocaleString("en-IN")} sq.ft`;
+export function formatArea(areaSqft: number, propertyType?: string, areaUnit?: string): string {
+  const details = getLandAreaDetails(areaSqft, undefined, areaUnit);
+  return details.primary;
 }
 
 export function formatPrice(price: number | string | undefined | null, purpose?: string): string {

@@ -27,6 +27,7 @@ function toPublicProperty(row, media = [], isSaved = false) {
     purpose: row.purpose,
     price: Number(row.price),
     areaSqft: row.area_sqft,
+    areaUnit: row.area_unit || null,
     address: row.address,
     state: row.state || "Kerala",
     district: row.district,
@@ -775,28 +776,36 @@ router.post("/", requireAuth, upload.any(), optimizeImages, async (req, res) => 
     const finalIsBrokerPersonalProperty = (finalRole === "broker" && (isBrokerPersonalProperty === "true" || isBrokerPersonalProperty === true || isBrokerPersonalProperty === 1)) ? 1 : 0;
     const finalIsPriceNegotiable = (isPriceNegotiable === "true" || isPriceNegotiable === true || isPriceNegotiable === 1) ? 1 : 0;
 
-    const [result] = await conn.query(
-      `INSERT INTO properties
+    const [cols] = await conn.query("SHOW COLUMNS FROM properties LIKE 'area_unit'");
+    const hasAreaUnit = cols.length > 0;
+    const areaUnitVal = req.body.areaUnit || (propertyType === "Land" || propertyType === "Plot / Land" ? "Cents" : "sq.ft.");
+
+    let insertQuery = `INSERT INTO properties
         (owner_id, title, property_type, purpose, price, area_sqft, address, state, district,
          bedrooms, bathrooms, furnishing, facing, property_age, description, listing_role,
-         contact_number, whatsapp_number, owner_name, broker_name, agency_name, agency_logo_url, youtube_url, status, is_broker_personal_property, is_price_negotiable, latitude, longitude)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        req.userId,
-        title || `${propertyType} in ${district}`,
-        propertyType, purpose, price, areaSqft, address, state || "Kerala", district,
-        bedrooms || 0, bathrooms || 0, furnishing || null, facing || null,
-        propertyAge || null, description || null, finalRole,
-        contactNumber || null, whatsappNumber || null,
-        ownerName || null, brokerName || null, agencyName || null, agencyLogoUrl,
-        youtubeUrl || null,
-        initialStatus,
-        finalIsBrokerPersonalProperty,
-        finalIsPriceNegotiable,
-        latitude ? Number(latitude) : null,
-        longitude ? Number(longitude) : null,
-      ]
-    );
+         contact_number, whatsapp_number, owner_name, broker_name, agency_name, agency_logo_url, youtube_url, status, is_broker_personal_property, is_price_negotiable, latitude, longitude${hasAreaUnit ? ", area_unit" : ""})
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${hasAreaUnit ? ", ?" : ""})`;
+
+    const insertParams = [
+      req.userId,
+      title || `${propertyType} in ${district}`,
+      propertyType, purpose, price, areaSqft, address, state || "Kerala", district,
+      bedrooms || 0, bathrooms || 0, furnishing || null, facing || null,
+      propertyAge || null, description || null, finalRole,
+      contactNumber || null, whatsappNumber || null,
+      ownerName || null, brokerName || null, agencyName || null, agencyLogoUrl,
+      youtubeUrl || null,
+      initialStatus,
+      finalIsBrokerPersonalProperty,
+      finalIsPriceNegotiable,
+      latitude ? Number(latitude) : null,
+      longitude ? Number(longitude) : null,
+    ];
+    if (hasAreaUnit) {
+      insertParams.push(areaUnitVal);
+    }
+
+    const [result] = await conn.query(insertQuery, insertParams);
 
     const propertyId = result.insertId;
 
@@ -1018,28 +1027,36 @@ router.put("/:id", requireAuth, upload.any(), optimizeImages, async (req, res) =
     const finalIsBrokerPersonalProperty = (String(listingRole || "").toLowerCase() === "broker" && (isBrokerPersonalProperty === "true" || isBrokerPersonalProperty === true || isBrokerPersonalProperty === 1)) ? 1 : 0;
     const finalIsPriceNegotiable = (isPriceNegotiable === "true" || isPriceNegotiable === true || isPriceNegotiable === 1) ? 1 : 0;
 
-    await conn.query(
-      `UPDATE properties SET
+    const [cols] = await conn.query("SHOW COLUMNS FROM properties LIKE 'area_unit'");
+    const hasAreaUnit = cols.length > 0;
+    const areaUnitVal = req.body.areaUnit;
+
+    let updateQuery = `UPDATE properties SET
         title = ?, property_type = ?, purpose = ?, price = ?, area_sqft = ?, address = ?, state = ?, district = ?,
         bedrooms = ?, bathrooms = ?, furnishing = ?, facing = ?, property_age = ?, description = ?, listing_role = ?,
         contact_number = ?, whatsapp_number = ?, owner_name = ?, broker_name = ?, agency_name = ?, agency_logo_url = ?, youtube_url = ?, is_broker_personal_property = ?, is_price_negotiable = ?,
-        latitude = ?, longitude = ?
-       WHERE id = ?`,
-      [
-        title || `${propertyType} in ${district}`,
-        propertyType, purpose, price, areaSqft, address, state || "Kerala", district,
-        bedrooms || 0, bathrooms || 0, furnishing || null, facing || null,
-        propertyAge || null, description || null, listingRole,
-        contactNumber || null, whatsappNumber || null,
-        ownerName || null, brokerName || null, agencyName || null, agencyLogoUrl,
-        youtubeUrl || null,
-        finalIsBrokerPersonalProperty,
-        finalIsPriceNegotiable,
-        latitude ? Number(latitude) : null,
-        longitude ? Number(longitude) : null,
-        req.params.id,
-      ]
-    );
+        latitude = ?, longitude = ?${hasAreaUnit && areaUnitVal ? ", area_unit = ?" : ""}
+       WHERE id = ?`;
+
+    const updateParams = [
+      title || `${propertyType} in ${district}`,
+      propertyType, purpose, price, areaSqft, address, state || "Kerala", district,
+      bedrooms || 0, bathrooms || 0, furnishing || null, facing || null,
+      propertyAge || null, description || null, listingRole,
+      contactNumber || null, whatsappNumber || null,
+      ownerName || null, brokerName || null, agencyName || null, agencyLogoUrl,
+      youtubeUrl || null,
+      finalIsBrokerPersonalProperty,
+      finalIsPriceNegotiable,
+      latitude ? Number(latitude) : null,
+      longitude ? Number(longitude) : null,
+    ];
+    if (hasAreaUnit && areaUnitVal) {
+      updateParams.push(areaUnitVal);
+    }
+    updateParams.push(req.params.id);
+
+    await conn.query(updateQuery, updateParams);
 
     // If new media files are uploaded, insert them (appending to existing ones)
     if (mediaFiles.length > 0) {

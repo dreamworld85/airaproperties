@@ -702,6 +702,11 @@ async function checkDbMigration() {
       await pool.query("ALTER TABLE properties ADD COLUMN state VARCHAR(100) NOT NULL DEFAULT 'Kerala'");
     }
 
+    if (!propColNames.includes("area_unit")) {
+      console.log("Adding area_unit column to properties...");
+      await pool.query("ALTER TABLE properties ADD COLUMN area_unit VARCHAR(30) NULL DEFAULT 'Cents'");
+    }
+
     // Ensure 'Sold' is in status ENUM of properties table and migrate any blank status to 'Sold'
     try {
       await pool.query("ALTER TABLE properties MODIFY COLUMN status ENUM('Draft','Pending','Active','Inactive','Rejected','Sold') DEFAULT 'Pending'");

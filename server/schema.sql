@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS properties (
   purpose        ENUM('For Sale','For Rent') NOT NULL,
   price          DECIMAL(14,2) NOT NULL,
   area_sqft      INT NOT NULL,
+  area_unit      VARCHAR(30) DEFAULT 'Cents',
   address        VARCHAR(255) NOT NULL,
   district       VARCHAR(80) NOT NULL,
   bedrooms       INT DEFAULT 0,

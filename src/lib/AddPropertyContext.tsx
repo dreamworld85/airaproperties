@@ -153,7 +153,16 @@ export function AddPropertyProvider({ children }: { children: ReactNode }) {
       purpose: property.purpose || "For Sale",
       price: String(property.price || ""),
       areaSqft: String(property.areaSqft || ""),
-      areaUnit: property.areaUnit || "Cents",
+      areaUnit: property.areaUnit || (property.propertyType === "Land" || property.propertyType === "Plot / Land" ? "Cents" : "sq.ft."),
+      carpetArea: (() => {
+        const sqft = Number(property.areaSqft) || 0;
+        const unit = property.areaUnit || (property.propertyType === "Land" || property.propertyType === "Plot / Land" ? "Cents" : "sq.ft.");
+        if (unit === "Cents") return String(Number((sqft / 435.6).toFixed(2)));
+        if (unit === "Acres") return String(Number((sqft / 43560).toFixed(2)));
+        if (unit === "sq.yrd.") return String(Number((sqft / 9).toFixed(2)));
+        if (unit === "sq.m.") return String(Number((sqft / 10.7639).toFixed(2)));
+        return String(sqft);
+      })(),
       address: property.address || "",
       state: property.state || "Kerala",
       district: property.district || "",

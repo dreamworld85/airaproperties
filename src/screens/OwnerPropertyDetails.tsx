@@ -312,7 +312,7 @@ export default function OwnerPropertyDetails() {
   }
 
   const isLand = isLandProperty(property.propertyType);
-  const landArea = getLandAreaDetails(property.areaSqft, property.price);
+  const landArea = getLandAreaDetails(property.areaSqft, property.price, property.areaUnit || (property as any).area_unit);
 
   // DESKTOP LAYOUT (Screen Width >= 1000px)
   if (isDesktop) {
@@ -530,30 +530,30 @@ export default function OwnerPropertyDetails() {
                             <Maximize size={18} />
                           </div>
                           <div>
-                            <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Land Area</span>
-                            <span className="text-xs font-extrabold text-emerald-700 truncate block">{landArea.primary}</span>
+                            <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">{isLand ? "Land Area" : "Carpet Area"}</span>
+                            <span className="text-xs font-extrabold text-emerald-600 truncate block">{landArea.primary}</span>
                           </div>
                         </div>
 
-                        {/* 4. In Cents */}
+                        {/* 4. Total Price */}
                         <div className="p-3.5 rounded-2xl bg-gray-50/80 border border-gray-100 flex items-center gap-3">
                           <div className="p-2 bg-white rounded-xl text-emerald-600 shadow-2xs">
                             <Layers size={18} />
                           </div>
                           <div>
-                            <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">In Cents</span>
-                            <span className="text-xs font-extrabold text-gray-900 truncate block">{landArea.secondary}</span>
+                            <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">TOTAL PRICE</span>
+                            <span className="text-xs font-extrabold text-gray-900 truncate block">₹ {Math.round(property.price)}</span>
                           </div>
                         </div>
 
-                        {/* 5. Rate / Cent */}
+                        {/* 5. Rate */}
                         <div className="p-3.5 rounded-2xl bg-gray-50/80 border border-gray-100 flex items-center gap-3">
                           <div className="p-2 bg-white rounded-xl text-emerald-600 shadow-2xs">
                             <Tag size={18} />
                           </div>
                           <div>
-                            <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Rate / Cent</span>
-                            <span className="text-xs font-extrabold text-gray-900 truncate block">{landArea.pricePerCent}</span>
+                            <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">{landArea.rateLabel}</span>
+                            <span className="text-xs font-extrabold text-gray-900 truncate block">{landArea.rateValue}</span>
                           </div>
                         </div>
 
@@ -628,7 +628,7 @@ export default function OwnerPropertyDetails() {
                           </div>
                           <div>
                             <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Area</span>
-                            <span className="text-xs font-extrabold text-gray-900">{property.areaSqft} SqFt</span>
+                            <span className="text-xs font-extrabold text-gray-900">{landArea.primary}</span>
                           </div>
                         </div>
 

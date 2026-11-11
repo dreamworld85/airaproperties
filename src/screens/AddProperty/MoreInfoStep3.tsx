@@ -75,15 +75,15 @@ export default function MoreInfoStep3() {
   const isRentOrPG = form.purpose === "For Rent" || form.purpose === "Paying Guest";
 
   useEffect(() => {
-    if (isLand && form.areaUnit !== "Cents" && form.areaUnit !== "Acres") {
-      update({ areaUnit: "Cents" });
+    if (!form.areaUnit) {
+      update({ areaUnit: isLand ? "Cents" : "sq.ft." });
     }
   }, [isLand, form.areaUnit, update]);
 
   // Validate Step 2 details
   const canContinue = 
     (isLand || (form.bedrooms && form.bathrooms)) && 
-    form.carpetArea && 
+    (form.carpetArea || form.areaSqft) && 
     form.price;
 
   function handleNext() {
@@ -237,28 +237,17 @@ export default function MoreInfoStep3() {
               />
             </div>
             
-            <div className="relative w-24 shrink-0">
+            <div className="relative w-28 shrink-0">
               <select
                 value={form.areaUnit || (isLand ? "Cents" : "sq.ft.")}
                 onChange={(e) => update({ areaUnit: e.target.value })}
                 className="w-full h-[50px] rounded-[8px] bg-white border border-[#59AD63]/30 px-3.5 text-[13.5px] font-bold text-charcoal appearance-none cursor-pointer outline-none focus:border-[#59AD63]"
               >
-                {isLand ? (
-                  <>
-                    <option value="Cents">Cents</option>
-                    <option value="Acres">Acres</option>
-                    <option value="sq.ft.">sq.ft.</option>
-                    <option value="sq.yrd.">sq.yrd.</option>
-                    <option value="sq.m.">sq.m.</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="sq.ft.">sq.ft.</option>
-                    <option value="sq.yrd.">sq.yrd.</option>
-                    <option value="sq.m.">sq.m.</option>
-                    <option value="Cents">Cents</option>
-                  </>
-                )}
+                <option value="Cents">Cents</option>
+                <option value="Acres">Acres</option>
+                <option value="sq.ft.">sq.ft.</option>
+                <option value="sq.yrd.">sq.yrd.</option>
+                <option value="sq.m.">sq.m.</option>
               </select>
               <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate/50 pointer-events-none" />
             </div>
@@ -330,22 +319,42 @@ export default function MoreInfoStep3() {
               className="flex-1 text-[13.5px] font-bold text-charcoal placeholder:text-slate/30 outline-none bg-transparent"
             />
           </div>
-          {form.price && (
-            <div className="text-[12px] font-bold text-[#59AD63] pl-1 animate-fade-in -mt-1 select-none">
+          {form.price && Number(form.price) > 0 && (
+            <div className="text-[12.5px] font-bold text-[#59AD63] pl-1 animate-fade-in -mt-1 select-none flex items-center gap-1.5 flex-wrap">
+              <span>Total Price: ₹ {Math.round(Number(form.price)).toLocaleString("en-IN")}</span>
               {(() => {
                 const num = Number(form.price);
-                if (!num || isNaN(num)) return "";
-                const formatted = Math.round(num).toLocaleString("en-IN");
+                let words = "";
                 if (num >= 10000000) {
-                  return `${formatted} Cr`;
+                  const cr = num / 10000000;
+                  words = `${cr.toFixed(2).replace(/\.00$/, "")} Crore${cr > 1 ? "s" : ""}`;
+                } else if (num >= 100000) {
+                  const lakh = num / 100000;
+                  words = `${lakh.toFixed(2).replace(/\.00$/, "")} Lakh${lakh > 1 ? "s" : ""}`;
+                } else if (num >= 1000) {
+                  const thousand = num / 1000;
+                  words = `${thousand.toFixed(2).replace(/\.00$/, "")} Thousand`;
                 }
-                if (num >= 100000) {
-                  return `${formatted} L`;
+                return words ? (
+                  <span className="text-[11.5px] font-semibold text-slate-500">
+                    ({words})
+                  </span>
+                ) : null;
+              })()}
+              {(() => {
+                const num = Number(form.price);
+                const area = Number(form.carpetArea || form.areaSqft);
+                const unit = form.areaUnit || (isLand ? "Cents" : "sq.ft.");
+                if (num > 0 && area > 0) {
+                  const rate = Math.round(num / area);
+                  const unitSingular = unit.replace(/s$/, "");
+                  return (
+                    <span className="text-[11.5px] font-semibold text-[#091F40]/70 ml-1">
+                      • ₹ {rate.toLocaleString("en-IN")} / {unitSingular}
+                    </span>
+                  );
                 }
-                if (num >= 1000) {
-                  return `${formatted} K`;
-                }
-                return formatted;
+                return null;
               })()}
             </div>
           )}

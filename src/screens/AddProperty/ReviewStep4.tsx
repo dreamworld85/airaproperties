@@ -35,8 +35,8 @@ export default function ReviewStep4() {
   const rows: [string, string][] = [
     ["Property Type", form.propertyType || "—"],
     ["Purpose", form.purpose || "—"],
-    ["Price", formatPrice(form.price) + (form.isPriceNegotiable ? " (Negotiable)" : "")],
-    ["Area", form.areaSqft ? `${form.areaSqft} ${isLand ? form.areaUnit : "sq.ft"}` : "—"],
+    ["Price", `₹ ${Math.round(Number(form.price)).toLocaleString("en-IN")}` + (form.isPriceNegotiable ? " (Negotiable)" : "")],
+    ["Area", (form.carpetArea || form.areaSqft) ? `${form.carpetArea || form.areaSqft} ${form.areaUnit || (isLand ? "Cents" : "sq.ft.")}` : "—"],
     ["Location", [form.address || form.mapAddress, form.district, form.state || "Kerala"].filter(Boolean).join(", ")],
     ...(!isLand
       ? ([
@@ -89,15 +89,20 @@ export default function ReviewStep4() {
       fd.append("propertyType", form.propertyType);
       fd.append("purpose", form.purpose);
       fd.append("price", form.price);
-      let sqftVal = Number(form.areaSqft) || Number(form.carpetArea) || 0;
-      if (form.propertyType === "Land" || form.propertyType === "Plot / Land") {
-        if (form.areaUnit === "Cents") {
-          sqftVal = Math.round(sqftVal * 435.6);
-        } else if (form.areaUnit === "Acres") {
-          sqftVal = Math.round(sqftVal * 43560);
-        }
+      const areaNumber = Number(form.carpetArea) || Number(form.areaSqft) || 0;
+      const chosenUnit = form.areaUnit || (isLand ? "Cents" : "sq.ft.");
+      let sqftVal = areaNumber;
+      if (chosenUnit === "Cents") {
+        sqftVal = Math.round(areaNumber * 435.6);
+      } else if (chosenUnit === "Acres") {
+        sqftVal = Math.round(areaNumber * 43560);
+      } else if (chosenUnit === "sq.yrd.") {
+        sqftVal = Math.round(areaNumber * 9);
+      } else if (chosenUnit === "sq.m.") {
+        sqftVal = Math.round(areaNumber * 10.7639);
       }
       fd.append("areaSqft", String(sqftVal));
+      fd.append("areaUnit", chosenUnit);
       fd.append("address", finalAddress);
       fd.append("state", form.state || "Kerala");
       
