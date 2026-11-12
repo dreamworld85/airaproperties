@@ -40,6 +40,97 @@ function getFullMediaUrl(url) {
   return `https://api.airaproperties.in/${clean}`;
 }
 
+// District / City coordinate & region lookup for Meta Commerce Manager location compliance
+const LOCATION_FALLBACKS = {
+  "bengaluru rural": { lat: 13.2846, lng: 77.6078, region: "Karnataka", postalCode: "562110" },
+  "bangalore rural": { lat: 13.2846, lng: 77.6078, region: "Karnataka", postalCode: "562110" },
+  "bengaluru": { lat: 12.9716, lng: 77.5946, region: "Karnataka", postalCode: "560001" },
+  "bangalore": { lat: 12.9716, lng: 77.5946, region: "Karnataka", postalCode: "560001" },
+  "ramanagara": { lat: 12.7209, lng: 77.2799, region: "Karnataka", postalCode: "562159" },
+  "mysuru": { lat: 12.2958, lng: 76.6394, region: "Karnataka", postalCode: "570001" },
+  "mysore": { lat: 12.2958, lng: 76.6394, region: "Karnataka", postalCode: "570001" },
+  "mandya": { lat: 12.5218, lng: 76.8951, region: "Karnataka", postalCode: "571401" },
+  "tumakuru": { lat: 13.3379, lng: 77.1173, region: "Karnataka", postalCode: "572101" },
+  "kodagu": { lat: 12.3375, lng: 75.8069, region: "Karnataka", postalCode: "571201" },
+  "hassan": { lat: 13.0033, lng: 76.1004, region: "Karnataka", postalCode: "573201" },
+  "mangaluru": { lat: 12.9141, lng: 74.856, region: "Karnataka", postalCode: "575001" },
+  "wayanad": { lat: 11.6854, lng: 76.132, region: "Kerala", postalCode: "673121" },
+  "ernakulam": { lat: 9.9816, lng: 76.2999, region: "Kerala", postalCode: "682011" },
+  "kochi": { lat: 9.9312, lng: 76.2673, region: "Kerala", postalCode: "682001" },
+  "kozhikode": { lat: 11.2588, lng: 75.7804, region: "Kerala", postalCode: "673001" },
+  "calicut": { lat: 11.2588, lng: 75.7804, region: "Kerala", postalCode: "673001" },
+  "thrissur": { lat: 10.5276, lng: 76.2144, region: "Kerala", postalCode: "680001" },
+  "thiruvananthapuram": { lat: 8.5241, lng: 76.9366, region: "Kerala", postalCode: "695001" },
+  "trivandrum": { lat: 8.5241, lng: 76.9366, region: "Kerala", postalCode: "695001" },
+  "kannur": { lat: 11.8745, lng: 75.3704, region: "Kerala", postalCode: "670001" },
+  "kollam": { lat: 8.8932, lng: 76.6141, region: "Kerala", postalCode: "691001" },
+  "palakkad": { lat: 10.7867, lng: 76.6548, region: "Kerala", postalCode: "678001" },
+  "malappuram": { lat: 11.051, lng: 76.0711, region: "Kerala", postalCode: "676505" },
+  "kottayam": { lat: 9.5916, lng: 76.5222, region: "Kerala", postalCode: "686001" },
+  "alappuzha": { lat: 9.4981, lng: 76.3388, region: "Kerala", postalCode: "688001" },
+  "idukki": { lat: 9.9189, lng: 77.1025, region: "Kerala", postalCode: "685602" },
+  "pathanamthitta": { lat: 9.2648, lng: 76.787, region: "Kerala", postalCode: "689645" },
+  "kasaragod": { lat: 12.4996, lng: 74.9869, region: "Kerala", postalCode: "671121" },
+  "karnataka": { lat: 12.9716, lng: 77.5946, region: "Karnataka", postalCode: "560001" },
+  "kerala": { lat: 10.8505, lng: 76.2711, region: "Kerala", postalCode: "682001" },
+};
+
+// Resolve complete, Meta-compliant location data (coordinates, radius, structured address)
+function resolveMetaLocation(p) {
+  const rawLat = Number(p.latitude);
+  const rawLng = Number(p.longitude);
+  const hasValidCoords =
+    Number.isFinite(rawLat) &&
+    Number.isFinite(rawLng) &&
+    rawLat !== 0 &&
+    rawLng !== 0 &&
+    Math.abs(rawLat) <= 90 &&
+    Math.abs(rawLng) <= 180;
+
+  const searchText = [p.district, p.address, p.state, p.title]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  let matchedFallback = null;
+  for (const [key, coords] of Object.entries(LOCATION_FALLBACKS)) {
+    if (searchText.includes(key)) {
+      matchedFallback = coords;
+      break;
+    }
+  }
+  if (!matchedFallback) {
+    matchedFallback = LOCATION_FALLBACKS.kerala;
+  }
+
+  const lat = hasValidCoords ? rawLat : matchedFallback.lat;
+  const lng = hasValidCoords ? rawLng : matchedFallback.lng;
+  const city = cleanText(p.district || matchedFallback.region || "Kerala");
+  const region = cleanText(p.state || matchedFallback.region || "Kerala");
+  const streetAddress = cleanText(p.address || city);
+
+  // Extract 6-digit Indian PIN code from address if present, else fallback
+  const pinMatch = String(p.address || "").match(/\b([1-9]\d{5})\b/);
+  const postalCode = pinMatch ? pinMatch[1] : matchedFallback.postalCode;
+
+  const fullAddress =
+    [streetAddress, city !== streetAddress ? city : "", region, postalCode, "India"]
+      .filter(Boolean)
+      .join(", ");
+
+  return {
+    lat: Number(lat.toFixed(6)),
+    lng: Number(lng.toFixed(6)),
+    radiusKm: 25,
+    streetAddress,
+    city,
+    region,
+    postalCode,
+    country: "IN",
+    fullAddress,
+  };
+}
+
 // Helper: Fetch all active properties with media for feeds
 async function getActivePropertiesWithMedia() {
   const [properties] = await pool.query(
@@ -96,7 +187,8 @@ router.get("/facebook-marketplace.xml", async (req, res) => {
       const priceVal = Math.max(1, Math.round(Number(p.price) || 0));
       const priceFormatted = `${priceVal}.00 INR`;
       const url = `https://airaproperties.in/property/${p.id}`;
-      const location = [p.address, p.district, p.state].filter(Boolean).join(", ") || "Kerala, India";
+      const metaLoc = resolveMetaLocation(p);
+      const location = metaLoc.fullAddress;
       const contact = p.contact_number || p.whatsapp_number || p.uploader_phone || "+91 9495126132";
 
       // Build rich description
@@ -126,8 +218,23 @@ router.get("/facebook-marketplace.xml", async (req, res) => {
       xml += `      <g:availability>in stock</g:availability>\n`;
       xml += `      <g:price>${priceFormatted}</g:price>\n`;
       xml += `      <g:product_type><![CDATA[${productType}]]></g:product_type>\n`;
+      // Complete Meta Commerce Manager location formatting (center point + radius + structured address + postcode)
+      xml += `      <g:availability_circle_origin>\n`;
+      xml += `        <g:latitude>${metaLoc.lat}</g:latitude>\n`;
+      xml += `        <g:longitude>${metaLoc.lng}</g:longitude>\n`;
+      xml += `      </g:availability_circle_origin>\n`;
+      xml += `      <g:availability_circle_radius>${metaLoc.radiusKm}</g:availability_circle_radius>\n`;
+      xml += `      <g:availability_circle_radius_unit>km</g:availability_circle_radius_unit>\n`;
+      xml += `      <g:latitude>${metaLoc.lat}</g:latitude>\n`;
+      xml += `      <g:longitude>${metaLoc.lng}</g:longitude>\n`;
+      xml += `      <g:address><![CDATA[${metaLoc.fullAddress}]]></g:address>\n`;
+      xml += `      <g:street_address><![CDATA[${metaLoc.streetAddress}]]></g:street_address>\n`;
+      xml += `      <g:city><![CDATA[${metaLoc.city}]]></g:city>\n`;
+      xml += `      <g:region><![CDATA[${metaLoc.region}]]></g:region>\n`;
+      xml += `      <g:postal_code>${escapeXml(metaLoc.postalCode)}</g:postal_code>\n`;
+      xml += `      <g:country>${metaLoc.country}</g:country>\n`;
       xml += `      <g:custom_label_0>${escapeXml(purposeLabel)}</g:custom_label_0>\n`;
-      xml += `      <g:custom_label_1>${escapeXml(p.district || "Kerala")}</g:custom_label_1>\n`;
+      xml += `      <g:custom_label_1>${escapeXml(metaLoc.city)}</g:custom_label_1>\n`;
       xml += `      <g:custom_label_2>${escapeXml(p.bedrooms ? `${p.bedrooms} BHK` : p.property_type || "Property")}</g:custom_label_2>\n`;
       xml += `      <g:custom_label_3>${escapeXml(p.area_sqft ? `${p.area_sqft} sqft` : "")}</g:custom_label_3>\n`;
       xml += `      <g:custom_label_4>${escapeXml(contact)}</g:custom_label_4>\n`;
@@ -171,6 +278,17 @@ router.get("/facebook-marketplace.csv", async (req, res) => {
       "image_link",
       "brand",
       "product_type",
+      "address",
+      "city",
+      "region",
+      "postal_code",
+      "country",
+      "latitude",
+      "longitude",
+      "availability_circle_origin.latitude",
+      "availability_circle_origin.longitude",
+      "availability_circle_radius",
+      "availability_circle_radius_unit",
       "custom_label_0",
       "custom_label_1",
       "custom_label_2",
@@ -192,6 +310,7 @@ router.get("/facebook-marketplace.csv", async (req, res) => {
       const priceVal = Math.max(1, Math.round(Number(p.price) || 0));
       const priceFormatted = `${priceVal}.00 INR`;
       const url = `https://airaproperties.in/property/${p.id}`;
+      const metaLoc = resolveMetaLocation(p);
 
       const row = [
         escapeCsv(`aira_${p.id}`),
@@ -204,8 +323,19 @@ router.get("/facebook-marketplace.csv", async (req, res) => {
         escapeCsv(primaryImage),
         escapeCsv("AiraProperties"),
         escapeCsv(productType),
+        escapeCsv(metaLoc.fullAddress),
+        escapeCsv(metaLoc.city),
+        escapeCsv(metaLoc.region),
+        escapeCsv(metaLoc.postalCode),
+        escapeCsv(metaLoc.country),
+        escapeCsv(metaLoc.lat),
+        escapeCsv(metaLoc.lng),
+        escapeCsv(metaLoc.lat),
+        escapeCsv(metaLoc.lng),
+        escapeCsv(metaLoc.radiusKm),
+        escapeCsv("km"),
         escapeCsv(purposeLabel),
-        escapeCsv(p.district || "Kerala"),
+        escapeCsv(metaLoc.city),
         escapeCsv(p.bedrooms ? `${p.bedrooms} BHK` : ""),
       ];
       rows.push(row.join(","));

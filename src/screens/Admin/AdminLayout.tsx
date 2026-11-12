@@ -22,7 +22,8 @@ import {
   PhoneCall,
   Briefcase,
   Rocket,
-  Code
+  Code,
+  Store
 } from "lucide-react";
 import { adminApi, AdminUser } from "@/lib/adminApi";
 import { useBrand } from "@/lib/BrandContext";
@@ -86,6 +87,7 @@ export default function AdminLayout() {
     { label: "Launch", path: "/admin/launch", icon: Rocket },
     { label: "Users", path: "/admin/users", icon: Users },
     { label: "User Enquiry", path: "/admin/enquiries", icon: PhoneCall },
+    { label: "FB & Marketplace Leads", path: "/admin/meta-leads", icon: Store },
     { 
       label: "Properties", 
       path: "/admin/properties", 

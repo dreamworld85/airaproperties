@@ -34,6 +34,7 @@ import paymentRoutes from "./routes/payments.js";
 import builderRoutes from "./routes/builders.js";
 import propertyRequestRoutes from "./routes/propertyRequests.js";
 import feedRoutes from "./routes/feeds.js";
+import metaWebhookRoutes, { verifyWebhookAndRenewToken } from "./routes/metaWebhook.js";
 
 // Auto-migrate database table columns for subscription offers
 async function checkDbMigration() {
@@ -323,6 +324,57 @@ async function checkDbMigration() {
       )
     `);
     console.log("Database social_accounts table verified.");
+
+    // Meta Messenger & Marketplace Lead Tables
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS fb_conversations (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        thread_key VARCHAR(160) UNIQUE NOT NULL,
+        sender_psid VARCHAR(100) NOT NULL,
+        sender_name VARCHAR(160),
+        sender_profile_pic VARCHAR(500),
+        page_id VARCHAR(100),
+        channel_type ENUM('marketplace','page_dm') NOT NULL DEFAULT 'page_dm',
+        property_id INT NULL,
+        listing_ref VARCHAR(160) NULL,
+        listing_title VARCHAR(255) NULL,
+        last_message TEXT,
+        last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        unread_count INT DEFAULT 0,
+        status ENUM('new','in_progress','resolved') DEFAULT 'new',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_fb_conv_channel (channel_type),
+        INDEX idx_fb_conv_property (property_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS fb_messages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        conversation_id INT NOT NULL,
+        mid VARCHAR(180) UNIQUE NULL,
+        direction ENUM('inbound','outbound') NOT NULL DEFAULT 'inbound',
+        sender_psid VARCHAR(100),
+        message_text TEXT,
+        attachments_json TEXT NULL,
+        referral_json TEXT NULL,
+        is_marketplace TINYINT(1) DEFAULT 0,
+        sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (conversation_id) REFERENCES fb_conversations(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS fb_webhook_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        event_type VARCHAR(80) NOT NULL,
+        channel_type VARCHAR(40),
+        payload_summary TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    console.log("Database Meta Messenger & Marketplace lead tables verified.");
 
     // Seed default landing page settings if they don't exist
     const defaultSettings = [
@@ -1864,6 +1916,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/builders", builderRoutes);
 app.use("/api/property-requests", propertyRequestRoutes);
 app.use("/api/feeds", feedRoutes);
+app.use("/api/meta", metaWebhookRoutes);
 
 // Serve frontend static build assets from dist if present
 const rootDistDir = path.resolve(process.cwd(), "..", "dist");
@@ -2012,4 +2065,15 @@ app.use((err, _req, res, _next) => {
 const port = process.env.PORT || 4000;
 app.listen(port, () => {
   console.log(`Kerala Realty API listening on http://localhost:${port}`);
+  // Auto-verify Meta webhook subscription & renew token on startup and every 12 hours
+  setTimeout(() => {
+    verifyWebhookAndRenewToken().catch((err) =>
+      console.error("[META HEALTH] Initial check failed:", err)
+    );
+  }, 15000);
+  setInterval(() => {
+    verifyWebhookAndRenewToken().catch((err) =>
+      console.error("[META HEALTH] Scheduled check failed:", err)
+    );
+  }, 12 * 60 * 60 * 1000);
 });

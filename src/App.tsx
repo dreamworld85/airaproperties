@@ -63,6 +63,7 @@ import Subscriptions from "@/screens/Admin/Subscriptions";
 import ServiceEnquiries from "@/screens/Admin/ServiceEnquiries";
 import BuilderInquiries from "@/screens/Admin/BuilderInquiries";
 import AdminLaunch from "@/screens/Admin/Launch";
+import AdminMetaLeads from "@/screens/Admin/MetaLeads";
 import LaunchPopup from "@/components/LaunchPopup";
 import WelcomePopup from "@/components/WelcomePopup";
 import RequestPropertyButton from "@/components/RequestPropertyButton";
@@ -208,6 +209,7 @@ export default function App() {
           <Route path="logs" element={<AdminActivityLogs />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="launch" element={<AdminLaunch />} />
+          <Route path="meta-leads" element={<AdminMetaLeads />} />
           <Route path="role-upgrades" element={<RoleUpgrades />} />
           <Route path="subscriptions" element={<Subscriptions />} />
         </Route>
