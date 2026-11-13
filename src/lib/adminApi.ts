@@ -768,6 +768,10 @@ export interface PushNotificationLog {
 
 export interface PushNotificationStatus {
   ready: boolean;
+  hasCredential?: boolean;
+  clientEmail?: string | null;
+  projectId?: string;
+  error?: string | null;
   registeredTokens: number;
   totalNotificationsSent: number;
 }
@@ -811,5 +815,21 @@ export async function sendCustomPushNotification(payload: SendPushPayload): Prom
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to send push notification");
+  return data;
+}
+
+
+export async function saveServiceAccountKey(serviceAccountJson: string): Promise<{
+  success: boolean;
+  clientEmail?: string;
+  projectId?: string;
+}> {
+  const res = await fetch(`${API_URL}/api/admin/push-notifications/service-account`, {
+    method: "POST",
+    headers: getAdminHeaders(),
+    body: JSON.stringify({ serviceAccountJson }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to save service account key");
   return data;
 }

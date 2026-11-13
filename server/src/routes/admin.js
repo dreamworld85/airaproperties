@@ -3,7 +3,14 @@ import { pool } from "../db.js";
 import { upload } from "../middleware/upload.js";
 import { deleteUploadedFile } from "../utils/fileHelper.js";
 import { deleteUserCompletely } from "../utils/userCleanup.js";
-import { sendNotificationToTopic, districtToTopic, isFirebaseAdminReady } from "../utils/firebaseAdmin.js";
+import { 
+  sendNotificationToTopic, 
+  districtToTopic, 
+  isFirebaseAdminReady,
+  getFirebaseAdminDetails,
+  setFirebaseServiceAccount,
+  ensureFirebaseAdminInitialized
+} from "../utils/firebaseAdmin.js";
 import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
@@ -2283,7 +2290,8 @@ router.post("/sync-live-frontend", checkAdminSession, async (req, res) => {
 // GET /api/admin/push-notifications/status
 router.get("/push-notifications/status", checkAdminSession, async (req, res) => {
   try {
-    const isReady = isFirebaseAdminReady();
+    await ensureFirebaseAdminInitialized();
+    const details = getFirebaseAdminDetails();
     let totalTokens = 0;
     let totalSent = 0;
     try {
@@ -2296,12 +2304,26 @@ router.get("/push-notifications/status", checkAdminSession, async (req, res) => 
     } catch (_e) {}
 
     res.json({
-      ready: isReady,
+      ...details,
       registeredTokens: totalTokens,
       totalNotificationsSent: totalSent
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/push-notifications/service-account
+router.post("/push-notifications/service-account", checkAdminSession, async (req, res) => {
+  try {
+    const { serviceAccountJson } = req.body;
+    if (!serviceAccountJson) {
+      return res.status(400).json({ error: "Service account JSON is required." });
+    }
+    const result = await setFirebaseServiceAccount(serviceAccountJson);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message || "Failed to configure service account." });
   }
 });
 

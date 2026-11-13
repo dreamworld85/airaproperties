@@ -16,6 +16,7 @@ server/.env.*
 *serviceAccountKey*.json
 *firebase-service-account*.json
 *service-account*.json
+*adminsdk*.json
 serviceAccount.json
 public/*.apk
 public/uploads/*.apk

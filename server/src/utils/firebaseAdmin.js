@@ -1,4 +1,4 @@
-import { getApps, initializeApp, cert, getApp } from "firebase-admin/app";
+import { getApps, initializeApp, cert, getApp, deleteApp } from "firebase-admin/app";
 import { getMessaging } from "firebase-admin/messaging";
 import fs from "fs";
 import path from "path";
@@ -10,32 +10,81 @@ const __dirname = path.dirname(__filename);
 
 let firebaseAdminInitialized = false;
 let firebaseInitError = null;
+let currentServiceAccountConfig = null;
+let currentClientEmail = null;
+let currentProjectId = "airaproperties";
+let hasValidServiceAccount = false;
 
-export function initFirebaseAdmin() {
-  const apps = getApps();
-  if (apps.length > 0) {
-    firebaseAdminInitialized = true;
+export async function loadServiceAccountFromDb() {
+  try {
+    const [[row]] = await pool.query("SELECT `value` FROM settings WHERE `key` = 'firebase_service_account_json'");
+    if (row && row.value) {
+      const parsed = JSON.parse(row.value.trim());
+      if (parsed && (parsed.private_key || parsed.project_id)) {
+        return parsed;
+      }
+    }
+  } catch (_e) {}
+  return null;
+}
+
+export function initFirebaseAdmin(forceReload = false) {
+  if (!forceReload && hasValidServiceAccount && getApps().length > 0) {
     return getApp();
   }
 
   try {
     let credential = null;
+    let parsedConfig = currentServiceAccountConfig;
 
-    // 1. Check for raw JSON string in env
-    if (process.env.FIREBASE_SERVICE_ACCOUNT && process.env.FIREBASE_SERVICE_ACCOUNT.trim().startsWith("{")) {
-      const parsed = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT.trim());
-      credential = cert(parsed);
+    // 1. In-memory DB config
+    if (parsedConfig && parsedConfig.private_key) {
+      credential = cert(parsedConfig);
+      currentClientEmail = parsedConfig.client_email || null;
+      currentProjectId = parsedConfig.project_id || currentProjectId;
+    }
+    // 2. Raw JSON string in env
+    else if (process.env.FIREBASE_SERVICE_ACCOUNT && process.env.FIREBASE_SERVICE_ACCOUNT.trim().startsWith("{")) {
+      try {
+        const parsed = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT.trim());
+        if (parsed.private_key) {
+          credential = cert(parsed);
+          currentClientEmail = parsed.client_email || null;
+          currentProjectId = parsed.project_id || currentProjectId;
+        }
+      } catch (jsonErr) {
+        console.warn("[FIREBASE ADMIN] Invalid JSON in FIREBASE_SERVICE_ACCOUNT:", jsonErr.message);
+      }
     } 
-    // 2. Check for file path in env
+    // 3. File path in FIREBASE_SERVICE_ACCOUNT_PATH
     else if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH && fs.existsSync(process.env.FIREBASE_SERVICE_ACCOUNT_PATH)) {
-      credential = cert(process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
-      console.log(`[FIREBASE ADMIN] Loaded service account credential from FIREBASE_SERVICE_ACCOUNT_PATH: ${process.env.FIREBASE_SERVICE_ACCOUNT_PATH}`);
+      try {
+        const content = fs.readFileSync(process.env.FIREBASE_SERVICE_ACCOUNT_PATH, "utf8");
+        const parsed = JSON.parse(content.trim());
+        if (parsed.private_key) {
+          credential = cert(parsed);
+          currentClientEmail = parsed.client_email || null;
+          currentProjectId = parsed.project_id || currentProjectId;
+        }
+      } catch (readErr) {
+        console.warn("[FIREBASE ADMIN] Could not load service account from FIREBASE_SERVICE_ACCOUNT_PATH:", readErr.message);
+      }
     }
+    // 4. File path in FIREBASE_SERVICE_ACCOUNT
     else if (process.env.FIREBASE_SERVICE_ACCOUNT && fs.existsSync(process.env.FIREBASE_SERVICE_ACCOUNT)) {
-      credential = cert(process.env.FIREBASE_SERVICE_ACCOUNT);
-      console.log(`[FIREBASE ADMIN] Loaded service account credential from FIREBASE_SERVICE_ACCOUNT: ${process.env.FIREBASE_SERVICE_ACCOUNT}`);
+      try {
+        const content = fs.readFileSync(process.env.FIREBASE_SERVICE_ACCOUNT, "utf8");
+        const parsed = JSON.parse(content.trim());
+        if (parsed.private_key) {
+          credential = cert(parsed);
+          currentClientEmail = parsed.client_email || null;
+          currentProjectId = parsed.project_id || currentProjectId;
+        }
+      } catch (readErr) {
+        console.warn("[FIREBASE ADMIN] Could not load service account from FIREBASE_SERVICE_ACCOUNT:", readErr.message);
+      }
     }
-    // 3. Check for standard service account file in server/ or root
+    // 5. Check candidate file paths
     else {
       const candidatePaths = [
         path.resolve(process.cwd(), "firebase-service-account.json"),
@@ -45,45 +94,139 @@ export function initFirebaseAdmin() {
         path.resolve(process.cwd(), "..", "firebase-service-account.json"),
         path.resolve(__dirname, "..", "..", "firebase-service-account.json"),
         path.resolve(__dirname, "..", "..", "serviceAccountKey.json"),
-        path.resolve(__dirname, "..", "..", "..", "firebase-service-account.json"),
       ];
+
+      // Also scan candidate directories for any *adminsdk*.json or *service-account*.json
+      const scanDirs = [
+        process.cwd(),
+        path.resolve(process.cwd(), "server"),
+        path.resolve(__dirname, "..", ".."),
+        path.resolve(__dirname, "..", "..", "server")
+      ];
+      for (const d of scanDirs) {
+        try {
+          if (fs.existsSync(d) && fs.statSync(d).isDirectory()) {
+            const files = fs.readdirSync(d);
+            for (const f of files) {
+              if (f.endsWith(".json") && (f.includes("adminsdk") || f.includes("firebase-service-account") || f.includes("serviceAccount"))) {
+                candidatePaths.unshift(path.resolve(d, f));
+              }
+            }
+          }
+        } catch (_e) {}
+      }
       for (const p of candidatePaths) {
         if (fs.existsSync(p)) {
-          credential = cert(p);
-          console.log(`[FIREBASE ADMIN] Loaded service account credential from: ${p}`);
-          break;
+          try {
+            const content = fs.readFileSync(p, "utf8");
+            const parsed = JSON.parse(content.trim());
+            if (parsed.private_key) {
+              credential = cert(parsed);
+              currentClientEmail = parsed.client_email || null;
+              currentProjectId = parsed.project_id || currentProjectId;
+              console.log(`[FIREBASE ADMIN] Loaded service account credential from: ${p}`);
+              break;
+            }
+          } catch (_e) {}
         }
       }
+    }
+
+    // Clean up existing app if reinitializing
+    if (getApps().length > 0 && forceReload) {
+      deleteApp(getApp()).catch(() => {});
     }
 
     if (credential) {
       const app = initializeApp({
         credential,
-        projectId: process.env.FIREBASE_PROJECT_ID || "airaproperties",
+        projectId: currentProjectId,
       });
       firebaseAdminInitialized = true;
-      console.log("[FIREBASE ADMIN] Initialized with Service Account certificate successfully.");
+      hasValidServiceAccount = true;
+      firebaseInitError = null;
+      console.log(`[FIREBASE ADMIN] Initialized with Service Account for project "${currentProjectId}" (${currentClientEmail || "cert"})`);
       return app;
     }
 
-    // Fallback: Initialize with project id
-    const projectId = process.env.FIREBASE_PROJECT_ID || "airaproperties";
-    const app = initializeApp({ projectId });
-    firebaseAdminInitialized = true;
-    console.log(`[FIREBASE ADMIN] Initialized with Project ID: ${projectId}`);
-    return app;
+    // If no credential provided, do not initialize with ApplicationDefault
+    hasValidServiceAccount = false;
+    firebaseAdminInitialized = false;
+    firebaseInitError = "Service Account Key JSON is not configured.";
+    return null;
   } catch (err) {
     firebaseInitError = err.message;
-    console.warn(`[FIREBASE ADMIN] Initialization warning: ${err.message}. Push notifications will run in dry-run mode until valid service account credentials are provided.`);
+    hasValidServiceAccount = false;
+    firebaseAdminInitialized = false;
+    console.warn(`[FIREBASE ADMIN] Initialization warning: ${err.message}`);
     return null;
   }
 }
 
-export function isFirebaseAdminReady() {
-  if (!firebaseAdminInitialized && getApps().length === 0) {
-    initFirebaseAdmin();
+export async function ensureFirebaseAdminInitialized() {
+  if (!hasValidServiceAccount || getApps().length === 0) {
+    if (!currentServiceAccountConfig) {
+      const dbConfig = await loadServiceAccountFromDb();
+      if (dbConfig) {
+        currentServiceAccountConfig = dbConfig;
+      }
+    }
+    initFirebaseAdmin(true);
   }
-  return firebaseAdminInitialized && !firebaseInitError;
+  return hasValidServiceAccount;
+}
+
+export function isFirebaseAdminReady() {
+  return hasValidServiceAccount;
+}
+
+export function getFirebaseAdminDetails() {
+  return {
+    ready: hasValidServiceAccount,
+    hasCredential: hasValidServiceAccount,
+    clientEmail: currentClientEmail,
+    projectId: currentProjectId,
+    error: firebaseInitError,
+  };
+}
+
+export async function setFirebaseServiceAccount(jsonInput) {
+  let parsed;
+  if (typeof jsonInput === "string") {
+    parsed = JSON.parse(jsonInput.trim());
+  } else {
+    parsed = jsonInput;
+  }
+
+  if (!parsed.private_key) {
+    throw new Error("Invalid service account JSON: 'private_key' is required.");
+  }
+  if (!parsed.client_email) {
+    throw new Error("Invalid service account JSON: 'client_email' is required.");
+  }
+
+  const jsonString = JSON.stringify(parsed);
+
+  // 1. Save in settings DB table
+  await pool.query(
+    "INSERT INTO settings (`key`, `value`) VALUES ('firebase_service_account_json', ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)",
+    [jsonString]
+  );
+
+  // 2. Also write to local file for persistence
+  try {
+    const filePath = path.resolve(process.cwd(), "firebase-service-account.json");
+    fs.writeFileSync(filePath, jsonString, "utf8");
+  } catch (_e) {}
+
+  currentServiceAccountConfig = parsed;
+  initFirebaseAdmin(true);
+
+  return {
+    success: true,
+    clientEmail: currentClientEmail,
+    projectId: currentProjectId,
+  };
 }
 
 export function districtToTopic(district) {
@@ -145,7 +288,10 @@ export async function sendNotificationToTopic({ topic, title, body, imageUrl, cl
   let errorMessage = null;
 
   try {
-    initFirebaseAdmin();
+    await ensureFirebaseAdminInitialized();
+    if (!hasValidServiceAccount) {
+      throw new Error("Firebase Service Account key is missing. Please paste your Service Account Key JSON in Admin -> Push Notifications to activate live push sending.");
+    }
     const messaging = getMessaging(getApp());
     const response = await messaging.send(payload);
     messageId = response;
@@ -182,7 +328,11 @@ export async function sendNotificationToTopic({ topic, title, body, imageUrl, cl
 export async function subscribeTokenToTopic(token, topic) {
   if (!token || !topic) return null;
   try {
-    initFirebaseAdmin();
+    await ensureFirebaseAdminInitialized();
+    if (!hasValidServiceAccount) {
+      console.warn("[FIREBASE FCM] Cannot subscribe token: service account key not configured.");
+      return null;
+    }
     const messaging = getMessaging(getApp());
     const response = await messaging.subscribeToTopic(token, topic);
     console.log(`[FIREBASE FCM] Subscribed token to topic "${topic}":`, response);

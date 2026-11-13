@@ -22,9 +22,19 @@ import {
   getPushNotificationLogs, 
   getPushNotificationStatus, 
   sendCustomPushNotification, 
+  saveServiceAccountKey,
   PushNotificationLog, 
   PushNotificationStatus 
 } from "@/lib/adminApi";
+import { 
+  Key, 
+  Upload, 
+  ShieldCheck, 
+  ShieldAlert, 
+  FileText, 
+  ChevronDown, 
+  ChevronUp 
+} from "lucide-react";
 
 const KERALA_DISTRICTS = [
   "Alappuzha",
@@ -60,6 +70,12 @@ export default function PushNotifications() {
   const [imageUrl, setImageUrl] = useState("");
   const [clickAction, setClickAction] = useState("https://airaproperties.in");
 
+  // Service Account Key state
+  const [showKeyCard, setShowKeyCard] = useState(false);
+  const [keyJsonInput, setKeyJsonInput] = useState("");
+  const [savingKey, setSavingKey] = useState(false);
+  const [keyFeedback, setKeyFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
   // Filter logs
   const [searchLog, setSearchLog] = useState("");
 
@@ -86,6 +102,41 @@ export default function PushNotifications() {
   const handleRefresh = () => {
     setRefreshing(true);
     fetchData();
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      setKeyJsonInput(text);
+      setKeyFeedback(null);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleSaveKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!keyJsonInput.trim()) {
+      setKeyFeedback({ type: "error", message: "Please paste your Service Account Key JSON or upload the file." });
+      return;
+    }
+    setSavingKey(true);
+    setKeyFeedback(null);
+    try {
+      const res = await saveServiceAccountKey(keyJsonInput.trim());
+      setKeyFeedback({
+        type: "success",
+        message: `Firebase Admin successfully authenticated for project "${res.projectId || "airaproperties"}" (${res.clientEmail || "Active"})! You can now send push notifications.`
+      });
+      setKeyJsonInput("");
+      fetchData();
+    } catch (err: any) {
+      setKeyFeedback({ type: "error", message: err.message || "Failed to save and verify service account key." });
+    } finally {
+      setSavingKey(false);
+    }
   };
 
   const handleSend = async (e: React.FormEvent) => {
@@ -176,22 +227,142 @@ export default function PushNotifications() {
         </button>
       </div>
 
+      {/* Service Account Setup Banner / Modal Card */}
+      {(!status?.hasCredential || showKeyCard) && (
+        <div className="bg-amber-50 border border-amber-300 rounded-xl p-5 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-200 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-amber-100 text-amber-800 rounded-lg">
+                <Key className="w-5 h-5 text-amber-700" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-amber-950">
+                  Firebase Service Account Key Configuration
+                </h2>
+                <p className="text-xs text-amber-800 mt-0.5">
+                  Google requires your Firebase service account private key to authorize push notification broadcasts.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <a
+                href="https://console.firebase.google.com/project/airaproperties/settings/serviceaccounts/adminsdk"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-xs transition"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Get Key from Firebase Console
+              </a>
+              {status?.hasCredential && (
+                <button
+                  type="button"
+                  onClick={() => setShowKeyCard(false)}
+                  className="p-1.5 text-amber-700 hover:text-amber-900 rounded-lg"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {keyFeedback && (
+            <div className={`p-3.5 rounded-lg flex items-start gap-2.5 text-xs border ${
+              keyFeedback.type === "success" 
+                ? "bg-emerald-50 border-emerald-300 text-emerald-900" 
+                : "bg-rose-50 border-rose-300 text-rose-900"
+            }`}>
+              {keyFeedback.type === "success" ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              )}
+              <div className="flex-1 font-medium">{keyFeedback.message}</div>
+              <button onClick={() => setKeyFeedback(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          <form onSubmit={handleSaveKey} className="space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                  Paste Service Account Key JSON
+                </label>
+                <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-900 hover:text-amber-950 cursor-pointer underline">
+                  <Upload className="w-3.5 h-3.5" />
+                  Or Upload .json file
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              <textarea
+                rows={4}
+                value={keyJsonInput}
+                onChange={(e) => setKeyJsonInput(e.target.value)}
+                placeholder='Paste contents of your downloaded service account JSON file here: {"type": "service_account", "project_id": "airaproperties", "private_key": "-----BEGIN PRIVATE KEY-----...", "client_email": "..."}'
+                className="w-full font-mono text-xs p-3 bg-white border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <span className="text-[11px] text-amber-800">
+                🔒 Stored securely in database and never exposed to the public.
+              </span>
+              <button
+                type="submit"
+                disabled={savingKey || !keyJsonInput.trim()}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-semibold shadow-sm transition disabled:opacity-50"
+              >
+                {savingKey ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    Validating & Saving...
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4" />
+                    Verify & Activate Service Account Key
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Firebase Ready */}
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-start justify-between">
-          <div>
+          <div className="min-w-0 pr-2">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">FCM Service Status</p>
             <div className="mt-2 flex items-center gap-2">
-              <span className={`inline-block w-2.5 h-2.5 rounded-full ${status?.ready ? "bg-emerald-500" : "bg-emerald-400"}`} />
-              <span className="text-lg font-bold text-gray-900">
-                {status?.ready ? "Active & Ready" : "Firebase Initialized"}
+              <span className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${status?.hasCredential ? "bg-emerald-500" : "bg-amber-500"}`} />
+              <span className="text-base font-bold text-gray-900 truncate">
+                {status?.hasCredential ? "Active & Authenticated" : "Key Required"}
               </span>
             </div>
-            <p className="text-xs text-gray-400 mt-1">Project ID: airaproperties</p>
+            <p className="text-[11px] text-gray-400 mt-1 truncate" title={status?.clientEmail || status?.projectId || "airaproperties"}>
+              {status?.clientEmail || `Project: ${status?.projectId || "airaproperties"}`}
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowKeyCard(!showKeyCard)}
+              className="mt-2 text-[11px] font-semibold text-emerald-600 hover:text-emerald-800 block underline"
+            >
+              {status?.hasCredential ? "Replace / Rotate Key" : "Configure Key Now →"}
+            </button>
           </div>
-          <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg">
-            <CheckCircle2 className="w-5 h-5" />
+          <div className={`p-2.5 rounded-lg shrink-0 ${status?.hasCredential ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>
+            {status?.hasCredential ? <CheckCircle2 className="w-5 h-5" /> : <Key className="w-5 h-5" />}
           </div>
         </div>
 
