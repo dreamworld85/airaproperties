@@ -95,5 +95,13 @@ export async function registerTokenWithServer(token, userId = null, district = n
   }
 }
 
+export async function enablePushNotifications(userId = null, district = null) {
+  const result = await requestNotificationPermissionAndGetToken();
+  if (result.success && result.token) {
+    await registerTokenWithServer(result.token, userId, district);
+  }
+  return result;
+}
+
 export { app, analytics, messaging, firebaseConfig };
 export default app;
