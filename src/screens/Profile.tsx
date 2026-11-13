@@ -173,8 +173,13 @@ export default function Profile() {
                   )}
                 </div>
                 <p className="text-sm text-slate">{user?.phone || user?.email}</p>
-                {user?.location && (
-                  <p className="text-xs text-slate/70">📍 {user.location}</p>
+                {(user?.district || user?.state || user?.location) && (
+                  <p className="text-xs text-slate/70">
+                    📍 {[user?.district, user?.state].filter(Boolean).join(", ") || user?.location}
+                  </p>
+                )}
+                {user?.address && (
+                  <p className="text-[11px] text-slate/60 mt-0.5">{user.address}</p>
                 )}
                 {isAgency && agencySlug && (
                   <button

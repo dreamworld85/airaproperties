@@ -25,6 +25,10 @@ export interface AdminUser {
   email: string | null;
   phone: string | null;
   role?: string | null;
+  state?: string | null;
+  district?: string | null;
+  address?: string | null;
+  location?: string | null;
   is_disabled: number;
   custom_trial_expiry?: string | null;
   trial_ends_at?: string | null;
@@ -150,7 +154,7 @@ export const adminApi = {
     return res.json();
   },
 
-  async updateUserProfile(id: number | string, data: { name?: string; email?: string; phone?: string }): Promise<void> {
+  async updateUserProfile(id: number | string, data: { name?: string; email?: string; phone?: string; state?: string; district?: string; address?: string; location?: string }): Promise<void> {
     const res = await fetch(`${API_URL}/api/admin/users/${id}/profile`, {
       method: "PUT",
       headers: getAdminHeaders(),

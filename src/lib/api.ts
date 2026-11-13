@@ -26,6 +26,9 @@ export interface ApiUser {
   phone: string | null;
   whatsappNumber?: string | null;
   location: string | null;
+  state?: string | null;
+  district?: string | null;
+  address?: string | null;
   avatarUrl: string | null;
   trialEndsAt?: string | null;
   subscriptionStatus?: "trial" | "active" | "expired" | "canceled" | null;
@@ -531,7 +534,7 @@ export const api = {
     return handle<{ success: boolean }>(res);
   },
 
-  async updateMyProfile(input: Partial<Pick<ApiUser, "name" | "phone" | "email" | "location" | "whatsappNumber">> & { password?: string }) {
+  async updateMyProfile(input: Partial<Pick<ApiUser, "name" | "phone" | "email" | "location" | "state" | "district" | "address" | "whatsappNumber">> & { password?: string }) {
     const res = await fetch(`${API_URL}/api/users/me`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...authHeaders() },

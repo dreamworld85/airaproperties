@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS users (
   email         VARCHAR(160) UNIQUE,
   phone         VARCHAR(20) UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
+  state         VARCHAR(100) DEFAULT 'Kerala',
+  district      VARCHAR(100),
+  address       TEXT,
   location      VARCHAR(160),
   avatar_url    VARCHAR(500),
   created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP

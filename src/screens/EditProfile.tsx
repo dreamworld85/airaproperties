@@ -1,10 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Camera, Lock, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Camera, Lock, Eye, EyeOff, ShieldCheck, ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { api, mediaUrl } from "@/lib/api";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
+import { INDIAN_STATES, STATE_DISTRICTS_MAP } from "@/lib/indiaLocationData";
 
 export default function EditProfile() {
   const navigate = useNavigate();
@@ -14,7 +15,50 @@ export default function EditProfile() {
   const [name, setName] = useState(user?.name || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [email, setEmail] = useState(user?.email || "");
-  const [location, setLocation] = useState(user?.location || "");
+
+  // Determine initial state, district, and address
+  const initialLocation = useMemo(() => {
+    let s = user?.state || "Kerala";
+    let d = user?.district || "";
+    let a = user?.address || "";
+
+    if (!d && user?.location) {
+      const locStr = user.location;
+      const keralaList = STATE_DISTRICTS_MAP["Kerala"] || [];
+      const match = keralaList.find((dist) => locStr.toLowerCase().includes(dist.toLowerCase()));
+      if (match) {
+        s = "Kerala";
+        d = match;
+      } else {
+        for (const [st, dList] of Object.entries(STATE_DISTRICTS_MAP)) {
+          const m = dList.find((dist) => locStr.toLowerCase().includes(dist.toLowerCase()));
+          if (m) {
+            s = st;
+            d = m;
+            break;
+          }
+        }
+      }
+    }
+    return { s, d, a };
+  }, [user]);
+
+  const [state, setState] = useState(initialLocation.s);
+  const [district, setDistrict] = useState(initialLocation.d);
+  const [address, setAddress] = useState(initialLocation.a);
+
+  const availableDistricts = useMemo(() => {
+    return (state && STATE_DISTRICTS_MAP[state]) || [];
+  }, [state]);
+
+  const handleStateChange = (newState: string) => {
+    setState(newState);
+    const districtsForNewState = STATE_DISTRICTS_MAP[newState] || [];
+    if (!districtsForNewState.includes(district)) {
+      setDistrict("");
+    }
+  };
+
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -30,6 +74,16 @@ export default function EditProfile() {
   async function handleSave() {
     setSaving(true);
     setError(null);
+    if (!state || !state.trim()) {
+      setError("Please select your State.");
+      setSaving(false);
+      return;
+    }
+    if (!district || !district.trim()) {
+      setError("Please select your District.");
+      setSaving(false);
+      return;
+    }
     if (password) {
       if (password.length < 6) {
         setError("Password must be at least 6 characters.");
@@ -43,11 +97,15 @@ export default function EditProfile() {
       }
     }
     try {
+      const combinedLocation = [district.trim(), state.trim()].filter(Boolean).join(", ");
       const updated = await api.updateMyProfile({
         name,
         phone,
         email,
-        location,
+        state: state.trim(),
+        district: district.trim(),
+        address: address.trim(),
+        location: combinedLocation,
         password: password.trim() ? password.trim() : undefined,
       });
       if (token) login(token, updated);
@@ -187,15 +245,57 @@ export default function EditProfile() {
             />
           </div>
 
-          {/* Row 3: Location */}
+          {/* Row 3: State & District */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[13.5px] font-medium text-charcoal/80 pl-0.5">
+                State <span className="text-emerald-600 font-bold">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={state}
+                  onChange={(e) => handleStateChange(e.target.value)}
+                  className="w-full h-11 rounded-none border border-slate-200/80 bg-white px-3 pr-8 text-[14px] font-medium text-charcoal outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all appearance-none cursor-pointer"
+                >
+                  <option value="" disabled>Select State</option>
+                  {INDIAN_STATES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[13.5px] font-medium text-charcoal/80 pl-0.5">
+                District <span className="text-emerald-600 font-bold">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={district}
+                  onChange={(e) => setDistrict(e.target.value)}
+                  disabled={!state || availableDistricts.length === 0}
+                  className="w-full h-11 rounded-none border border-slate-200/80 bg-white px-3 pr-8 text-[14px] font-medium text-charcoal outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all appearance-none cursor-pointer disabled:bg-slate-50 disabled:text-slate-400"
+                >
+                  <option value="">{state ? "Select District" : "Select State First"}</option>
+                  {availableDistricts.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* Row 4: Full Address */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-[13.5px] font-medium text-charcoal/80 pl-0.5">Location</label>
-            <input
-              type="text"
-              placeholder="e.g. Location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="w-full h-11 rounded-none border border-slate-200/80 bg-white px-4 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
+            <label className="text-[13.5px] font-medium text-charcoal/80 pl-0.5">Full Address</label>
+            <textarea
+              rows={3}
+              placeholder="Enter full address, street, building (optional)..."
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className="w-full rounded-none border border-slate-200/80 bg-white p-3 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all resize-none"
             />
           </div>
 

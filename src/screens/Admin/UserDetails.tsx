@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { User, ShieldAlert, Trash2, Ban, ShieldCheck, ChevronLeft, Edit3, Check, X } from "lucide-react";
+import { User, ShieldAlert, Trash2, Ban, ShieldCheck, ChevronLeft, Edit3, Check, X, ChevronDown } from "lucide-react";
 import { adminApi, AdminUser } from "@/lib/adminApi";
 import { mediaUrl } from "@/lib/api";
+import { INDIAN_STATES, STATE_DISTRICTS_MAP } from "@/lib/indiaLocationData";
 
 export default function UserDetails() {
   const { id } = useParams();
@@ -24,7 +25,14 @@ export default function UserDetails() {
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editState, setEditState] = useState("Kerala");
+  const [editDistrict, setEditDistrict] = useState("");
+  const [editAddress, setEditAddress] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
+
+  const availableDistricts = useMemo(() => {
+    return (editState && STATE_DISTRICTS_MAP[editState]) || [];
+  }, [editState]);
 
   useEffect(() => {
     async function loadUser() {
@@ -35,6 +43,9 @@ export default function UserDetails() {
         setEditName(data.name || "");
         setEditEmail(data.email || "");
         setEditPhone(data.phone || "");
+        setEditState(data.state || "Kerala");
+        setEditDistrict(data.district || "");
+        setEditAddress(data.address || "");
         setIsFreeGranted(data.is_free_subscription_granted === 1);
         setCustomTrialExpiry(data.custom_trial_expiry ? data.custom_trial_expiry.substring(0, 10) : "");
         setEnquiryCredits(data.enquiry_credits_left !== undefined && data.enquiry_credits_left !== null ? Number(data.enquiry_credits_left) : 3);
@@ -56,6 +67,10 @@ export default function UserDetails() {
         name: editName.trim(),
         email: editEmail.trim() || undefined,
         phone: editPhone.trim() || undefined,
+        state: editState.trim(),
+        district: editDistrict.trim(),
+        address: editAddress.trim(),
+        location: [editDistrict.trim(), editState.trim()].filter(Boolean).join(", "),
       });
       alert("User details updated successfully!");
       setIsEditingProfile(false);
@@ -196,6 +211,54 @@ export default function UserDetails() {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-semibold text-slate">State *</label>
+                  <select
+                    value={editState}
+                    onChange={(e) => {
+                      const nextState = e.target.value;
+                      setEditState(nextState);
+                      const dList = STATE_DISTRICTS_MAP[nextState] || [];
+                      if (!dList.includes(editDistrict)) {
+                        setEditDistrict("");
+                      }
+                    }}
+                    className="w-full px-2 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:border-emerald-500 font-semibold cursor-pointer"
+                  >
+                    {INDIAN_STATES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-semibold text-slate">District *</label>
+                  <select
+                    value={editDistrict}
+                    onChange={(e) => setEditDistrict(e.target.value)}
+                    disabled={!editState || availableDistricts.length === 0}
+                    className="w-full px-2 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:border-emerald-500 font-semibold cursor-pointer disabled:bg-slate-100"
+                  >
+                    <option value="">Select District</option>
+                    {availableDistricts.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold text-slate">Full Address (Optional)</label>
+                <textarea
+                  rows={2}
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  placeholder="Street, locality, landmark..."
+                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:border-emerald-500 font-semibold resize-none"
+                />
+              </div>
+
               <div className="flex items-center gap-2 mt-1">
                 <button
                   type="button"
@@ -214,6 +277,9 @@ export default function UserDetails() {
                     setEditName(user.name || "");
                     setEditEmail(user.email || "");
                     setEditPhone(user.phone || "");
+                    setEditState(user.state || "Kerala");
+                    setEditDistrict(user.district || "");
+                    setEditAddress(user.address || "");
                   }}
                   className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
                 >
@@ -232,6 +298,20 @@ export default function UserDetails() {
                 <span className="text-slate">Phone Line</span>
                 <span className="font-semibold text-charcoal">{user.phone || "Not provided"}</span>
               </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate">State & District</span>
+                <span className="font-semibold text-charcoal">
+                  {[user.district, user.state].filter(Boolean).join(", ") || user.location || "Not specified"}
+                </span>
+              </div>
+              {user.address && (
+                <div className="flex justify-between items-start text-xs">
+                  <span className="text-slate shrink-0">Address</span>
+                  <span className="font-semibold text-charcoal text-right max-w-[220px] break-words">
+                    {user.address}
+                  </span>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => setIsEditingProfile(true)}

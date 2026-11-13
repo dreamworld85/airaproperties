@@ -690,6 +690,16 @@ async function checkDbMigration() {
       await pool.query("ALTER TABLE users ADD COLUMN state VARCHAR(100) NULL DEFAULT 'Kerala'");
     }
 
+    if (!userColNames.includes("district")) {
+      console.log("Adding district column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN district VARCHAR(100) NULL");
+    }
+
+    if (!userColNames.includes("address")) {
+      console.log("Adding address column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN address TEXT NULL");
+    }
+
     // Modify subscription_plans table schema
     const [planCols] = await pool.query("SHOW COLUMNS FROM subscription_plans");
     const planColNames = planCols.map(c => c.Field);

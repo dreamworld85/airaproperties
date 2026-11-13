@@ -466,7 +466,7 @@ router.get("/stats", async (req, res) => {
 router.get("/users", async (req, res) => {
   try {
     const { search = "", role = "All" } = req.query;
-    let query = "SELECT id, name, email, phone, role, is_disabled, created_at FROM users WHERE 1=1";
+    let query = "SELECT id, name, email, phone, role, is_disabled, state, district, address, location, created_at FROM users WHERE 1=1";
     const params = [];
 
     if (search) {
@@ -497,7 +497,7 @@ router.get("/users", async (req, res) => {
 router.get("/users/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const [[user]] = await pool.query("SELECT id, name, email, phone, role, is_disabled, custom_trial_expiry, trial_ends_at, is_free_subscription_granted, enquiry_credits_left, listing_slots_left, created_at FROM users WHERE id = ?", [id]);
+    const [[user]] = await pool.query("SELECT id, name, email, phone, role, is_disabled, custom_trial_expiry, trial_ends_at, is_free_subscription_granted, enquiry_credits_left, listing_slots_left, state, district, address, location, created_at FROM users WHERE id = ?", [id]);
     if (!user) return res.status(404).json({ message: "User not found." });
 
     const [[{ count: listings }]] = await pool.query("SELECT COUNT(*) as count FROM properties WHERE owner_id = ? AND status = 'Active'", [id]);
@@ -536,10 +536,14 @@ router.get("/users/:id", async (req, res) => {
 router.put("/users/:id/profile", async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone } = req.body;
+    const { name, email, phone, state, district, address, location } = req.body;
     const trimmedEmail = email && String(email).trim() ? String(email).trim().toLowerCase() : null;
     const trimmedPhone = phone && String(phone).trim() ? String(phone).trim() : null;
     const trimmedName = name && String(name).trim() ? String(name).trim() : null;
+    const trimmedState = state && String(state).trim() ? String(state).trim() : null;
+    const trimmedDistrict = district && String(district).trim() ? String(district).trim() : null;
+    const trimmedAddress = address && String(address).trim() ? String(address).trim() : null;
+    const trimmedLocation = location && String(location).trim() ? String(location).trim() : null;
 
     if (trimmedEmail) {
       const [dupEmail] = await pool.query(
@@ -565,9 +569,26 @@ router.put("/users/:id/profile", async (req, res) => {
       `UPDATE users SET
         name = COALESCE(?, name),
         email = ?,
-        phone = COALESCE(?, phone)
+        phone = COALESCE(?, phone),
+        state = CASE WHEN ? = 1 THEN ? ELSE state END,
+        district = CASE WHEN ? = 1 THEN ? ELSE district END,
+        address = CASE WHEN ? = 1 THEN ? ELSE address END,
+        location = CASE WHEN ? = 1 THEN ? ELSE location END
        WHERE id = ?`,
-      [trimmedName, trimmedEmail, trimmedPhone, id]
+      [
+        trimmedName,
+        trimmedEmail,
+        trimmedPhone,
+        state !== undefined ? 1 : 0,
+        trimmedState,
+        district !== undefined ? 1 : 0,
+        trimmedDistrict,
+        address !== undefined ? 1 : 0,
+        trimmedAddress,
+        location !== undefined ? 1 : 0,
+        trimmedLocation,
+        id
+      ]
     );
 
     // Log admin activity

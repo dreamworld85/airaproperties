@@ -114,7 +114,13 @@ export default function Users() {
                     {user.phone && <span>Mobile: {user.phone}</span>}
                     {user.phone && user.email && <span className="text-slate/40 select-none">•</span>}
                     {user.email && <span>Email: {user.email}</span>}
-                    {!user.phone && !user.email && <span>No contact info</span>}
+                    {(user.district || user.state || user.location) && (
+                      <>
+                        <span className="text-slate/40 select-none">•</span>
+                        <span className="text-emerald-700 font-medium">📍 {[user.district, user.state].filter(Boolean).join(", ") || user.location}</span>
+                      </>
+                    )}
+                    {!user.phone && !user.email && !user.district && !user.state && <span>No contact info</span>}
                   </p>
                 </div>
               </div>
