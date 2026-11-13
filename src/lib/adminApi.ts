@@ -751,3 +751,65 @@ export interface PropertyRequestItem {
   status: string;
   created_at: string;
 }
+
+
+export interface PushNotificationLog {
+  id: number;
+  title: string;
+  body: string;
+  image_url?: string | null;
+  click_action?: string | null;
+  target_type: string;
+  target_topic?: string | null;
+  status: string;
+  error_message?: string | null;
+  created_at: string;
+}
+
+export interface PushNotificationStatus {
+  ready: boolean;
+  registeredTokens: number;
+  totalNotificationsSent: number;
+}
+
+export interface SendPushPayload {
+  title: string;
+  body: string;
+  imageUrl?: string;
+  clickAction?: string;
+  targetType: "all" | "district" | "topic";
+  district?: string;
+  targetTopic?: string;
+}
+
+export async function getPushNotificationStatus(): Promise<PushNotificationStatus> {
+  const res = await fetch(`${API_URL}/api/admin/push-notifications/status`, {
+    headers: getAdminHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to fetch push notification status");
+  return res.json();
+}
+
+export async function getPushNotificationLogs(): Promise<PushNotificationLog[]> {
+  const res = await fetch(`${API_URL}/api/admin/push-notifications/logs`, {
+    headers: getAdminHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to fetch push notification logs");
+  return res.json();
+}
+
+export async function sendCustomPushNotification(payload: SendPushPayload): Promise<{
+  success: boolean;
+  messageId?: string;
+  error?: string;
+  topic?: string;
+}> {
+  const res = await fetch(`${API_URL}/api/admin/push-notifications/send`, {
+    method: "POST",
+    headers: getAdminHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to send push notification");
+  return data;
+}

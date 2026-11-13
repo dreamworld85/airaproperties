@@ -7,6 +7,7 @@ import {
   Flag, 
   MoreHorizontal, 
   Bell, 
+  BellRing,
   LogOut, 
   TrendingUp, 
   FileClock, 
@@ -84,6 +85,7 @@ export default function AdminLayout() {
 
   const navItems = [
     { label: "Dashboard", path: "/admin", icon: LayoutDashboard },
+    { label: "Push Notifications", path: "/admin/notifications", icon: BellRing },
     { label: "Launch", path: "/admin/launch", icon: Rocket },
     { label: "Users", path: "/admin/users", icon: Users },
     { label: "User Enquiry", path: "/admin/enquiries", icon: PhoneCall },
@@ -118,6 +120,7 @@ export default function AdminLayout() {
   const isDetailsPage = currentPath !== "/admin";
   let pageTitle = "Admin Panel";
   if (currentPath === "/admin") pageTitle = "Admin Dashboard";
+  else if (currentPath === "/admin/notifications") pageTitle = "Push Notifications & Alerts";
   else if (currentPath === "/admin/launch") pageTitle = "Launch Popup Settings";
   else if (currentPath === "/admin/users") pageTitle = "Users";
   else if (currentPath.startsWith("/admin/users/")) pageTitle = "User Details";
@@ -469,9 +472,17 @@ export default function AdminLayout() {
 
             <div className="grid grid-cols-3 gap-3 py-2">
               <Link
-                to="/admin/launch"
+                to="/admin/notifications"
                 onClick={() => setShowMoreMenu(false)}
                 className="flex flex-col items-center justify-center p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/50 hover:border-emerald-600/30 transition-all gap-1.5"
+              >
+                <BellRing size={20} className="text-emerald-700" />
+                <span className="text-[10px] font-bold text-emerald-900">Push Alerts</span>
+              </Link>
+              <Link
+                to="/admin/launch"
+                onClick={() => setShowMoreMenu(false)}
+                className="flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 border border-charcoal/5 hover:border-emerald-600/30 transition-all gap-1.5"
               >
                 <Rocket size={20} className="text-emerald-700" />
                 <span className="text-[10px] font-bold text-emerald-900">Launch</span>

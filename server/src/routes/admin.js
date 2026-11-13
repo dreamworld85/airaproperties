@@ -3,6 +3,7 @@ import { pool } from "../db.js";
 import { upload } from "../middleware/upload.js";
 import { deleteUploadedFile } from "../utils/fileHelper.js";
 import { deleteUserCompletely } from "../utils/userCleanup.js";
+import { sendNotificationToTopic, districtToTopic, isFirebaseAdminReady } from "../utils/firebaseAdmin.js";
 import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
@@ -2275,6 +2276,82 @@ router.post("/sync-live-frontend", checkAdminSession, async (req, res) => {
     const result = syncFrontendToLive();
     res.json(result);
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/push-notifications/status
+router.get("/push-notifications/status", checkAdminSession, async (req, res) => {
+  try {
+    const isReady = isFirebaseAdminReady();
+    const [[countRow]] = await pool.query("SELECT COUNT(*) AS totalTokens FROM user_fcm_tokens");
+    const [[sentRow]] = await pool.query("SELECT COUNT(*) AS totalSent FROM push_notifications WHERE status = 'sent'");
+    res.json({
+      ready: isReady,
+      registeredTokens: countRow?.totalTokens || 0,
+      totalNotificationsSent: sentRow?.totalSent || 0
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/push-notifications/logs
+router.get("/push-notifications/logs", checkAdminSession, async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      "SELECT * FROM push_notifications ORDER BY created_at DESC LIMIT 100"
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/push-notifications/send
+router.post("/push-notifications/send", checkAdminSession, async (req, res) => {
+  try {
+    const { title, body, imageUrl, clickAction, targetType, targetTopic, district } = req.body;
+
+    if (!title || !body) {
+      return res.status(400).json({ error: "Title and body are required." });
+    }
+
+    let finalTopic = "all_users";
+    if (targetType === "district" && district) {
+      finalTopic = districtToTopic(district);
+    } else if (targetType === "topic" && targetTopic) {
+      finalTopic = targetTopic.trim();
+    } else if (targetType === "all") {
+      finalTopic = "all_users";
+    }
+
+    const result = await sendNotificationToTopic({
+      topic: finalTopic,
+      title,
+      body,
+      imageUrl: imageUrl || null,
+      clickAction: clickAction || "https://airaproperties.in",
+      data: {
+        title,
+        body,
+        targetTopic: finalTopic,
+        url: clickAction || "https://airaproperties.in"
+      },
+      actions: [
+        { action: "view", title: "View Property" },
+        { action: "dismiss", title: "Dismiss" }
+      ]
+    });
+
+    res.json({
+      success: result.success,
+      messageId: result.messageId,
+      error: result.error,
+      topic: finalTopic
+    });
+  } catch (err) {
+    console.error("[ADMIN PUSH SEND ERROR]", err);
     res.status(500).json({ error: err.message });
   }
 });

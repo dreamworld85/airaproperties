@@ -4,6 +4,7 @@ import { requireAuth, optionalAuth } from "../middleware/auth.js";
 import { upload, optimizeImages } from "../middleware/upload.js";
 import { checkUserAccess } from "../utils/access.js";
 import { deleteUploadedFile } from "../utils/fileHelper.js";
+import { sendPropertySubmissionNotification } from "../utils/firebaseAdmin.js";
 import fs from "fs/promises";
 import path from "path";
 
@@ -834,6 +835,25 @@ router.post("/", requireAuth, upload.any(), optimizeImages, async (req, res) => 
     }
 
     await conn.commit();
+
+    // Trigger Firebase Push Notification for this property's district topic
+    try {
+      const firstImageFile = files.find(f => f.mimetype && f.mimetype.startsWith("image"));
+      const firstImageUrl = firstImageFile ? `/uploads/${firstImageFile.filename}` : null;
+      sendPropertySubmissionNotification({
+        id: propertyId,
+        title: title,
+        price: price,
+        district: district,
+        address: address,
+        property_type: propertyType,
+        purpose: purpose,
+      }, firstImageUrl).catch(err => {
+        console.warn("[FIREBASE] Background push trigger error:", err?.message || err);
+      });
+    } catch (pushErr) {
+      console.warn("[FIREBASE] Failed preparing property push notification:", pushErr);
+    }
 
     // Fetch updated user details to synchronize role locked state immediately
     const [updatedUserRows] = await pool.query("SELECT * FROM users WHERE id = ?", [req.userId]);

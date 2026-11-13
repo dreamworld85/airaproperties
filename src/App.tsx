@@ -64,6 +64,7 @@ import ServiceEnquiries from "@/screens/Admin/ServiceEnquiries";
 import BuilderInquiries from "@/screens/Admin/BuilderInquiries";
 import AdminLaunch from "@/screens/Admin/Launch";
 import AdminMetaLeads from "@/screens/Admin/MetaLeads";
+import AdminPushNotifications from "@/screens/Admin/PushNotifications";
 import LaunchPopup from "@/components/LaunchPopup";
 import WelcomePopup from "@/components/WelcomePopup";
 import RequestPropertyButton from "@/components/RequestPropertyButton";
@@ -193,6 +194,7 @@ export default function App() {
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
+          <Route path="notifications" element={<AdminPushNotifications />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="users/:id" element={<AdminUserDetails />} />
           <Route path="users/:id/reviews" element={<AdminUserReviews />} />

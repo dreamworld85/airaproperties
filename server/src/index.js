@@ -35,6 +35,7 @@ import builderRoutes from "./routes/builders.js";
 import propertyRequestRoutes from "./routes/propertyRequests.js";
 import feedRoutes from "./routes/feeds.js";
 import metaWebhookRoutes, { verifyWebhookAndRenewToken } from "./routes/metaWebhook.js";
+import { subscribeTokenToTopic, districtToTopic } from "./utils/firebaseAdmin.js";
 
 // Auto-migrate database table columns for subscription offers
 async function checkDbMigration() {
@@ -295,6 +296,37 @@ async function checkDbMigration() {
       console.log("Adding link column to notifications...");
       await pool.query("ALTER TABLE notifications ADD COLUMN link VARCHAR(255) NULL");
     }
+
+    // Verify push_notifications table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS push_notifications (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        body TEXT NOT NULL,
+        image_url VARCHAR(500) NULL,
+        click_action VARCHAR(500) NULL,
+        target_type VARCHAR(50) DEFAULT 'topic',
+        target_topic VARCHAR(100) NULL,
+        target_district VARCHAR(100) NULL,
+        property_id INT NULL,
+        sent_by VARCHAR(50) DEFAULT 'Admin',
+        status VARCHAR(50) DEFAULT 'sent',
+        error_message TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Verify user_fcm_tokens table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_fcm_tokens (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NULL,
+        token VARCHAR(500) NOT NULL UNIQUE,
+        device_info VARCHAR(255) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
 
     // Verify settings table exists
     await pool.query(`
@@ -1927,6 +1959,40 @@ app.use("/api/builders", builderRoutes);
 app.use("/api/property-requests", propertyRequestRoutes);
 app.use("/api/feeds", feedRoutes);
 app.use("/api/meta", metaWebhookRoutes);
+
+// Register FCM Push Notification Token
+app.post("/api/notifications/register-token", async (req, res) => {
+  try {
+    const { token, userId, district } = req.body;
+    if (!token) {
+      return res.status(400).json({ error: "FCM token is required" });
+    }
+
+    await pool.query(
+      `INSERT INTO user_fcm_tokens (user_id, token, district, last_seen_at)
+       VALUES (?, ?, ?, NOW())
+       ON DUPLICATE KEY UPDATE 
+         user_id = COALESCE(VALUES(user_id), user_id),
+         district = COALESCE(VALUES(district), district),
+         last_seen_at = NOW()`,
+      [userId || null, token, district || null]
+    );
+
+    // Auto subscribe token to "all_users"
+    subscribeTokenToTopic(token, "all_users").catch(() => {});
+
+    // If district provided, subscribe to district topic
+    if (district) {
+      const distTopic = districtToTopic(district);
+      subscribeTokenToTopic(token, distTopic).catch(() => {});
+    }
+
+    res.json({ success: true, message: "Token registered successfully" });
+  } catch (err) {
+    console.error("[REGISTER TOKEN ERROR]", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Serve frontend static build assets from dist if present
 const rootDistDir = path.resolve(process.cwd(), "..", "dist");
