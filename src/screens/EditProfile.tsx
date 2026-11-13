@@ -161,9 +161,9 @@ export default function EditProfile() {
     <div className="min-h-screen flex flex-col pb-28 bg-[#FAF8F3] font-display select-none">
       <Header title="edit profile" showBack />
 
-      <div className="px-6 pt-4 flex flex-col gap-5 flex-1">
+      <div className="px-5 pt-3 flex flex-col gap-3.5 flex-1 max-w-xl mx-auto w-full">
         {/* Profile Photo Section */}
-        <div className="flex flex-col items-center gap-1.5 py-1">
+        <div className="flex flex-col items-center gap-1 py-0.5">
           <input 
             type="file" 
             ref={fileInputRef} 
@@ -174,27 +174,27 @@ export default function EditProfile() {
           {user?.avatarUrl ? (
             <div 
               onClick={() => fileInputRef.current?.click()}
-              className="w-24 h-24 rounded-full overflow-hidden border border-slate-200 shadow-md cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all"
+              className="w-20 h-20 rounded-full overflow-hidden border border-slate-200 shadow-md cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all"
             >
               <img 
                 src={mediaUrl(user.avatarUrl)} 
                 alt="Profile" 
-                className="w-24 h-24 object-cover"
+                className="w-20 h-20 object-cover"
               />
             </div>
           ) : (
             <div 
               onClick={() => fileInputRef.current?.click()}
-              className="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 shadow-md cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all"
+              className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 shadow-md cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all"
             >
-              <Camera size={36} className="text-slate-500" />
+              <Camera size={32} className="text-slate-500" />
             </div>
           )}
           <button 
             type="button"
             disabled={avatarUploading}
             onClick={() => fileInputRef.current?.click()}
-            className="text-[13px] font-medium text-black hover:underline disabled:opacity-50 transition-all active:scale-95 cursor-pointer mt-1"
+            className="text-[12.5px] font-medium text-black hover:underline disabled:opacity-50 transition-all active:scale-95 cursor-pointer mt-0.5"
           >
             {avatarUploading ? "Uploading..." : "change photo"}
           </button>
@@ -202,72 +202,72 @@ export default function EditProfile() {
 
         {/* Form Inputs */}
         {isNewSignup && (
-          <div className="bg-emerald-50 border border-emerald-500/20 text-emerald-800 text-xs font-semibold px-4 py-3 rounded-none flex items-center gap-2.5">
-            <ShieldCheck size={18} className="text-emerald-600 shrink-0" />
+          <div className="bg-emerald-50 border border-emerald-500/20 text-emerald-800 text-xs font-semibold px-3.5 py-2.5 rounded-none flex items-center gap-2">
+            <ShieldCheck size={16} className="text-emerald-600 shrink-0" />
             <span>Mobile verified successfully! Please enter your name, email, and set your password to finish.</span>
           </div>
         )}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           {/* Row 1: Full Name & Phone No */}
-          <div className="grid grid-cols-1 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[13.5px] font-medium text-charcoal/80 pl-0.5">Full Name</label>
+          <div className="grid grid-cols-1 gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-[13px] font-medium text-charcoal/80 pl-0.5">Full Name</label>
               <input
                 type="text"
                 placeholder="e.g. John Doe"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full h-11 rounded-none border border-slate-200/80 bg-white px-4 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
+                className="w-full h-10 rounded-none border border-slate-200/80 bg-white px-3.5 text-[13.5px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_1px_4px_rgba(0,0,0,0.02)] focus:border-[#59AD63] transition-all"
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[13.5px] font-medium text-charcoal/80 pl-0.5">User Phone Number</label>
+            <div className="flex flex-col gap-1">
+              <label className="text-[13px] font-medium text-charcoal/80 pl-0.5">User Phone Number</label>
               <input
                 type="tel"
                 placeholder="e.g. +91 9876543210"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full h-11 rounded-none border border-slate-200/80 bg-white px-4 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
+                className="w-full h-10 rounded-none border border-slate-200/80 bg-white px-3.5 text-[13.5px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_1px_4px_rgba(0,0,0,0.02)] focus:border-[#59AD63] transition-all"
               />
             </div>
           </div>
 
           {/* Row 2: Email */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[13.5px] font-medium text-charcoal/80 pl-0.5">Email</label>
+          <div className="flex flex-col gap-1">
+            <label className="text-[13px] font-medium text-charcoal/80 pl-0.5">Email</label>
             <input
               type="email"
               placeholder="e.g. john@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full h-11 rounded-none border border-slate-200/80 bg-white px-4 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
+              className="w-full h-10 rounded-none border border-slate-200/80 bg-white px-3.5 text-[13.5px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_1px_4px_rgba(0,0,0,0.02)] focus:border-[#59AD63] transition-all"
             />
           </div>
 
           {/* Row 3: State & District */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[13.5px] font-medium text-charcoal/80 pl-0.5">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-[13px] font-medium text-charcoal/80 pl-0.5">
                 State <span className="text-emerald-600 font-bold">*</span>
               </label>
               <div className="relative">
                 <select
                   value={state}
                   onChange={(e) => handleStateChange(e.target.value)}
-                  className="w-full h-11 rounded-none border border-slate-200/80 bg-white px-3 pr-8 text-[14px] font-medium text-charcoal outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all appearance-none cursor-pointer"
+                  className="w-full h-10 rounded-none border border-slate-200/80 bg-white px-3 pr-8 text-[13.5px] font-medium text-charcoal outline-none shadow-[0_1px_4px_rgba(0,0,0,0.02)] focus:border-[#59AD63] transition-all appearance-none cursor-pointer"
                 >
                   <option value="" disabled>Select State</option>
                   {INDIAN_STATES.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
-                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <ChevronDown size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[13.5px] font-medium text-charcoal/80 pl-0.5">
+            <div className="flex flex-col gap-1">
+              <label className="text-[13px] font-medium text-charcoal/80 pl-0.5">
                 District <span className="text-emerald-600 font-bold">*</span>
               </label>
               <div className="relative">
@@ -275,35 +275,35 @@ export default function EditProfile() {
                   value={district}
                   onChange={(e) => setDistrict(e.target.value)}
                   disabled={!state || availableDistricts.length === 0}
-                  className="w-full h-11 rounded-none border border-slate-200/80 bg-white px-3 pr-8 text-[14px] font-medium text-charcoal outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all appearance-none cursor-pointer disabled:bg-slate-50 disabled:text-slate-400"
+                  className="w-full h-10 rounded-none border border-slate-200/80 bg-white px-3 pr-8 text-[13.5px] font-medium text-charcoal outline-none shadow-[0_1px_4px_rgba(0,0,0,0.02)] focus:border-[#59AD63] transition-all appearance-none cursor-pointer disabled:bg-slate-50 disabled:text-slate-400"
                 >
                   <option value="">{state ? "Select District" : "Select State First"}</option>
                   {availableDistricts.map((d) => (
                     <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
-                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <ChevronDown size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
             </div>
           </div>
 
           {/* Row 4: Full Address */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[13.5px] font-medium text-charcoal/80 pl-0.5">Full Address</label>
+          <div className="flex flex-col gap-1">
+            <label className="text-[13px] font-medium text-charcoal/80 pl-0.5">Full Address</label>
             <textarea
-              rows={3}
+              rows={2}
               placeholder="Enter full address, street, building (optional)..."
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              className="w-full rounded-none border border-slate-200/80 bg-white p-3 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all resize-none"
+              className="w-full min-h-[46px] max-h-[72px] rounded-none border border-slate-200/80 bg-white px-3 py-1.5 text-[13.5px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_1px_4px_rgba(0,0,0,0.02)] focus:border-[#59AD63] transition-all resize-none leading-snug"
             />
           </div>
 
-          {/* Row 4: Password & Confirm Password */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[13.5px] font-medium text-charcoal/80 pl-0.5 flex items-center gap-1.5">
-                <Lock size={14} className="text-slate-400" />
+          {/* Row 5: Password & Confirm Password */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-0.5">
+            <div className="flex flex-col gap-1">
+              <label className="text-[13px] font-medium text-charcoal/80 pl-0.5 flex items-center gap-1.5">
+                <Lock size={13} className="text-slate-400" />
                 <span>Set Password {isNewSignup && <span className="text-emerald-600 font-bold">*</span>}</span>
               </label>
               <div className="relative flex items-center">
@@ -312,21 +312,21 @@ export default function EditProfile() {
                   placeholder={isNewSignup ? "Create password (min 6 chars)" : "Enter new password (optional)"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-11 rounded-none border border-slate-200/80 bg-white px-4 pr-11 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
+                  className="w-full h-10 rounded-none border border-slate-200/80 bg-white px-3.5 pr-10 text-[13.5px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_1px_4px_rgba(0,0,0,0.02)] focus:border-[#59AD63] transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 text-slate-400 hover:text-charcoal cursor-pointer"
+                  className="absolute right-3 text-slate-400 hover:text-charcoal cursor-pointer"
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[13.5px] font-medium text-charcoal/80 pl-0.5 flex items-center gap-1.5">
-                <Lock size={14} className="text-slate-400" />
+            <div className="flex flex-col gap-1">
+              <label className="text-[13px] font-medium text-charcoal/80 pl-0.5 flex items-center gap-1.5">
+                <Lock size={13} className="text-slate-400" />
                 <span>Confirm Password</span>
               </label>
               <div className="relative flex items-center">
@@ -335,14 +335,14 @@ export default function EditProfile() {
                   placeholder="Repeat password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full h-11 rounded-none border border-slate-200/80 bg-white px-4 pr-11 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
+                  className="w-full h-10 rounded-none border border-slate-200/80 bg-white px-3.5 pr-10 text-[13.5px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_1px_4px_rgba(0,0,0,0.02)] focus:border-[#59AD63] transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3.5 text-slate-400 hover:text-charcoal cursor-pointer"
+                  className="absolute right-3 text-slate-400 hover:text-charcoal cursor-pointer"
                 >
-                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
             </div>
@@ -352,13 +352,13 @@ export default function EditProfile() {
         {successMsg && <p className="text-sm text-emerald-600 font-semibold pl-0.5 bg-emerald-50 p-2.5 rounded-none border border-emerald-500/20">{successMsg}</p>}
         {error && <p className="text-sm text-coral pl-0.5">{error}</p>}
 
-        {/* Row 4: Buttons (Save & Cancel) */}
-        <div className="grid grid-cols-2 gap-4 mt-2">
+        {/* Buttons (Save & Cancel) */}
+        <div className="grid grid-cols-2 gap-3 mt-1">
           <button
             type="button"
             disabled={saving || deleting}
             onClick={handleSave}
-            className="w-full h-11 bg-[#59AD63] hover:bg-[#3F8F4B] text-white rounded-none text-[14px] font-medium transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center shadow-sm disabled:opacity-50"
+            className="w-full h-10 bg-[#59AD63] hover:bg-[#3F8F4B] text-white rounded-none text-[13.5px] font-medium transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center shadow-sm disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save"}
           </button>
@@ -366,22 +366,22 @@ export default function EditProfile() {
           <button
             type="button"
             onClick={() => navigate("/home")}
-            className="w-full h-11 bg-white hover:bg-slate-50 border border-slate-300 text-charcoal rounded-none text-[14px] font-medium transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center shadow-sm"
+            className="w-full h-10 bg-white hover:bg-slate-50 border border-slate-300 text-charcoal rounded-none text-[13.5px] font-medium transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center shadow-sm"
           >
             Skip to Home
           </button>
         </div>
 
-        {/* Row 5: Delete Account */}
-        <div className="mt-4 flex flex-col items-center">
+        {/* Delete Account */}
+        <div className="mt-2 flex flex-col items-center">
           <button 
             type="button"
             disabled={saving || deleting} 
             onClick={handleDeleteAccount}
-            className="w-[260px] h-10 bg-white hover:bg-rose-50 border border-rose-400 text-rose-600 rounded-none text-[13.5px] font-medium transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
+            className="w-[240px] h-9 bg-white hover:bg-rose-50 border border-rose-400 text-rose-600 rounded-none text-[13px] font-medium transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
           >
             <span>Delete Account</span>
-            <span className="text-[15px] font-medium">→</span>
+            <span className="text-[14px] font-medium">→</span>
           </button>
         </div>
       </div>
