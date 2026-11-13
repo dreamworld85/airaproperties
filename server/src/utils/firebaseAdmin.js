@@ -87,13 +87,15 @@ export function initFirebaseAdmin(forceReload = false) {
     // 5. Check candidate file paths
     else {
       const candidatePaths = [
-        path.resolve(process.cwd(), "firebase-service-account.json"),
-        path.resolve(process.cwd(), "serviceAccountKey.json"),
+        path.resolve(process.cwd(), "server", "airaproperties-firebase-adminsdk-fbsvc-2430d4dbe2.json"),
         path.resolve(process.cwd(), "server", "firebase-service-account.json"),
         path.resolve(process.cwd(), "server", "serviceAccountKey.json"),
-        path.resolve(process.cwd(), "..", "firebase-service-account.json"),
+        path.resolve(__dirname, "..", "..", "server", "airaproperties-firebase-adminsdk-fbsvc-2430d4dbe2.json"),
+        path.resolve(__dirname, "..", "..", "server", "firebase-service-account.json"),
         path.resolve(__dirname, "..", "..", "firebase-service-account.json"),
-        path.resolve(__dirname, "..", "..", "serviceAccountKey.json"),
+        path.resolve(process.cwd(), "firebase-service-account.json"),
+        path.resolve(process.cwd(), "serviceAccountKey.json"),
+        path.resolve(process.cwd(), "..", "firebase-service-account.json"),
       ];
 
       // Also scan candidate directories for any *adminsdk*.json or *service-account*.json
