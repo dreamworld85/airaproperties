@@ -12,6 +12,11 @@ Thumbs.db
 .env.*
 server/.env
 server/.env.*
+# Firebase Service Account Credentials (Never commit)
+*serviceAccountKey*.json
+*firebase-service-account*.json
+*service-account*.json
+serviceAccount.json
 public/*.apk
 public/uploads/*.apk
 *.apk

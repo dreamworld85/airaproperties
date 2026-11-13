@@ -2,7 +2,11 @@ import { getApps, initializeApp, cert, getApp } from "firebase-admin/app";
 import { getMessaging } from "firebase-admin/messaging";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import { pool } from "../db.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let firebaseAdminInitialized = false;
 let firebaseInitError = null;
@@ -23,8 +27,13 @@ export function initFirebaseAdmin() {
       credential = cert(parsed);
     } 
     // 2. Check for file path in env
+    else if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH && fs.existsSync(process.env.FIREBASE_SERVICE_ACCOUNT_PATH)) {
+      credential = cert(process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
+      console.log(`[FIREBASE ADMIN] Loaded service account credential from FIREBASE_SERVICE_ACCOUNT_PATH: ${process.env.FIREBASE_SERVICE_ACCOUNT_PATH}`);
+    }
     else if (process.env.FIREBASE_SERVICE_ACCOUNT && fs.existsSync(process.env.FIREBASE_SERVICE_ACCOUNT)) {
       credential = cert(process.env.FIREBASE_SERVICE_ACCOUNT);
+      console.log(`[FIREBASE ADMIN] Loaded service account credential from FIREBASE_SERVICE_ACCOUNT: ${process.env.FIREBASE_SERVICE_ACCOUNT}`);
     }
     // 3. Check for standard service account file in server/ or root
     else {
@@ -34,6 +43,9 @@ export function initFirebaseAdmin() {
         path.resolve(process.cwd(), "server", "firebase-service-account.json"),
         path.resolve(process.cwd(), "server", "serviceAccountKey.json"),
         path.resolve(process.cwd(), "..", "firebase-service-account.json"),
+        path.resolve(__dirname, "..", "..", "firebase-service-account.json"),
+        path.resolve(__dirname, "..", "..", "serviceAccountKey.json"),
+        path.resolve(__dirname, "..", "..", "..", "firebase-service-account.json"),
       ];
       for (const p of candidatePaths) {
         if (fs.existsSync(p)) {
