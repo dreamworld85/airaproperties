@@ -2284,12 +2284,21 @@ router.post("/sync-live-frontend", checkAdminSession, async (req, res) => {
 router.get("/push-notifications/status", checkAdminSession, async (req, res) => {
   try {
     const isReady = isFirebaseAdminReady();
-    const [[countRow]] = await pool.query("SELECT COUNT(*) AS totalTokens FROM user_fcm_tokens");
-    const [[sentRow]] = await pool.query("SELECT COUNT(*) AS totalSent FROM push_notifications WHERE status = 'sent'");
+    let totalTokens = 0;
+    let totalSent = 0;
+    try {
+      const [countRows] = await pool.query("SELECT COUNT(*) AS totalTokens FROM user_fcm_tokens");
+      totalTokens = countRows?.[0]?.totalTokens || 0;
+    } catch (_e) {}
+    try {
+      const [sentRows] = await pool.query("SELECT COUNT(*) AS totalSent FROM push_notifications WHERE status = 'sent'");
+      totalSent = sentRows?.[0]?.totalSent || 0;
+    } catch (_e) {}
+
     res.json({
       ready: isReady,
-      registeredTokens: countRow?.totalTokens || 0,
-      totalNotificationsSent: sentRow?.totalSent || 0
+      registeredTokens: totalTokens,
+      totalNotificationsSent: totalSent
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -1,4 +1,5 @@
-import admin from "firebase-admin";
+import { getApps, initializeApp, cert, getApp } from "firebase-admin/app";
+import { getMessaging } from "firebase-admin/messaging";
 import fs from "fs";
 import path from "path";
 import { pool } from "../db.js";
@@ -7,9 +8,10 @@ let firebaseAdminInitialized = false;
 let firebaseInitError = null;
 
 export function initFirebaseAdmin() {
-  if (admin.apps.length > 0) {
+  const apps = getApps();
+  if (apps.length > 0) {
     firebaseAdminInitialized = true;
-    return admin.app();
+    return getApp();
   }
 
   try {
@@ -18,11 +20,11 @@ export function initFirebaseAdmin() {
     // 1. Check for raw JSON string in env
     if (process.env.FIREBASE_SERVICE_ACCOUNT && process.env.FIREBASE_SERVICE_ACCOUNT.trim().startsWith("{")) {
       const parsed = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT.trim());
-      credential = admin.credential.cert(parsed);
+      credential = cert(parsed);
     } 
     // 2. Check for file path in env
     else if (process.env.FIREBASE_SERVICE_ACCOUNT && fs.existsSync(process.env.FIREBASE_SERVICE_ACCOUNT)) {
-      credential = admin.credential.cert(process.env.FIREBASE_SERVICE_ACCOUNT);
+      credential = cert(process.env.FIREBASE_SERVICE_ACCOUNT);
     }
     // 3. Check for standard service account file in server/ or root
     else {
@@ -35,7 +37,7 @@ export function initFirebaseAdmin() {
       ];
       for (const p of candidatePaths) {
         if (fs.existsSync(p)) {
-          credential = admin.credential.cert(p);
+          credential = cert(p);
           console.log(`[FIREBASE ADMIN] Loaded service account credential from: ${p}`);
           break;
         }
@@ -43,21 +45,21 @@ export function initFirebaseAdmin() {
     }
 
     if (credential) {
-      admin.initializeApp({
+      const app = initializeApp({
         credential,
         projectId: process.env.FIREBASE_PROJECT_ID || "airaproperties",
       });
       firebaseAdminInitialized = true;
       console.log("[FIREBASE ADMIN] Initialized with Service Account certificate successfully.");
-      return admin.app();
+      return app;
     }
 
     // Fallback: Initialize with project id
     const projectId = process.env.FIREBASE_PROJECT_ID || "airaproperties";
-    admin.initializeApp({ projectId });
+    const app = initializeApp({ projectId });
     firebaseAdminInitialized = true;
     console.log(`[FIREBASE ADMIN] Initialized with Project ID: ${projectId}`);
-    return admin.app();
+    return app;
   } catch (err) {
     firebaseInitError = err.message;
     console.warn(`[FIREBASE ADMIN] Initialization warning: ${err.message}. Push notifications will run in dry-run mode until valid service account credentials are provided.`);
@@ -66,7 +68,7 @@ export function initFirebaseAdmin() {
 }
 
 export function isFirebaseAdminReady() {
-  if (!firebaseAdminInitialized && admin.apps.length === 0) {
+  if (!firebaseAdminInitialized && getApps().length === 0) {
     initFirebaseAdmin();
   }
   return firebaseAdminInitialized && !firebaseInitError;
@@ -132,7 +134,8 @@ export async function sendNotificationToTopic({ topic, title, body, imageUrl, cl
 
   try {
     initFirebaseAdmin();
-    const response = await admin.messaging().send(payload);
+    const messaging = getMessaging(getApp());
+    const response = await messaging.send(payload);
     messageId = response;
     console.log(`[FIREBASE FCM] Notification published successfully to topic "${topic}": ${response}`);
   } catch (err) {
@@ -168,7 +171,8 @@ export async function subscribeTokenToTopic(token, topic) {
   if (!token || !topic) return null;
   try {
     initFirebaseAdmin();
-    const response = await admin.messaging().subscribeToTopic(token, topic);
+    const messaging = getMessaging(getApp());
+    const response = await messaging.subscribeToTopic(token, topic);
     console.log(`[FIREBASE FCM] Subscribed token to topic "${topic}":`, response);
     return response;
   } catch (err) {

@@ -323,10 +323,19 @@ async function checkDbMigration() {
         user_id INT NULL,
         token VARCHAR(500) NOT NULL UNIQUE,
         device_info VARCHAR(255) NULL,
+        district VARCHAR(100) NULL,
+        last_seen_at TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
     `);
+
+    try {
+      await pool.query("ALTER TABLE user_fcm_tokens ADD COLUMN district VARCHAR(100) NULL");
+    } catch (_ignoreErr) {}
+    try {
+      await pool.query("ALTER TABLE user_fcm_tokens ADD COLUMN last_seen_at TIMESTAMP NULL");
+    } catch (_ignoreErr) {}
 
     // Verify settings table exists
     await pool.query(`
