@@ -71,11 +71,51 @@ import PushNotificationModal from "@/components/PushNotificationModal";
 import RequestPropertyButton from "@/components/RequestPropertyButton";
 import CustomCodeInjector from "@/components/CustomCodeInjector";
 import SEOHead from "@/components/SEOHead";
+import { onMessageListener } from "@/firebase";
 
 export default function App() {
   const location = useLocation();
   const { token } = useAuth();
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1000);
+
+  // Listen for FCM foreground notifications when user has this tab open
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    onMessageListener((payload) => {
+      console.log("[FIREBASE FOREGROUND] Received message:", payload);
+      const title = payload.notification?.title || payload.data?.title || "Aira Properties Alert";
+      const body = payload.notification?.body || payload.data?.body || "";
+      const icon = payload.notification?.icon || "/icons/icons-512.png";
+      const clickUrl = payload.data?.url || payload.data?.click_action || "/";
+
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        try {
+          if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.ready.then((reg) => {
+              reg.showNotification(title, {
+                body,
+                icon,
+                badge: "/icons/favicon-32x32.png",
+                data: { url: clickUrl }
+              });
+            }).catch(() => {
+              new Notification(title, { body, icon });
+            });
+          } else {
+            new Notification(title, { body, icon });
+          }
+        } catch (_nErr) {
+          console.warn("[FIREBASE] Could not trigger foreground banner:", _nErr);
+        }
+      }
+    }).then((unsub) => {
+      unsubscribe = unsub;
+    }).catch(() => {});
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {

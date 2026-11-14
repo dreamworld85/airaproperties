@@ -295,9 +295,70 @@ export async function sendNotificationToTopic({ topic, title, body, imageUrl, cl
       throw new Error("Firebase Service Account key is missing. Please paste your Service Account Key JSON in Admin -> Push Notifications to activate live push sending.");
     }
     const messaging = getMessaging(getApp());
-    const response = await messaging.send(payload);
-    messageId = response;
-    console.log(`[FIREBASE FCM] Notification published successfully to topic "${topic}": ${response}`);
+    
+    // 1. Publish to FCM Topic
+    try {
+      const response = await messaging.send(payload);
+      messageId = response;
+      console.log(`[FIREBASE FCM] Notification published successfully to topic "${topic}": ${response}`);
+    } catch (topicErr) {
+      console.warn(`[FIREBASE FCM] Topic broadcast warning for "${topic}":`, topicErr.message);
+      errorMessage = topicErr.message;
+    }
+
+    // 2. ALSO send directly to device tokens (Multicast) for guaranteed, instant delivery
+    try {
+      let targetTokens = [];
+      if (topic === "all_users") {
+        const [rows] = await pool.query("SELECT token FROM user_fcm_tokens ORDER BY id DESC LIMIT 500");
+        targetTokens = rows.map((r) => r.token).filter(Boolean);
+      } else if (topic.startsWith("district_")) {
+        const distName = topic.replace("district_", "").replace(/_/g, "%");
+        const [rows] = await pool.query(
+          "SELECT token FROM user_fcm_tokens WHERE district LIKE ? OR district IS NULL OR district = '' ORDER BY id DESC LIMIT 500",
+          [`%${distName}%`]
+        );
+        targetTokens = rows.map((r) => r.token).filter(Boolean);
+      }
+
+      if (targetTokens.length > 0) {
+        // Also ensure tokens are subscribed to topic for future messages
+        messaging.subscribeToTopic(targetTokens, topic).catch(() => {});
+
+        const multicastPayload = {
+          tokens: targetTokens,
+          notification: payload.notification,
+          data: payload.data,
+          webpush: payload.webpush
+        };
+        const multicastRes = await messaging.sendEachForMulticast(multicastPayload);
+        console.log(`[FIREBASE FCM] Direct multicast to ${targetTokens.length} devices: ${multicastRes.successCount} succeeded, ${multicastRes.failureCount} failed`);
+
+        if (multicastRes.successCount > 0) {
+          status = "sent";
+          if (!messageId) messageId = `multicast-${multicastRes.successCount}-devices`;
+          errorMessage = null;
+        }
+
+        // Auto-prune any dead or unregistered device tokens
+        if (multicastRes.failureCount > 0) {
+          multicastRes.responses.forEach((resp, idx) => {
+            if (!resp.success && (
+              resp.error?.code === "messaging/registration-token-not-registered" ||
+              resp.error?.code === "messaging/invalid-registration-token"
+            )) {
+              const deadToken = targetTokens[idx];
+              pool.query("DELETE FROM user_fcm_tokens WHERE token = ?", [deadToken]).catch(() => {});
+            }
+          });
+        }
+      } else if (!messageId) {
+        status = "failed";
+        errorMessage = errorMessage || "No subscribed devices or failed to publish to topic.";
+      }
+    } catch (mcErr) {
+      console.warn("[FIREBASE FCM] Direct multicast warning:", mcErr.message);
+    }
   } catch (err) {
     status = "failed";
     errorMessage = err.message || "FCM send error";

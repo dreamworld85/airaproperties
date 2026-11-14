@@ -13,10 +13,35 @@ export function getApiUrl(): string {
 export const API_URL = getApiUrl();
 
 const originalFetch = window.fetch;
-window.fetch = function (input, init) {
-  const options = init || {};
-  options.credentials = "include";
-  return originalFetch(input, options);
+window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
+  let url = "";
+  if (typeof input === "string") {
+    url = input;
+  } else if (input instanceof URL) {
+    url = input.href;
+  } else if (input && typeof (input as Request).url === "string") {
+    url = (input as Request).url;
+  }
+
+  // Only attach credentials to our own backend or relative endpoints.
+  // Never force credentials on external third-party APIs (e.g. googleapis.com, gstatic.com)
+  // because Google APIs return wildcard 'Access-Control-Allow-Origin: *' which browsers reject when credentials='include'.
+  const isOurApi =
+    !url ||
+    url.startsWith("/") ||
+    url.includes("airaproperties.in") ||
+    url.includes("localhost") ||
+    url.includes("127.0.0.1");
+
+  if (isOurApi) {
+    const options: RequestInit = init ? { ...init } : {};
+    if (!options.credentials) {
+      options.credentials = "include";
+    }
+    return originalFetch(input, options);
+  }
+
+  return originalFetch(input, init);
 };
 
 export interface ApiUser {
