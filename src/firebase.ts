@@ -59,13 +59,23 @@ export async function requestNotificationPermissionAndGetToken(vapidKey: string 
       return { success: false, error: "Firebase messaging not initialized" };
     }
 
-    // Register service worker if available and ensure it's ready
+    // Register service worker if available and ensure it's active
     let swRegistration: ServiceWorkerRegistration | undefined = undefined;
     if ("serviceWorker" in navigator) {
       try {
-        swRegistration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
-        if (navigator.serviceWorker.ready) {
-          await navigator.serviceWorker.ready;
+        swRegistration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" });
+        
+        // Wait until service worker is active
+        if (swRegistration.installing || swRegistration.waiting) {
+          const worker = swRegistration.installing || swRegistration.waiting;
+          if (worker && worker.state !== "activated") {
+            await new Promise<void>((resolve) => {
+              worker.addEventListener("statechange", () => {
+                if (worker.state === "activated") resolve();
+              });
+              setTimeout(resolve, 2000); // Safety timeout
+            });
+          }
         }
       } catch (swErr) {
         console.warn("[FIREBASE] Service worker registration warning:", swErr);
@@ -75,10 +85,38 @@ export async function requestNotificationPermissionAndGetToken(vapidKey: string 
     const DEFAULT_VAPID_KEY = "BAuy2Qbz3juySoVyEGDKvFkzDgofsNhL6TD_nTpEs_m9qZSaEMj_8l3_sMYIrGn-Fh-PJMXpSCY6iw32y1FWWKk";
     const effectiveVapidKey = vapidKey || (import.meta as any).env?.VITE_FIREBASE_VAPID_KEY || DEFAULT_VAPID_KEY;
 
-    const token = await getToken(msg, {
-      serviceWorkerRegistration: swRegistration,
-      vapidKey: effectiveVapidKey
-    });
+    let token: string | undefined;
+    try {
+      token = await getToken(msg, {
+        serviceWorkerRegistration: swRegistration,
+        vapidKey: effectiveVapidKey
+      });
+    } catch (tokenErr: any) {
+      console.warn("[FIREBASE] Initial getToken attempt warning:", tokenErr);
+      
+      // If push service error, try unsubscribing any stale subscription and retry cleanly
+      if (swRegistration?.pushManager) {
+        try {
+          const staleSub = await swRegistration.pushManager.getSubscription();
+          if (staleSub) {
+            await staleSub.unsubscribe();
+          }
+          token = await getToken(msg, {
+            serviceWorkerRegistration: swRegistration,
+            vapidKey: effectiveVapidKey
+          });
+        } catch (_retryErr) {
+          // Detect Brave browser
+          const isBrave = !!(navigator as any).brave || navigator.userAgent.toLowerCase().includes("brave");
+          if (isBrave) {
+            throw new Error("In Brave browser, please enable 'Use Google services for push messaging' in brave://settings/privacy, then restart Brave.");
+          }
+          throw tokenErr;
+        }
+      } else {
+        throw tokenErr;
+      }
+    }
 
     return { success: true, token };
   } catch (err: any) {
