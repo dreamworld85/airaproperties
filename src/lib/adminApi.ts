@@ -833,3 +833,24 @@ export async function saveServiceAccountKey(serviceAccountJson: string): Promise
   if (!res.ok) throw new Error(data.error || "Failed to save service account key");
   return data;
 }
+
+
+export async function deletePushNotificationLog(id: number): Promise<{ success: boolean; message?: string }> {
+  const res = await fetch(`${API_URL}/api/admin/push-notifications/logs/${id}`, {
+    method: "DELETE",
+    headers: getAdminHeaders(),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to delete notification log");
+  return data;
+}
+
+export async function clearAllPushNotificationLogs(): Promise<{ success: boolean; message?: string }> {
+  const res = await fetch(`${API_URL}/api/admin/push-notifications/logs`, {
+    method: "DELETE",
+    headers: getAdminHeaders(),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to clear notification logs");
+  return data;
+}

@@ -2339,6 +2339,27 @@ router.get("/push-notifications/logs", checkAdminSession, async (req, res) => {
   }
 });
 
+// DELETE /api/admin/push-notifications/logs/:id
+router.delete("/push-notifications/logs/:id", checkAdminSession, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query("DELETE FROM push_notifications WHERE id = ?", [id]);
+    res.json({ success: true, message: `Notification log #${id} deleted.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/push-notifications/logs (Clear all logs)
+router.delete("/push-notifications/logs", checkAdminSession, async (req, res) => {
+  try {
+    await pool.query("DELETE FROM push_notifications");
+    res.json({ success: true, message: "All notification logs cleared." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/admin/push-notifications/send
 router.post("/push-notifications/send", checkAdminSession, async (req, res) => {
   try {

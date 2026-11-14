@@ -23,6 +23,8 @@ import {
   getPushNotificationStatus, 
   sendCustomPushNotification, 
   saveServiceAccountKey,
+  deletePushNotificationLog,
+  clearAllPushNotificationLogs,
   PushNotificationLog, 
   PushNotificationStatus 
 } from "@/lib/adminApi";
@@ -33,7 +35,8 @@ import {
   ShieldAlert, 
   FileText, 
   ChevronDown, 
-  ChevronUp 
+  ChevronUp,
+  Trash2
 } from "lucide-react";
 
 const KERALA_DISTRICTS = [
@@ -76,8 +79,11 @@ export default function PushNotifications() {
   const [savingKey, setSavingKey] = useState(false);
   const [keyFeedback, setKeyFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  // Filter logs
+  // Filter logs & delete state
   const [searchLog, setSearchLog] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [clearingAll, setClearingAll] = useState(false);
+  const [logFeedback, setLogFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const fetchData = async () => {
     try {
@@ -136,6 +142,40 @@ export default function PushNotifications() {
       setKeyFeedback({ type: "error", message: err.message || "Failed to save and verify service account key." });
     } finally {
       setSavingKey(false);
+    }
+  };
+
+  const handleDeleteLog = async (id: number) => {
+    if (!window.confirm(`Are you sure you want to delete broadcast log record #${id}?`)) {
+      return;
+    }
+    setDeletingId(id);
+    try {
+      await deletePushNotificationLog(id);
+      setLogs((prev) => prev.filter((l) => l.id !== id));
+      setLogFeedback({ type: "success", message: `Log #${id} deleted successfully.` });
+      setTimeout(() => setLogFeedback(null), 4000);
+    } catch (err: any) {
+      setLogFeedback({ type: "error", message: err.message || "Failed to delete log." });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleClearAllLogs = async () => {
+    if (!window.confirm("Are you sure you want to delete ALL notification broadcast logs? This action cannot be undone.")) {
+      return;
+    }
+    setClearingAll(true);
+    try {
+      await clearAllPushNotificationLogs();
+      setLogs([]);
+      setLogFeedback({ type: "success", message: "All notification broadcast logs have been cleared." });
+      setTimeout(() => setLogFeedback(null), 4000);
+    } catch (err: any) {
+      setLogFeedback({ type: "error", message: err.message || "Failed to clear logs." });
+    } finally {
+      setClearingAll(false);
     }
   };
 
@@ -748,17 +788,56 @@ export default function PushNotifications() {
             </p>
           </div>
 
-          <div className="relative min-w-[240px]">
-            <input
-              type="text"
-              placeholder="Filter by title, topic or status..."
-              value={searchLog}
-              onChange={(e) => setSearchLog(e.target.value)}
-              className="w-full pl-9 pr-3.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-            />
-            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
+          <div className="flex items-center gap-2.5">
+            {logs.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearAllLogs}
+                disabled={clearingAll}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-rose-200 text-rose-700 bg-rose-50/70 hover:bg-rose-100 rounded-lg text-xs font-semibold transition shrink-0"
+                title="Delete all broadcast logs"
+              >
+                {clearingAll ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5" />
+                )}
+                Clear All Logs
+              </button>
+            )}
+
+            <div className="relative min-w-[220px]">
+              <input
+                type="text"
+                placeholder="Filter by title, topic or status..."
+                value={searchLog}
+                onChange={(e) => setSearchLog(e.target.value)}
+                className="w-full pl-9 pr-3.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
+            </div>
           </div>
         </div>
+
+        {logFeedback && (
+          <div className={`mx-5 mt-4 p-3 rounded-lg flex items-center justify-between text-xs border ${
+            logFeedback.type === "success" 
+              ? "bg-emerald-50 border-emerald-200 text-emerald-800" 
+              : "bg-rose-50 border-rose-200 text-rose-800"
+          }`}>
+            <div className="flex items-center gap-2">
+              {logFeedback.type === "success" ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-rose-600" />
+              )}
+              <span className="font-medium">{logFeedback.message}</span>
+            </div>
+            <button onClick={() => setLogFeedback(null)} className="text-gray-400 hover:text-gray-600">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {loading ? (
           <div className="p-12 text-center text-gray-500 text-sm">
@@ -780,6 +859,7 @@ export default function PushNotifications() {
                   <th className="py-3 px-4">Title & Details</th>
                   <th className="py-3 px-4">Target Topic</th>
                   <th className="py-3 px-4">Delivery Status</th>
+                  <th className="py-3 px-4 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -854,6 +934,22 @@ export default function PushNotifications() {
                           )}
                         </div>
                       )}
+                    </td>
+
+                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteLog(log.id)}
+                        disabled={deletingId === log.id}
+                        className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                        title="Delete log record"
+                      >
+                        {deletingId === log.id ? (
+                          <RefreshCw className="w-4 h-4 animate-spin text-rose-500" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </button>
                     </td>
                   </tr>
                 ))}
