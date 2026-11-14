@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-import { getMessaging, getToken, onMessage, isSupported } from "firebase/messaging";
+import { initializeApp, FirebaseApp } from "firebase/app";
+import { getAnalytics, Analytics } from "firebase/analytics";
+import { getMessaging, getToken, onMessage, isSupported, Messaging, MessagePayload } from "firebase/messaging";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -15,13 +15,13 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = typeof window !== "undefined" ? getAnalytics(app) : null;
+const app: FirebaseApp = initializeApp(firebaseConfig);
+const analytics: Analytics | null = typeof window !== "undefined" ? getAnalytics(app) : null;
 
 // Initialize Messaging conditionally
-let messaging = null;
+let messaging: Messaging | null = null;
 
-export async function getFirebaseMessaging() {
+export async function getFirebaseMessaging(): Promise<Messaging | null> {
   if (typeof window === "undefined") return null;
   if (messaging) return messaging;
   try {
@@ -36,7 +36,14 @@ export async function getFirebaseMessaging() {
   return null;
 }
 
-export async function requestNotificationPermissionAndGetToken(vapidKey = null) {
+export interface PushTokenResult {
+  success: boolean;
+  token?: string;
+  error?: string;
+  serverRes?: any;
+}
+
+export async function requestNotificationPermissionAndGetToken(vapidKey: string | null = null): Promise<PushTokenResult> {
   if (typeof window === "undefined" || !("Notification" in window)) {
     return { success: false, error: "Notifications not supported in this browser" };
   }
@@ -52,25 +59,34 @@ export async function requestNotificationPermissionAndGetToken(vapidKey = null) 
       return { success: false, error: "Firebase messaging not initialized" };
     }
 
-    // Register service worker if available
-    let swRegistration = undefined;
+    // Register service worker if available and ensure it's ready
+    let swRegistration: ServiceWorkerRegistration | undefined = undefined;
     if ("serviceWorker" in navigator) {
-      swRegistration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+      try {
+        swRegistration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+        if (navigator.serviceWorker.ready) {
+          await navigator.serviceWorker.ready;
+        }
+      } catch (swErr) {
+        console.warn("[FIREBASE] Service worker registration warning:", swErr);
+      }
     }
+
+    const effectiveVapidKey = vapidKey || (import.meta as any).env?.VITE_FIREBASE_VAPID_KEY || undefined;
 
     const token = await getToken(msg, {
       serviceWorkerRegistration: swRegistration,
-      vapidKey: vapidKey || undefined
+      vapidKey: effectiveVapidKey
     });
 
     return { success: true, token };
-  } catch (err) {
+  } catch (err: any) {
     console.error("[FIREBASE] Error requesting notification token:", err);
-    return { success: false, error: err.message };
+    return { success: false, error: err?.message || String(err) };
   }
 }
 
-export async function onMessageListener(callback) {
+export async function onMessageListener(callback: (payload: MessagePayload) => void): Promise<() => void> {
   const msg = await getFirebaseMessaging();
   if (!msg) return () => {};
   return onMessage(msg, (payload) => {
@@ -78,15 +94,19 @@ export async function onMessageListener(callback) {
   });
 }
 
-export async function registerTokenWithServer(token, userId = null, district = null) {
-  if (!token) return;
+export async function registerTokenWithServer(
+  token: string,
+  userId: number | string | null = null,
+  district: string | null = null
+): Promise<any> {
+  if (!token) return null;
   try {
     const { getApiUrl } = await import("./lib/api");
     const apiUrl = getApiUrl();
     const res = await fetch(`${apiUrl}/api/notifications/register-token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, userId, district })
+      body: JSON.stringify({ token, userId: userId || null, district: district || null })
     });
     return await res.json();
   } catch (err) {
@@ -95,10 +115,15 @@ export async function registerTokenWithServer(token, userId = null, district = n
   }
 }
 
-export async function enablePushNotifications(userId = null, district = null) {
-  const result = await requestNotificationPermissionAndGetToken();
+export async function enablePushNotifications(
+  userId: number | string | null = null,
+  district: string | null = null,
+  vapidKey: string | null = null
+): Promise<PushTokenResult> {
+  const result = await requestNotificationPermissionAndGetToken(vapidKey);
   if (result.success && result.token) {
-    await registerTokenWithServer(result.token, userId, district);
+    const serverRes = await registerTokenWithServer(result.token, userId, district);
+    return { ...result, serverRes };
   }
   return result;
 }

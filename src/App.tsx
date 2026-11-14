@@ -67,6 +67,7 @@ import AdminMetaLeads from "@/screens/Admin/MetaLeads";
 import AdminPushNotifications from "@/screens/Admin/PushNotifications";
 import LaunchPopup from "@/components/LaunchPopup";
 import WelcomePopup from "@/components/WelcomePopup";
+import PushNotificationModal from "@/components/PushNotificationModal";
 import RequestPropertyButton from "@/components/RequestPropertyButton";
 import CustomCodeInjector from "@/components/CustomCodeInjector";
 import SEOHead from "@/components/SEOHead";
@@ -232,7 +233,12 @@ export default function App() {
       )}
 
       {/* Request a Property sticky button common for all pages */}
-      {!isAdminRoute && !isAuthRoute && <RequestPropertyButton />}
+      {!isAdminRoute && !isAuthRoute && (
+        <>
+          <RequestPropertyButton />
+          <PushNotificationModal />
+        </>
+      )}
     </div>
   );
 }
