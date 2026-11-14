@@ -2104,6 +2104,23 @@ export async function syncFrontendToLive(targetDir = hostingerFrontendDir) {
     fs.cpSync(activeDistDir, targetDir, { recursive: true, force: true });
     console.log(`[DEPLOY] Successfully synced full frontend build from ${activeDistDir} to ${targetDir}`);
     await injectCustomCodeIntoIndexHtml(targetDir);
+
+    // Clean legacy gcm_sender_id from live manifest.json to prevent Chrome "Registration failed - push service error"
+    const manifestPath = path.join(targetDir, "manifest.json");
+    if (fs.existsSync(manifestPath)) {
+      try {
+        let manifestContent = fs.readFileSync(manifestPath, "utf8");
+        if (manifestContent.includes("gcm_sender_id")) {
+          const parsed = JSON.parse(manifestContent);
+          delete parsed.gcm_sender_id;
+          fs.writeFileSync(manifestPath, JSON.stringify(parsed, null, 2), "utf8");
+          console.log(`[DEPLOY] Cleaned legacy gcm_sender_id from ${manifestPath}`);
+        }
+      } catch (mErr) {
+        console.error("[DEPLOY] Error cleaning manifest:", mErr);
+      }
+    }
+
     return { synced: true, source: activeDistDir, target: targetDir };
   } catch (err) {
     console.error(`[DEPLOY] Failed syncing frontend build to ${targetDir}:`, err);
