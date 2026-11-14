@@ -697,6 +697,9 @@ export default function PushNotifications() {
                     onChange={(e) => setCustomTopic(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   />
+                  <p className="text-[11px] text-emerald-700 mt-1">
+                    ✓ Custom topic broadcasts directly to all registered users &amp; test devices.
+                  </p>
                 </div>
               )}
             </div>

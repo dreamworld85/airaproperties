@@ -309,15 +309,16 @@ export async function sendNotificationToTopic({ topic, title, body, imageUrl, cl
     // 2. ALSO send directly to device tokens (Multicast) for guaranteed, instant delivery
     try {
       let targetTokens = [];
-      if (topic === "all_users") {
-        const [rows] = await pool.query("SELECT token FROM user_fcm_tokens ORDER BY id DESC LIMIT 500");
-        targetTokens = rows.map((r) => r.token).filter(Boolean);
-      } else if (topic.startsWith("district_")) {
+      if (topic && topic.startsWith("district_")) {
         const distName = topic.replace("district_", "").replace(/_/g, "%");
         const [rows] = await pool.query(
           "SELECT token FROM user_fcm_tokens WHERE district LIKE ? OR district IS NULL OR district = '' ORDER BY id DESC LIMIT 500",
           [`%${distName}%`]
         );
+        targetTokens = rows.map((r) => r.token).filter(Boolean);
+      } else {
+        // "all_users" or any Custom Topic: deliver to ALL registered devices & auto-subscribe them
+        const [rows] = await pool.query("SELECT token FROM user_fcm_tokens ORDER BY id DESC LIMIT 500");
         targetTokens = rows.map((r) => r.token).filter(Boolean);
       }
 
