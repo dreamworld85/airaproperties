@@ -18,8 +18,11 @@ server/.env.*
 *service-account*.json
 *adminsdk*.json
 serviceAccount.json
-public/*.apk
-public/uploads/*.apk
-*.apk
-server/src/uploads/*.apk
+# APKs and App Bundles (tracked for distribution)
+!public/airaproperties.apk
+!public/aira-admin.apk
+!public/airaproperties-release.aab
+!apk/*.apk
+!apk/*.aab
+!apk/release.keystore
 src/uploads/

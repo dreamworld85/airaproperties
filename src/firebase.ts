@@ -92,26 +92,36 @@ export async function requestNotificationPermissionAndGetToken(vapidKey: string 
         vapidKey: effectiveVapidKey
       });
     } catch (tokenErr: any) {
-      console.warn("[FIREBASE] Initial getToken attempt warning:", tokenErr);
+      console.warn("[FIREBASE] Initial getToken attempt failed:", tokenErr);
       
-      // If push service error, try unsubscribing any stale subscription and retry cleanly
+      // Auto-recovery: If push service error or stale subscription conflict, unsubscribe and retry cleanly
       if (swRegistration?.pushManager) {
         try {
           const staleSub = await swRegistration.pushManager.getSubscription();
           if (staleSub) {
+            console.log("[FIREBASE] Unsubscribing stale push subscription...");
             await staleSub.unsubscribe();
+          }
+          try {
+            await swRegistration.update();
+          } catch (_updErr) {
+            // ignore update error
           }
           token = await getToken(msg, {
             serviceWorkerRegistration: swRegistration,
             vapidKey: effectiveVapidKey
           });
-        } catch (_retryErr) {
-          // Detect Brave browser
+        } catch (retryErr: any) {
+          console.error("[FIREBASE] Retry getToken also failed:", retryErr);
           const isBrave = !!(navigator as any).brave || navigator.userAgent.toLowerCase().includes("brave");
           if (isBrave) {
-            throw new Error("In Brave browser, please enable 'Use Google services for push messaging' in brave://settings/privacy, then restart Brave.");
+            throw new Error("Brave blocks push notifications by default. In brave://settings/privacy, enable 'Use Google services for push messaging', then restart Brave.");
           }
-          throw tokenErr;
+          const msgStr = retryErr?.message || tokenErr?.message || "";
+          if (msgStr.toLowerCase().includes("push service error")) {
+            throw new Error("Google Push Service error. Please refresh the page and try again (ensure ad blockers or strict privacy shields are paused for this site).");
+          }
+          throw retryErr || tokenErr;
         }
       } else {
         throw tokenErr;

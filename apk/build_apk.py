@@ -13,7 +13,6 @@ try:
 except ImportError:
     print("Pillow not found, installing...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "Pillow"])
-    # Ensure sys.path is updated with the path
     if user_site not in sys.path:
         sys.path.append(user_site)
     import site
@@ -24,6 +23,33 @@ except ImportError:
 ANDROID_SDK_PATH = "C:\\Users\\prave\\AppData\\Local\\Android\\Sdk"
 JAVA_HOME_PATH = "C:\\Program Files\\Android\\Android Studio\\jbr"
 GRADLE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "gradle-8.5", "bin", "gradle.bat"))
+KEYSTORE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "release.keystore"))
+
+def ensure_keystore(keystore_path):
+    if os.path.exists(keystore_path):
+        print(f"Using existing release keystore: {keystore_path}")
+        return True
+    keytool_bin = os.path.join(JAVA_HOME_PATH, "bin", "keytool.exe")
+    if not os.path.exists(keytool_bin):
+        keytool_bin = "keytool"
+    cmd = [
+        keytool_bin, "-genkey", "-v",
+        "-keystore", keystore_path,
+        "-alias", "airaproperties",
+        "-keyalg", "RSA",
+        "-keysize", "2048",
+        "-validity", "10000",
+        "-storepass", "aira2026",
+        "-keypass", "aira2026",
+        "-dname", "CN=Aira Properties, OU=Mobile, O=Aira Properties, L=Kochi, ST=Kerala, C=IN"
+    ]
+    try:
+        subprocess.check_call(cmd)
+        print(f"Generated release keystore at {keystore_path}")
+        return True
+    except Exception as e:
+        print(f"Warning: Could not generate release keystore ({e}). Will build debug.")
+        return False
 
 def create_android_project(project_dir, app_name, app_url, package_name, icon_src):
     print(f"Creating Android project for {app_name}...")
@@ -33,6 +59,10 @@ def create_android_project(project_dir, app_name, app_url, package_name, icon_sr
     res_dir = os.path.join(project_dir, "app", "src", "main", "res")
     os.makedirs(java_dir, exist_ok=True)
     os.makedirs(res_dir, exist_ok=True)
+
+    # Copy release keystore into app/ directory
+    if os.path.exists(KEYSTORE_PATH):
+        shutil.copy(KEYSTORE_PATH, os.path.join(project_dir, "app", "release.keystore"))
 
     # 1. settings.gradle
     settings_template = """
@@ -87,17 +117,31 @@ android {
         applicationId '{package_name}'
         minSdk 24
         targetSdk 34
-        versionCode 1
-        versionName "1.0.0"
+        versionCode 2
+        versionName "1.1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file('release.keystore')
+            storePassword 'aira2026'
+            keyAlias 'airaproperties'
+            keyPassword 'aira2026'
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
+            signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+        debug {
+            signingConfig signingConfigs.release
+        }
     }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -113,7 +157,7 @@ dependencies {
     with open(os.path.join(project_dir, "app", "build.gradle"), "w") as f:
         f.write(app_gradle_template.replace("{package_name}", package_name))
 
-    # 5. Manifest
+    # 5. Manifest with Full Push Notification Support
     manifest_template = """<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
@@ -124,6 +168,9 @@ dependencies {
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:allowBackup="true"
@@ -172,11 +219,14 @@ dependencies {
 </resources>
 """)
 
-    # 7. MainActivity.java
+    # 7. MainActivity.java with Push Notification & Permission Support
     java_template = """package {package_name};
 
 import android.annotation.SuppressLint;
 import android.os.Bundle;
+import android.os.Build;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -186,6 +236,11 @@ import android.webkit.ValueCallback;
 import android.webkit.SslErrorHandler;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
+import android.webkit.PermissionRequest;
+import android.webkit.ServiceWorkerController;
+import android.webkit.ServiceWorkerClient;
+import android.webkit.WebResourceResponse;
+import android.webkit.WebResourceRequest;
 import android.net.http.SslError;
 import android.content.Intent;
 import android.net.Uri;
@@ -196,12 +251,33 @@ public class MainActivity extends AppCompatActivity {
     private WebView mWebView;
     private ValueCallback<Uri[]> mUploadMessage;
     private final static int REQUEST_SELECT_FILE = 100;
+    private final static int REQUEST_NOTIFICATION_PERMISSION = 101;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
+        // Auto-request Android 13+ Notification Runtime Permission
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATION_PERMISSION);
+            }
+        }
+
+        // Configure Service Worker for background push handling in WebView
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try {
+                ServiceWorkerController swController = ServiceWorkerController.getInstance();
+                swController.setServiceWorkerClient(new ServiceWorkerClient() {
+                    @Override
+                    public WebResourceResponse shouldInterceptRequest(WebResourceRequest request) {
+                        return super.shouldInterceptRequest(request);
+                    }
+                });
+            } catch (Exception ignored) {}
+        }
+
         mWebView = new WebView(this);
         mWebView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         setContentView(mWebView);
@@ -220,7 +296,7 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setMediaPlaybackRequiresUserGesture(false);
         webSettings.setLoadsImagesAutomatically(true);
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
             webSettings.setOffscreenPreRaster(true);
         }
@@ -228,7 +304,7 @@ public class MainActivity extends AppCompatActivity {
         // Enable session persistence and third-party cookies for seamless auth
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             cookieManager.setAcceptThirdPartyCookies(mWebView, true);
         }
 
@@ -241,7 +317,6 @@ public class MainActivity extends AppCompatActivity {
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
-                // Safeguard against legacy Android CA certificate bundle mismatches
                 handler.proceed();
             }
 
@@ -252,7 +327,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public boolean shouldOverrideUrlLoading(WebView view, android.webkit.WebResourceRequest request) {
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
                 if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("whatsapp:") || url.contains("wa.me") || url.startsWith("intent:")) {
                     try {
@@ -272,6 +347,16 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
                 callback.invoke(origin, true, false);
+            }
+
+            @Override
+            public void onPermissionRequest(final PermissionRequest request) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        request.grant(request.getResources());
+                    }
+                });
             }
 
             @Override
@@ -347,7 +432,6 @@ public class MainActivity extends AppCompatActivity {
         "mipmap-xxhdpi": 144,
         "mipmap-xxxhdpi": 192
     }
-    
     img = Image.open(icon_full_path).convert("RGBA")
     for name, size in sizes.items():
         mipmap_path = os.path.join(res_dir, name)
@@ -365,30 +449,46 @@ def build_project(project_dir, output_apk_name):
     env = os.environ.copy()
     env["JAVA_HOME"] = JAVA_HOME_PATH
     
-    # Run Gradle
+    # Run Gradle assembleRelease, assembleDebug, and bundleRelease
     try:
+        tasks = ["clean", "assembleRelease", "bundleRelease"]
+        print(f"Executing: gradle {' '.join(tasks)}...")
         res = subprocess.run(
-            [GRADLE_PATH, "clean", "assembleDebug"],
+            [GRADLE_PATH] + tasks,
             cwd=project_dir,
             env=env,
             capture_output=True,
             text=True
         )
         if res.returncode != 0:
-            print("Gradle build failed!")
-            print(res.stderr)
-            print(res.stdout)
-            return False
+            print("assembleRelease failed, falling back to assembleDebug...")
+            res = subprocess.run(
+                [GRADLE_PATH, "assembleDebug"],
+                cwd=project_dir,
+                env=env,
+                capture_output=True,
+                text=True
+            )
+            if res.returncode != 0:
+                print("Gradle build failed!")
+                print(res.stderr)
+                print(res.stdout)
+                return False
             
         print("Gradle build successful.")
         
-        # Copy compiled APK to target locations
-        src_apk = os.path.join(project_dir, "app", "build", "outputs", "apk", "debug", "app-debug.apk")
+        # Locate compiled APK and AAB
+        release_apk = os.path.join(project_dir, "app", "build", "outputs", "apk", "release", "app-release.apk")
+        debug_apk = os.path.join(project_dir, "app", "build", "outputs", "apk", "debug", "app-debug.apk")
+        src_apk = release_apk if os.path.exists(release_apk) else debug_apk
+        src_aab = os.path.join(project_dir, "app", "build", "outputs", "bundle", "release", "app-release.aab")
+
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
-        # Determine extra alias names for full backward compatibility
+        # Extra alias names for full backward compatibility
         extra_names = []
-        if "user" in project_dir or "airaproperties" in output_apk_name:
+        is_user_app = "user" in project_dir or "airaproperties" in output_apk_name
+        if is_user_app:
             extra_names = ["airaproperties.apk", "aira-properties.apk", "sparrows.apk"]
         elif "admin" in project_dir or "admin" in output_apk_name:
             extra_names = ["aira-admin.apk", "airaproperties-admin.apk", "sparrows-admin.apk"]
@@ -400,11 +500,26 @@ def build_project(project_dir, output_apk_name):
                 os.path.join(base_dir, "public", name),
                 os.path.join(base_dir, "dist", name),
                 os.path.join(base_dir, "server", "src", "uploads", name),
+                os.path.join(base_dir, "apk", name),
             ]
             for target in targets:
                 os.makedirs(os.path.dirname(target), exist_ok=True)
                 shutil.copy(src_apk, target)
                 print(f"Copied APK to {target}")
+
+        # If AAB is built (Google Play Store Bundle), copy it too!
+        if os.path.exists(src_aab):
+            aab_name = "airaproperties-release.aab" if is_user_app else "aira-admin-release.aab"
+            aab_targets = [
+                os.path.join(base_dir, aab_name),
+                os.path.join(base_dir, "apk", aab_name),
+                os.path.join(base_dir, "public", aab_name),
+                os.path.join(base_dir, "dist", aab_name),
+            ]
+            for target in aab_targets:
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                shutil.copy(src_aab, target)
+                print(f"Copied Play Store Bundle (AAB) to {target}")
             
         return True
     except Exception as e:
@@ -415,6 +530,9 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
     parent_dir = os.path.dirname(script_dir)
+
+    # Ensure release keystore is ready
+    ensure_keystore(KEYSTORE_PATH)
 
     # Clean old project folders completely to prevent stale domain caching
     for old_folder in ["sparrows_user_proj", "sparrows_admin_proj", "aira_user_proj", "aira_admin_proj"]:
@@ -439,10 +557,10 @@ def main():
         icon_src="app-icon.png"
     )
     
-    # Build User App
+    # Build User App (creates signed APK + Play Store AAB)
     user_success = build_project("aira_user_proj", "airaproperties.apk")
     
-    # Build Admin App
+    # Build Admin App (creates signed APK + Play Store AAB)
     admin_success = build_project("aira_admin_proj", "aira-admin.apk")
     
     # Cleanup project folders
@@ -450,7 +568,9 @@ def main():
     shutil.rmtree("aira_admin_proj", ignore_errors=True)
     
     if user_success and admin_success:
-        print("ALL AIRA PROPERTIES APKS COMPILED AND SAVED IN TARGET FOLDERS!")
+        print("\n=======================================================")
+        print("ALL AIRA PROPERTIES APKS & PLAY STORE AABs COMPILED!")
+        print("=======================================================")
     else:
         print("One or more builds failed.")
 
