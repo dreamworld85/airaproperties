@@ -72,7 +72,8 @@ export async function requestNotificationPermissionAndGetToken(vapidKey: string 
       }
     }
 
-    const effectiveVapidKey = vapidKey || (import.meta as any).env?.VITE_FIREBASE_VAPID_KEY || undefined;
+    const DEFAULT_VAPID_KEY = "BAuy2Qbz3juySoVyEGDKvFkzDgofsNhL6TD_nTpEs_m9qZSaEMj_8l3_sMYIrGn-Fh-PJMXpSCY6iw32y1FWWKk";
+    const effectiveVapidKey = vapidKey || (import.meta as any).env?.VITE_FIREBASE_VAPID_KEY || DEFAULT_VAPID_KEY;
 
     const token = await getToken(msg, {
       serviceWorkerRegistration: swRegistration,
