@@ -59,6 +59,11 @@ export default function PushNotificationModal({ forceOpen = false, onClose }: Pu
       return;
     }
 
+    // 0. If running inside Native Android App, push notifications are handled natively by Android OS
+    if (typeof window !== "undefined" && ((window as any).AiraNativeApp || (window as any).__AIRA_NATIVE_FCM_TOKEN)) {
+      return;
+    }
+
     // 1. Browser feature detection
     if (typeof window === "undefined" || !("Notification" in window) || !("serviceWorker" in navigator)) {
       return;
@@ -107,6 +112,24 @@ export default function PushNotificationModal({ forceOpen = false, onClose }: Pu
       const targetDistrict = selectedDistrict === "All Kerala" ? null : selectedDistrict;
       const targetUserId = user?.id || null;
 
+      // If running inside Android Native App wrapper
+      if (typeof window !== "undefined" && (window as any).AiraNativeApp) {
+        const nativeBridge = (window as any).AiraNativeApp;
+        if (targetDistrict && nativeBridge.subscribeDistrict) {
+          nativeBridge.subscribeDistrict(targetDistrict);
+        }
+        if (nativeBridge.registerUser) {
+          nativeBridge.registerUser(targetUserId ? String(targetUserId) : "", targetDistrict || "");
+        }
+        setStatus("success");
+        localStorage.setItem(ENABLED_KEY, "true");
+        setTimeout(() => {
+          setIsOpen(false);
+          if (onClose) onClose();
+        }, 1200);
+        return;
+      }
+
       const result = await enablePushNotifications(targetUserId, targetDistrict);
 
       if (result.success) {
@@ -125,7 +148,12 @@ export default function PushNotificationModal({ forceOpen = false, onClose }: Pu
       }
     } catch (err: any) {
       setStatus("error");
-      setErrorMessage(err?.message || "Failed to subscribe to push notifications.");
+      const msg = err?.message || "Failed to subscribe to push notifications.";
+      if (msg.toLowerCase().includes("failed to fetch") || msg.toLowerCase().includes("push service error")) {
+        setErrorMessage("Push service temporarily busy. Please refresh the page and try again.");
+      } else {
+        setErrorMessage(msg);
+      }
     } finally {
       setLoading(false);
     }

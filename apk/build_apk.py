@@ -1,3 +1,13 @@
+def safe_copy(src, dst):
+    try:
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        with open(src, 'rb') as fsrc:
+            data = fsrc.read()
+        with open(dst, 'wb') as fdst:
+            fdst.write(data)
+        print(f'Copied to {dst}')
+    except Exception as e:
+        print(f'Warning copying to {dst}: {e}')
 import os
 import sys
 import subprocess
@@ -124,8 +134,8 @@ android {
         applicationId '{package_name}'
         minSdk 24
         targetSdk 34
-        versionCode 3
-        versionName "1.2.0"
+        versionCode 4
+        versionName "1.2.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -270,7 +280,9 @@ import android.webkit.PermissionRequest;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.net.http.SslError;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.content.ClipData;
 import android.app.NotificationChannel;
@@ -294,6 +306,9 @@ public class MainActivity extends AppCompatActivity {
         
         // 1. Setup Notification Channel
         createNotificationChannel();
+
+        SharedPreferences prefs = getSharedPreferences("aira_fcm_prefs", Context.MODE_PRIVATE);
+        mNativeFcmToken = prefs.getString("fcm_token", null);
 
         // 2. Auto-request Android 13+ Notification Runtime Permission
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -454,6 +469,9 @@ public class MainActivity extends AppCompatActivity {
                 }
                 mNativeFcmToken = task.getResult();
                 Log.d(TAG, "Native FCM Registration Token: " + mNativeFcmToken);
+                SharedPreferences fcmPrefs = getSharedPreferences("aira_fcm_prefs", Context.MODE_PRIVATE);
+                fcmPrefs.edit().putString("fcm_token", mNativeFcmToken).apply();
+
                 FCMRegistrationHelper.sendTokenToServer(MainActivity.this, mNativeFcmToken, null);
 
                 if (mWebView != null) {
@@ -482,6 +500,10 @@ public class MainActivity extends AppCompatActivity {
     public class AiraNativeBridge {
         @JavascriptInterface
         public String getNativeFcmToken() {
+            if (mNativeFcmToken == null) {
+                SharedPreferences fcmPrefs = getSharedPreferences("aira_fcm_prefs", Context.MODE_PRIVATE);
+                mNativeFcmToken = fcmPrefs.getString("fcm_token", null);
+            }
             return mNativeFcmToken;
         }
 
@@ -490,9 +512,24 @@ public class MainActivity extends AppCompatActivity {
             if (district != null && !district.isEmpty()) {
                 String clean = district.trim().toLowerCase().replaceAll("[^a-z0-9]", "_");
                 FirebaseMessaging.getInstance().subscribeToTopic("district_" + clean);
+                if (mNativeFcmToken == null) {
+                    SharedPreferences fcmPrefs = getSharedPreferences("aira_fcm_prefs", Context.MODE_PRIVATE);
+                    mNativeFcmToken = fcmPrefs.getString("fcm_token", null);
+                }
                 if (mNativeFcmToken != null) {
                     FCMRegistrationHelper.sendTokenToServer(MainActivity.this, mNativeFcmToken, district);
                 }
+            }
+        }
+
+        @JavascriptInterface
+        public void registerUser(String userId, String district) {
+            if (mNativeFcmToken == null) {
+                SharedPreferences fcmPrefs = getSharedPreferences("aira_fcm_prefs", Context.MODE_PRIVATE);
+                mNativeFcmToken = fcmPrefs.getString("fcm_token", null);
+            }
+            if (mNativeFcmToken != null) {
+                FCMRegistrationHelper.sendTokenToServer(MainActivity.this, mNativeFcmToken, district, userId);
             }
         }
 
@@ -559,6 +596,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.RingtoneManager;
@@ -580,6 +618,7 @@ public class AiraFirebaseMessagingService extends FirebaseMessagingService {
     public void onNewToken(String token) {
         super.onNewToken(token);
         Log.d(TAG, "Refreshed FCM token: " + token);
+        getSharedPreferences("aira_fcm_prefs", Context.MODE_PRIVATE).edit().putString("fcm_token", token).apply();
         FCMRegistrationHelper.sendTokenToServer(getApplicationContext(), token, null);
     }
 
@@ -715,40 +754,72 @@ import java.nio.charset.StandardCharsets;
 
 public class FCMRegistrationHelper {
     private static final String TAG = "AiraFCMHelper";
-    private static final String SERVER_URL = "https://api.airaproperties.in/api/notifications/register-token";
+    private static final String BASE_URL = "https://api.airaproperties.in/api/notifications/register-token";
 
     public static void sendTokenToServer(Context context, final String token, final String district) {
+        sendTokenToServer(context, token, district, null);
+    }
+
+    public static void sendTokenToServer(Context context, final String token, final String district, final String userId) {
         if (token == null || token.isEmpty()) return;
         new Thread(new Runnable() {
             @Override
             public void run() {
-                try {
-                    URL url = new URL(SERVER_URL);
-                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                    conn.setRequestMethod("POST");
-                    conn.setRequestProperty("Content-Type", "application/json; utf-8");
-                    conn.setRequestProperty("Accept", "application/json");
-                    conn.setRequestProperty("User-Agent", "AiraAndroidApp/1.2.0");
-                    conn.setDoOutput(true);
-                    conn.setConnectTimeout(10000);
-                    conn.setReadTimeout(10000);
+                int attempts = 0;
+                boolean registered = false;
+                while (attempts < 3 && !registered) {
+                    attempts++;
+                    try {
+                        StringBuilder urlBuilder = new StringBuilder(BASE_URL);
+                        urlBuilder.append("?token=").append(java.net.URLEncoder.encode(token, "UTF-8"));
+                        if (district != null && !district.isEmpty()) {
+                            urlBuilder.append("&district=").append(java.net.URLEncoder.encode(district, "UTF-8"));
+                        }
+                        if (userId != null && !userId.isEmpty()) {
+                            urlBuilder.append("&userId=").append(java.net.URLEncoder.encode(userId, "UTF-8"));
+                        }
 
-                    JSONObject payload = new JSONObject();
-                    payload.put("token", token);
-                    if (district != null && !district.isEmpty()) {
-                        payload.put("district", district);
+                        URL url = new URL(urlBuilder.toString());
+                        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                        conn.setRequestMethod("POST");
+                        conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+                        conn.setRequestProperty("Accept", "application/json");
+                        conn.setRequestProperty("User-Agent", "AiraAndroidApp/1.2.1");
+                        conn.setDoOutput(true);
+                        conn.setConnectTimeout(10000);
+                        conn.setReadTimeout(10000);
+
+                        JSONObject payload = new JSONObject();
+                        payload.put("token", token);
+                        if (district != null && !district.isEmpty()) {
+                            payload.put("district", district);
+                        }
+                        if (userId != null && !userId.isEmpty()) {
+                            payload.put("userId", userId);
+                        }
+                        String jsonInputString = payload.toString();
+
+                        try (OutputStream os = conn.getOutputStream()) {
+                            byte[] input = jsonInputString.getBytes(StandardCharsets.UTF_8);
+                            os.write(input, 0, input.length);
+                        }
+
+                        int responseCode = conn.getResponseCode();
+                        Log.d(TAG, "Token registration attempt " + attempts + " HTTP " + responseCode);
+                        if (responseCode >= 200 && responseCode < 300) {
+                            registered = true;
+                            Log.d(TAG, "Token registered successfully with backend!");
+                            break;
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Token registration error (attempt " + attempts + "): " + e.getMessage());
                     }
-                    String jsonInputString = payload.toString();
 
-                    try (OutputStream os = conn.getOutputStream()) {
-                        byte[] input = jsonInputString.getBytes(StandardCharsets.UTF_8);
-                        os.write(input, 0, input.length);
+                    if (!registered && attempts < 3) {
+                        try {
+                            Thread.sleep(2000);
+                        } catch (InterruptedException ignored) {}
                     }
-
-                    int responseCode = conn.getResponseCode();
-                    Log.d(TAG, "Token registered successfully with backend. HTTP " + responseCode);
-                } catch (Exception e) {
-                    Log.e(TAG, "Failed registering token with backend: " + e.getMessage());
                 }
             }
         }).start();
@@ -844,7 +915,7 @@ def build_project(project_dir, output_apk_name):
             ]
             for target in targets:
                 os.makedirs(os.path.dirname(target), exist_ok=True)
-                shutil.copy(src_apk, target)
+                safe_copy(src_apk, target)
                 print(f"Copied APK to {target}")
 
         # If AAB is built (Google Play Store Bundle), copy it too!
@@ -858,7 +929,7 @@ def build_project(project_dir, output_apk_name):
             ]
             for target in aab_targets:
                 os.makedirs(os.path.dirname(target), exist_ok=True)
-                shutil.copy(src_aab, target)
+                safe_copy(src_aab, target)
                 print(f"Copied Play Store Bundle (AAB) to {target}")
             
         return True

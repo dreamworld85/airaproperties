@@ -94,37 +94,38 @@ export async function requestNotificationPermissionAndGetToken(vapidKey: string 
     } catch (tokenErr: any) {
       console.warn("[FIREBASE] Initial getToken attempt failed:", tokenErr);
       
-      // Auto-recovery: If push service error or stale subscription conflict, unsubscribe and retry cleanly
-      if (swRegistration?.pushManager) {
-        try {
-          const staleSub = await swRegistration.pushManager.getSubscription();
+      // Auto-recovery: If push service error or stale subscription conflict, clean slate retry
+      try {
+        if (swRegistration) {
+          const staleSub = await swRegistration.pushManager?.getSubscription();
           if (staleSub) {
             console.log("[FIREBASE] Unsubscribing stale push subscription...");
-            await staleSub.unsubscribe();
+            await staleSub.unsubscribe().catch(() => {});
           }
-          try {
-            await swRegistration.update();
-          } catch (_updErr) {
-            // ignore update error
-          }
-          token = await getToken(msg, {
-            serviceWorkerRegistration: swRegistration,
-            vapidKey: effectiveVapidKey
-          });
-        } catch (retryErr: any) {
-          console.error("[FIREBASE] Retry getToken also failed:", retryErr);
-          const isBrave = !!(navigator as any).brave || navigator.userAgent.toLowerCase().includes("brave");
-          if (isBrave) {
-            throw new Error("Brave blocks push notifications by default. In brave://settings/privacy, enable 'Use Google services for push messaging', then restart Brave.");
-          }
-          const msgStr = retryErr?.message || tokenErr?.message || "";
-          if (msgStr.toLowerCase().includes("push service error")) {
-            throw new Error("Google Push Service error. Please refresh the page and try again (ensure ad blockers or strict privacy shields are paused for this site).");
-          }
-          throw retryErr || tokenErr;
+          await swRegistration.unregister().catch(() => {});
         }
-      } else {
-        throw tokenErr;
+
+        // Re-register clean service worker
+        if ("serviceWorker" in navigator) {
+          swRegistration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" });
+          await navigator.serviceWorker.ready;
+        }
+
+        token = await getToken(msg, {
+          serviceWorkerRegistration: swRegistration,
+          vapidKey: effectiveVapidKey
+        });
+      } catch (retryErr: any) {
+        console.error("[FIREBASE] Retry getToken also failed:", retryErr);
+        const isBrave = !!(navigator as any).brave || navigator.userAgent.toLowerCase().includes("brave");
+        if (isBrave) {
+          throw new Error("Brave blocks push notifications by default. In brave://settings/privacy, enable 'Use Google services for push messaging', then restart Brave.");
+        }
+        const msgStr = (retryErr?.message || tokenErr?.message || "").toLowerCase();
+        if (msgStr.includes("push service error") || msgStr.includes("failed to fetch")) {
+          throw new Error("Push service temporarily unavailable. Please reload the page or ensure Google services are reachable.");
+        }
+        throw retryErr || tokenErr;
       }
     }
 

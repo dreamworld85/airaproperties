@@ -1528,7 +1528,10 @@ app.use(cors({
   },
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({
+  type: ["application/json", "application/json; utf-8", "application/json; charset=utf-8", "application/*+json", "text/plain", "*/*"]
+}));
+app.use(express.urlencoded({ extended: true }));
 
 const uploadsDir = process.env.UPLOADS_DIR 
   ? path.resolve(process.env.UPLOADS_DIR) 
@@ -1969,10 +1972,19 @@ app.use("/api/property-requests", propertyRequestRoutes);
 app.use("/api/feeds", feedRoutes);
 app.use("/api/meta", metaWebhookRoutes);
 
-// Register FCM Push Notification Token
-app.post("/api/notifications/register-token", async (req, res) => {
+// Register FCM Push Notification Token (supports POST and GET with body or query)
+const handleRegisterToken = async (req, res) => {
   try {
-    const { token, userId, district } = req.body;
+    let rawBody = req.body;
+    if (typeof rawBody === "string") {
+      try {
+        rawBody = JSON.parse(rawBody);
+      } catch (_) {}
+    }
+    const token = rawBody?.token || req.query?.token;
+    const userId = rawBody?.userId || req.query?.userId || null;
+    const district = rawBody?.district || req.query?.district || null;
+
     if (!token) {
       return res.status(400).json({ error: "FCM token is required" });
     }
@@ -2001,7 +2013,10 @@ app.post("/api/notifications/register-token", async (req, res) => {
     console.error("[REGISTER TOKEN ERROR]", err);
     res.status(500).json({ error: err.message });
   }
-});
+};
+
+app.post("/api/notifications/register-token", handleRegisterToken);
+app.get("/api/notifications/register-token", handleRegisterToken);
 
 // Serve frontend static build assets from dist if present
 const rootDistDir = path.resolve(process.cwd(), "..", "dist");
