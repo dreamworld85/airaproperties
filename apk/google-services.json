@@ -7,28 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:345605747265:android:2c3ea10424c1084c640cc0",
+        "mobilesdk_app_id": "1:345605747265:android:cd2a2133b5b9acbf640cc0",
         "android_client_info": {
-          "package_name": "com.airaproperties.admin"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDdt__3DyfIA7HlH0mFfdWhFi6b4ee6Slo"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:345605747265:android:49f6a4af94eac471640cc0",
-        "android_client_info": {
-          "package_name": "com.airaproperties.app"
+          "package_name": "airaproperties.in"
         }
       },
       "oauth_client": [],

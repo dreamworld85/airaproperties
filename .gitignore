@@ -22,6 +22,10 @@ serviceAccount.json
 !public/airaproperties.apk
 !public/aira-admin.apk
 !public/airaproperties-release.aab
+!public/airaproperties.in.aab
+!public/airaproperties.aab
+!public/airaproperties-bundle.zip
+!public/airaproperties.zip
 !apk/*.apk
 !apk/*.aab
 !apk/release.keystore
