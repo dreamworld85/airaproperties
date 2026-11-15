@@ -119,6 +119,7 @@ plugins {
     # 3.5 gradle.properties
     with open(os.path.join(project_dir, "gradle.properties"), "w") as f:
         f.write("android.useAndroidX=true\n")
+        f.write("android.suppressUnsupportedCompileSdk=36\n")
 
     # 4. app/build.gradle
     app_gradle_template = """
@@ -129,14 +130,14 @@ plugins {
 
 android {
     namespace '{package_name}'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         applicationId '{package_name}'
         minSdk 24
-        targetSdk 34
-        versionCode 4
-        versionName "1.2.1"
+        targetSdk 36
+        versionCode 5
+        versionName "1.2.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
