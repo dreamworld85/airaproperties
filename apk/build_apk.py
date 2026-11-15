@@ -64,6 +64,11 @@ def create_android_project(project_dir, app_name, app_url, package_name, icon_sr
     if os.path.exists(KEYSTORE_PATH):
         shutil.copy(KEYSTORE_PATH, os.path.join(project_dir, "app", "release.keystore"))
 
+    # Copy google-services.json into app/ directory
+    google_services_path = os.path.join(os.path.dirname(__file__), "google-services.json")
+    if os.path.exists(google_services_path):
+        shutil.copy(google_services_path, os.path.join(project_dir, "app", "google-services.json"))
+
     # 1. settings.gradle
     settings_template = """
 pluginManagement {
@@ -91,6 +96,7 @@ include ':app'
         f.write("""
 plugins {
     id 'com.android.application' version '8.2.2' apply false
+    id 'com.google.gms.google-services' version '4.4.1' apply false
 }
 """)
 
@@ -107,6 +113,7 @@ plugins {
     app_gradle_template = """
 plugins {
     id 'com.android.application'
+    id 'com.google.gms.google-services'
 }
 
 android {
@@ -117,8 +124,8 @@ android {
         applicationId '{package_name}'
         minSdk 24
         targetSdk 34
-        versionCode 2
-        versionName "1.1.0"
+        versionCode 3
+        versionName "1.2.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -152,14 +159,17 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation platform('com.google.firebase:firebase-bom:32.8.0')
+    implementation 'com.google.firebase:firebase-messaging'
 }
 """
     with open(os.path.join(project_dir, "app", "build.gradle"), "w") as f:
         f.write(app_gradle_template.replace("{package_name}", package_name))
 
-    # 5. Manifest with Full Push Notification Support
+    # 5. Manifest with Full Native FCM Push Notification Support
     manifest_template = """<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -184,6 +194,7 @@ dependencies {
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.App.NoActionBar"
             android:configChanges="orientation|screenSize|keyboardHidden">
             <intent-filter>
@@ -191,6 +202,25 @@ dependencies {
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Native Firebase Cloud Messaging Service for Instant Alerts -->
+        <service
+            android:name=".AiraFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/ink" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="aira_properties_alerts" />
     </application>
 </manifest>
 """
@@ -219,7 +249,7 @@ dependencies {
 </resources>
 """)
 
-    # 7. MainActivity.java with Push Notification & Permission Support
+# 7. MainActivity.java with Native FCM Push Notification Support
     java_template = """package {package_name};
 
 import android.annotation.SuppressLint;
@@ -237,46 +267,43 @@ import android.webkit.SslErrorHandler;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.PermissionRequest;
-import android.webkit.ServiceWorkerController;
-import android.webkit.ServiceWorkerClient;
-import android.webkit.WebResourceResponse;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.net.http.SslError;
 import android.content.Intent;
 import android.net.Uri;
 import android.content.ClipData;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.util.Log;
 import androidx.appcompat.app.AppCompatActivity;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "AiraMainActivity";
     private WebView mWebView;
     private ValueCallback<Uri[]> mUploadMessage;
     private final static int REQUEST_SELECT_FILE = 100;
     private final static int REQUEST_NOTIFICATION_PERMISSION = 101;
+    private String mNativeFcmToken = null;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // Auto-request Android 13+ Notification Runtime Permission
+        // 1. Setup Notification Channel
+        createNotificationChannel();
+
+        // 2. Auto-request Android 13+ Notification Runtime Permission
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATION_PERMISSION);
             }
         }
 
-        // Configure Service Worker for background push handling in WebView
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            try {
-                ServiceWorkerController swController = ServiceWorkerController.getInstance();
-                swController.setServiceWorkerClient(new ServiceWorkerClient() {
-                    @Override
-                    public WebResourceResponse shouldInterceptRequest(WebResourceRequest request) {
-                        return super.shouldInterceptRequest(request);
-                    }
-                });
-            } catch (Exception ignored) {}
-        }
+        // 3. Initialize Native FCM and Subscribe to "all_users"
+        initNativeFCM();
 
         mWebView = new WebView(this);
         mWebView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
@@ -314,6 +341,9 @@ public class MainActivity extends AppCompatActivity {
             webSettings.setUserAgentString(defaultUa.replace("; wv", ""));
         }
 
+        // Add JavaScript Interface for Native-Web communication
+        mWebView.addJavascriptInterface(new AiraNativeBridge(), "AiraNativeApp");
+
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
@@ -324,6 +354,10 @@ public class MainActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 CookieManager.getInstance().flush();
+                // Inject native FCM token into web app so it knows push is active
+                if (mNativeFcmToken != null) {
+                    mWebView.evaluateJavascript("window.__AIRA_NATIVE_FCM_TOKEN = '" + mNativeFcmToken + "';", null);
+                }
             }
 
             @Override
@@ -377,8 +411,94 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Handle target URL from notification click
+        String targetUrl = "{app_url}";
+        if (getIntent() != null && getIntent().hasExtra("target_url")) {
+            String extraUrl = getIntent().getStringExtra("target_url");
+            if (extraUrl != null && !extraUrl.isEmpty()) {
+                targetUrl = extraUrl;
+            }
+        }
+
         if (savedInstanceState == null) {
-            mWebView.loadUrl("{app_url}");
+            mWebView.loadUrl(targetUrl);
+        }
+    }
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = "Aira Properties Alerts";
+            String description = "Instant property updates, alerts, and offers";
+            int importance = NotificationManager.IMPORTANCE_HIGH;
+            NotificationChannel channel = new NotificationChannel("aira_properties_alerts", name, importance);
+            channel.setDescription(description);
+            channel.enableVibration(true);
+            channel.setVibrationPattern(new long[]{0, 250, 250, 250});
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            if (notificationManager != null) {
+                notificationManager.createNotificationChannel(channel);
+            }
+        }
+    }
+
+    private void initNativeFCM() {
+        try {
+            // Subscribe device to all_users topic
+            FirebaseMessaging.getInstance().subscribeToTopic("all_users");
+            
+            // Fetch native token and send to server
+            FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+                if (!task.isSuccessful()) {
+                    Log.w(TAG, "Fetching FCM registration token failed", task.getException());
+                    return;
+                }
+                mNativeFcmToken = task.getResult();
+                Log.d(TAG, "Native FCM Registration Token: " + mNativeFcmToken);
+                FCMRegistrationHelper.sendTokenToServer(MainActivity.this, mNativeFcmToken, null);
+
+                if (mWebView != null) {
+                    mWebView.post(() -> {
+                        mWebView.evaluateJavascript("window.__AIRA_NATIVE_FCM_TOKEN = '" + mNativeFcmToken + "';", null);
+                    });
+                }
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "Error initializing Native FCM: " + e.getMessage());
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (intent != null && intent.hasExtra("target_url")) {
+            String url = intent.getStringExtra("target_url");
+            if (url != null && !url.isEmpty() && mWebView != null) {
+                mWebView.loadUrl(url);
+            }
+        }
+    }
+
+    public class AiraNativeBridge {
+        @JavascriptInterface
+        public String getNativeFcmToken() {
+            return mNativeFcmToken;
+        }
+
+        @JavascriptInterface
+        public void subscribeDistrict(String district) {
+            if (district != null && !district.isEmpty()) {
+                String clean = district.trim().toLowerCase().replaceAll("[^a-z0-9]", "_");
+                FirebaseMessaging.getInstance().subscribeToTopic("district_" + clean);
+                if (mNativeFcmToken != null) {
+                    FCMRegistrationHelper.sendTokenToServer(MainActivity.this, mNativeFcmToken, district);
+                }
+            }
+        }
+
+        @JavascriptInterface
+        public boolean isNativeApp() {
+            return true;
         }
     }
 
@@ -415,14 +535,209 @@ public class MainActivity extends AppCompatActivity {
     }
 }
 """
+    with open(os.path.join(java_dir, "MainActivity.java"), "w") as f:
+        f.write(java_template.replace("{package_name}", package_name).replace("{app_url}", app_url))
+
+    # 7.1 AiraFirebaseMessagingService.java
+    fcm_service_template = """package {package_name};
+
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.media.RingtoneManager;
+import android.net.Uri;
+import android.os.Build;
+import android.util.Log;
+import androidx.core.app.NotificationCompat;
+import com.google.firebase.messaging.FirebaseMessagingService;
+import com.google.firebase.messaging.RemoteMessage;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+
+public class AiraFirebaseMessagingService extends FirebaseMessagingService {
+    private static final String TAG = "AiraFCMService";
+    public static final String CHANNEL_ID = "aira_properties_alerts";
+
+    @Override
+    public void onNewToken(String token) {
+        super.onNewToken(token);
+        Log.d(TAG, "Refreshed FCM token: " + token);
+        FCMRegistrationHelper.sendTokenToServer(getApplicationContext(), token, null);
+    }
+
+    @Override
+    public void onMessageReceived(RemoteMessage remoteMessage) {
+        super.onMessageReceived(remoteMessage);
+        Log.d(TAG, "FCM Message received from: " + remoteMessage.getFrom());
+
+        String title = "Aira Properties";
+        String body = "New property update available";
+        String imageUrl = null;
+        String clickUrl = "{app_url}";
+
+        // 1. Notification Payload
+        if (remoteMessage.getNotification() != null) {
+            if (remoteMessage.getNotification().getTitle() != null) {
+                title = remoteMessage.getNotification().getTitle();
+            }
+            if (remoteMessage.getNotification().getBody() != null) {
+                body = remoteMessage.getNotification().getBody();
+            }
+            if (remoteMessage.getNotification().getImageUrl() != null) {
+                imageUrl = remoteMessage.getNotification().getImageUrl().toString();
+            }
+        }
+
+        // 2. Data Payload
+        if (remoteMessage.getData().size() > 0) {
+            if (remoteMessage.getData().containsKey("title")) {
+                title = remoteMessage.getData().get("title");
+            }
+            if (remoteMessage.getData().containsKey("body")) {
+                body = remoteMessage.getData().get("body");
+            }
+            if (remoteMessage.getData().containsKey("image")) {
+                imageUrl = remoteMessage.getData().get("image");
+            } else if (remoteMessage.getData().containsKey("imageUrl")) {
+                imageUrl = remoteMessage.getData().get("imageUrl");
+            }
+            if (remoteMessage.getData().containsKey("url")) {
+                clickUrl = remoteMessage.getData().get("url");
+            } else if (remoteMessage.getData().containsKey("click_action")) {
+                clickUrl = remoteMessage.getData().get("click_action");
+            }
+        }
+
+        showNotification(title, body, imageUrl, clickUrl);
+    }
+
+    private void showNotification(String title, String body, String imageUrl, String clickUrl) {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.putExtra("target_url", clickUrl);
+
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, (int) System.currentTimeMillis(), intent, flags);
+
+        Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setAutoCancel(true)
+                .setSound(defaultSoundUri)
+                .setVibrate(new long[]{0, 250, 250, 250})
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setContentIntent(pendingIntent);
+
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            Bitmap bitmap = getBitmapFromURL(imageUrl);
+            if (bitmap != null) {
+                builder.setLargeIcon(bitmap);
+                builder.setStyle(new NotificationCompat.BigPictureStyle()
+                        .bigPicture(bitmap)
+                        .setSummaryText(body));
+            } else {
+                builder.setStyle(new NotificationCompat.BigTextStyle().bigText(body));
+            }
+        } else {
+            builder.setStyle(new NotificationCompat.BigTextStyle().bigText(body));
+        }
+
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (notificationManager != null) {
+            int notificationId = (int) (System.currentTimeMillis() % 100000);
+            notificationManager.notify(notificationId, builder.build());
+        }
+    }
+
+    private Bitmap getBitmapFromURL(String strURL) {
+        try {
+            URL url = new URL(strURL);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setDoInput(true);
+            connection.setConnectTimeout(6000);
+            connection.setReadTimeout(6000);
+            connection.connect();
+            InputStream input = connection.getInputStream();
+            return BitmapFactory.decodeStream(input);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+}
+"""
+    with open(os.path.join(java_dir, "AiraFirebaseMessagingService.java"), "w") as f:
+        f.write(fcm_service_template.replace("{package_name}", package_name).replace("{app_url}", app_url))
+
+    # 7.2 FCMRegistrationHelper.java
+    fcm_helper_template = """package {package_name};
+
+import android.content.Context;
+import android.util.Log;
+import org.json.JSONObject;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+
+public class FCMRegistrationHelper {
+    private static final String TAG = "AiraFCMHelper";
+    private static final String SERVER_URL = "https://api.airaproperties.in/api/notifications/register-token";
+
+    public static void sendTokenToServer(Context context, final String token, final String district) {
+        if (token == null || token.isEmpty()) return;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    URL url = new URL(SERVER_URL);
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("POST");
+                    conn.setRequestProperty("Content-Type", "application/json; utf-8");
+                    conn.setRequestProperty("Accept", "application/json");
+                    conn.setDoOutput(true);
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(10000);
+
+                    JSONObject payload = new JSONObject();
+                    payload.put("token", token);
+                    if (district != null && !district.isEmpty()) {
+                        payload.put("district", district);
+                    }
+                    String jsonInputString = payload.toString();
+
+                    try (OutputStream os = conn.getOutputStream()) {
+                        byte[] input = jsonInputString.getBytes(StandardCharsets.UTF_8);
+                        os.write(input, 0, input.length);
+                    }
+
+                    int responseCode = conn.getResponseCode();
+                    Log.d(TAG, "Token registered successfully with backend. HTTP " + responseCode);
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed registering token with backend: " + e.getMessage());
+                }
+            }
+        }).start();
+    }
+}
+"""
+    with open(os.path.join(java_dir, "FCMRegistrationHelper.java"), "w") as f:
+        f.write(fcm_helper_template.replace("{package_name}", package_name))
+
     icon_full_path = os.path.join(os.path.dirname(__file__), icon_src)
     if not os.path.exists(icon_full_path):
         icon_full_path = os.path.join(os.path.dirname(__file__), "..", "images", icon_src)
     if not os.path.exists(icon_full_path):
         icon_full_path = os.path.join(os.path.dirname(__file__), "sparrows.png")
-
-    with open(os.path.join(java_dir, "MainActivity.java"), "w") as f:
-        f.write(java_template.replace("{package_name}", package_name).replace("{app_url}", app_url))
 
     # 8. Launcher Icons
     sizes = {

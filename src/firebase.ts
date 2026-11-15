@@ -169,6 +169,22 @@ export async function enablePushNotifications(
   district: string | null = null,
   vapidKey: string | null = null
 ): Promise<PushTokenResult> {
+  // If running inside Android Native App wrapper with Native FCM
+  if (typeof window !== "undefined") {
+    const nativeBridge = (window as any).AiraNativeApp;
+    const nativeToken = nativeBridge?.getNativeFcmToken?.() || (window as any).__AIRA_NATIVE_FCM_TOKEN;
+    if (nativeBridge || nativeToken) {
+      if (district && nativeBridge?.subscribeDistrict) {
+        nativeBridge.subscribeDistrict(district);
+      }
+      if (nativeToken) {
+        const serverRes = await registerTokenWithServer(nativeToken, userId, district);
+        return { success: true, token: nativeToken, serverRes };
+      }
+      return { success: true };
+    }
+  }
+
   const result = await requestNotificationPermissionAndGetToken(vapidKey);
   if (result.success && result.token) {
     const serverRes = await registerTokenWithServer(result.token, userId, district);
