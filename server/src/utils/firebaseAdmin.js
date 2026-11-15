@@ -282,6 +282,23 @@ export async function sendNotificationToTopic({ topic, title, body, imageUrl, cl
       fcmOptions: {
         link: clickAction || "https://airaproperties.in"
       }
+    },
+    android: {
+      priority: "high",
+      notification: {
+        channelId: "aira_properties_alerts",
+        title: String(title || "Aira Properties"),
+        body: String(body || ""),
+        icon: "ic_launcher",
+        color: "#0F3D3E",
+        sound: "default",
+        defaultSound: true,
+        defaultVibrateTimings: true,
+        priority: "max",
+        visibility: "public",
+        ...(imageUrl ? { imageUrl } : {}),
+        clickAction: clickAction || "https://airaproperties.in"
+      }
     }
   };
 
@@ -330,7 +347,8 @@ export async function sendNotificationToTopic({ topic, title, body, imageUrl, cl
           tokens: targetTokens,
           notification: payload.notification,
           data: payload.data,
-          webpush: payload.webpush
+          webpush: payload.webpush,
+          android: payload.android
         };
         const multicastRes = await messaging.sendEachForMulticast(multicastPayload);
         console.log(`[FIREBASE FCM] Direct multicast to ${targetTokens.length} devices: ${multicastRes.successCount} succeeded, ${multicastRes.failureCount} failed`);

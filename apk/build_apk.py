@@ -526,6 +526,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_NOTIFICATION_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "Notification permission GRANTED by user");
+                initNativeFCM();
+            } else {
+                Log.w(TAG, "Notification permission DENIED by user");
+            }
+        }
+    }
+
+    @Override
     public void onBackPressed() {
         if (mWebView.canGoBack()) {
             mWebView.goBack();
@@ -617,6 +630,20 @@ public class AiraFirebaseMessagingService extends FirebaseMessagingService {
     }
 
     private void showNotification(String title, String body, String imageUrl, String clickUrl) {
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (notificationManager == null) return;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = notificationManager.getNotificationChannel(CHANNEL_ID);
+            if (channel == null) {
+                channel = new NotificationChannel(CHANNEL_ID, "Aira Properties Alerts", NotificationManager.IMPORTANCE_HIGH);
+                channel.setDescription("Instant property updates, alerts, and offers");
+                channel.enableVibration(true);
+                channel.setVibrationPattern(new long[]{0, 250, 250, 250});
+                notificationManager.createNotificationChannel(channel);
+            }
+        }
+
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         intent.putExtra("target_url", clickUrl);
@@ -652,11 +679,8 @@ public class AiraFirebaseMessagingService extends FirebaseMessagingService {
             builder.setStyle(new NotificationCompat.BigTextStyle().bigText(body));
         }
 
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        if (notificationManager != null) {
-            int notificationId = (int) (System.currentTimeMillis() % 100000);
-            notificationManager.notify(notificationId, builder.build());
-        }
+        int notificationId = (int) (System.currentTimeMillis() % 100000);
+        notificationManager.notify(notificationId, builder.build());
     }
 
     private Bitmap getBitmapFromURL(String strURL) {
@@ -704,6 +728,7 @@ public class FCMRegistrationHelper {
                     conn.setRequestMethod("POST");
                     conn.setRequestProperty("Content-Type", "application/json; utf-8");
                     conn.setRequestProperty("Accept", "application/json");
+                    conn.setRequestProperty("User-Agent", "AiraAndroidApp/1.2.0");
                     conn.setDoOutput(true);
                     conn.setConnectTimeout(10000);
                     conn.setReadTimeout(10000);

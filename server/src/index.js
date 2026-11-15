@@ -2138,6 +2138,28 @@ app.get("/api/sync-custom-code", async (_req, res) => {
   res.json(result);
 });
 
+app.get("/api/debug-fcm-status", async (_req, res) => {
+  try {
+    const [tokenRows] = await pool.query(
+      "SELECT id, user_id, district, token, created_at, last_seen_at FROM user_fcm_tokens ORDER BY id DESC LIMIT 15"
+    );
+    const [recentPushes] = await pool.query(
+      "SELECT * FROM push_notifications ORDER BY created_at DESC LIMIT 5"
+    );
+    const maskedTokens = tokenRows.map(r => ({
+      ...r,
+      tokenSnippet: r.token ? r.token.substring(0, 12) + "..." + r.token.substring(r.token.length - 8) : null
+    }));
+    res.json({
+      totalTokens: tokenRows.length,
+      tokens: maskedTokens,
+      recentPushes
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 if (fs.existsSync(hostingerFrontendDir)) {
   syncFrontendToLive(hostingerFrontendDir);
 } else {
