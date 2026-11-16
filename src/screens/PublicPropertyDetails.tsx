@@ -33,6 +33,12 @@ const DISTRICT_COORDINATES: Record<string, { lat: number; lng: number }> = {
 function PropertyLocationMap({ latitude, longitude, title, address, district }: { latitude?: number | string | null; longitude?: number | string | null; title: string; address: string; district: string }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
+  const routeLayerRef = useRef<any>(null);
+
+  const [showDirectionsModal, setShowDirectionsModal] = useState(false);
+  const [copiedCoords, setCopiedCoords] = useState(false);
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
+  const [routeInfo, setRouteInfo] = useState<{ distance: string; duration: string } | null>(null);
 
   const lat = latitude ? parseFloat(String(latitude)) : (DISTRICT_COORDINATES[district]?.lat || 10.850516);
   const lng = longitude ? parseFloat(String(longitude)) : (DISTRICT_COORDINATES[district]?.lng || 76.271080);
@@ -86,27 +92,94 @@ function PropertyLocationMap({ latitude, longitude, title, address, district }: 
 
   const googleMapsDirectionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 
+  const fetchLiveRoute = () => {
+    if (!navigator.geolocation || !mapRef.current || !window.L) return;
+    setIsCalculatingRoute(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const userLat = pos.coords.latitude;
+          const userLng = pos.coords.longitude;
+
+          const userIcon = window.L.divIcon({
+            className: "user-location-pin",
+            html: `<div style="
+              width: 14px;
+              height: 14px;
+              background: #2563eb;
+              border: 3px solid #ffffff;
+              border-radius: 50%;
+              box-shadow: 0 0 10px rgba(37,99,235,0.6);
+            "></div>`,
+            iconSize: [14, 14],
+          });
+          window.L.marker([userLat, userLng], { icon: userIcon }).addTo(mapRef.current);
+
+          const res = await fetch(
+            `https://router.project-osrm.org/route/v1/driving/${userLng},${userLat};${lng},${lat}?overview=full&geometries=geojson`
+          );
+          const data = await res.json();
+          if (data.routes && data.routes[0]) {
+            const route = data.routes[0];
+            const coords = route.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]]);
+
+            if (routeLayerRef.current) {
+              mapRef.current.removeLayer(routeLayerRef.current);
+            }
+
+            const polyline = window.L.polyline(coords, {
+              color: "#2fa858",
+              weight: 5,
+              opacity: 0.9,
+              dashArray: "1, 8",
+            }).addTo(mapRef.current);
+            routeLayerRef.current = polyline;
+
+            mapRef.current.fitBounds(polyline.getBounds(), { padding: [30, 30] });
+
+            const distKm = (route.distance / 1000).toFixed(1);
+            const durationMin = Math.round(route.duration / 60);
+            setRouteInfo({
+              distance: `${distKm} km`,
+              duration: durationMin > 60 ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}m` : `${durationMin} mins`,
+            });
+          }
+        } catch (err) {
+          console.warn("Could not calculate live route:", err);
+        } finally {
+          setIsCalculatingRoute(false);
+        }
+      },
+      () => {
+        setIsCalculatingRoute(false);
+      },
+      { timeout: 8000 }
+    );
+  };
+
   const handleOpenDirections = (e: React.MouseEvent) => {
     e.preventDefault();
 
-    // Check if running inside Android Native App with bridge
     const nativeApp = (window as any).AiraNativeApp;
+    // 1. If running in updated native app with openDirections method
     if (nativeApp && typeof nativeApp.openDirections === "function") {
       nativeApp.openDirections(lat, lng, title || "Property Location");
       return;
     }
 
-    const destination = `${lat},${lng}`;
-    const isAndroid = /android/i.test(navigator.userAgent || "");
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || "");
-
-    if (isAndroid) {
-      window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
-    } else if (isIOS) {
-      window.open(`https://maps.apple.com/?daddr=${destination}`, "_blank");
-    } else {
-      window.open(`https://www.google.com/maps/dir/?api=1&destination=${destination}`, "_blank", "noopener,noreferrer");
+    // 2. If running in older installed APK shell without openDirections:
+    // DO NOT navigate the webview to google.com/maps (causes net::ERR_UNKNOWN_URL_SCHEME).
+    // Instead, open our rich in-app Directions modal and plot route!
+    if (nativeApp) {
+      setShowDirectionsModal(true);
+      fetchLiveRoute();
+      return;
     }
+
+    // 3. In standard browsers (Chrome, Safari, Firefox):
+    // Open in new tab so the user stays on the site
+    const destination = `${lat},${lng}`;
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${destination}`, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -123,11 +196,9 @@ function PropertyLocationMap({ latitude, longitude, title, address, district }: 
             {[address, district].filter(Boolean).join(", ")}
           </p>
         </div>
-        <a
-          href={googleMapsDirectionsUrl}
+        <button
           onClick={handleOpenDirections}
-          target="_blank"
-          rel="noopener noreferrer"
+          type="button"
           className="shrink-0 flex flex-col items-center justify-center px-2 py-1.5 border border-[#2fa858] rounded-md bg-white hover:bg-emerald-50/50 active:scale-95 transition-all cursor-pointer no-underline min-w-[50px] shadow-2xs group"
           title="Open Directions"
         >
@@ -139,12 +210,108 @@ function PropertyLocationMap({ latitude, longitude, title, address, district }: 
           <span className="text-[10px] font-bold text-[#2fa858] leading-tight mt-0.5">
             Open
           </span>
-        </a>
+        </button>
       </div>
 
       <div className="relative w-full h-52 rounded-2xl overflow-hidden border border-charcoal/8 bg-slate-100 shadow-inner">
         <div ref={mapContainerRef} className="w-full h-full z-0" />
       </div>
+
+      {/* In-App Directions Modal for Mobile App */}
+      {showDirectionsModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-charcoal/8 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-500/20 flex items-center justify-center">
+                  <img src="/map-location.svg" alt="Location" className="w-5 h-5 object-contain" />
+                </div>
+                <div>
+                  <h4 className="font-display font-extrabold text-sm text-ink">Property Directions</h4>
+                  <p className="text-[11px] text-slate-500 font-medium">Get directions & coordinates</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDirectionsModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Destination Info */}
+            <div className="bg-slate-50 rounded-2xl p-3.5 border border-charcoal/5 flex flex-col gap-1.5">
+              <div className="flex items-start gap-2">
+                <MapPin size={15} className="text-[#C69214] shrink-0 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-ink leading-snug">{title}</p>
+                  <p className="text-[11px] text-slate-500 font-medium leading-relaxed mt-0.5">
+                    {[address, district].filter(Boolean).join(", ")}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-[11px] font-mono text-slate-600 bg-white rounded-lg p-2 border border-charcoal/5 mt-1">
+                <span>📍 {lat.toFixed(6)}, {lng.toFixed(6)}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${lat},${lng}`);
+                    setCopiedCoords(true);
+                    setTimeout(() => setCopiedCoords(false), 2000);
+                  }}
+                  className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-[#2fa858] font-bold text-[10.5px] rounded border border-[#2fa858]/30 flex items-center gap-1 transition-colors"
+                >
+                  {copiedCoords ? <Check size={12} /> : <Copy size={12} />}
+                  <span>{copiedCoords ? "Copied!" : "Copy"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Live Route Summary */}
+            {routeInfo ? (
+              <div className="bg-emerald-50/80 border border-emerald-500/20 rounded-2xl p-3 flex items-center justify-around text-center">
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-700 block">Driving Distance</span>
+                  <span className="text-base font-extrabold text-emerald-900">{routeInfo.distance}</span>
+                </div>
+                <div className="h-8 w-px bg-emerald-200" />
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-700 block">Est. Time</span>
+                  <span className="text-base font-extrabold text-emerald-900">{routeInfo.duration}</span>
+                </div>
+              </div>
+            ) : isCalculatingRoute ? (
+              <div className="bg-slate-50 rounded-xl p-3 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+                <div className="w-3.5 h-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                <span>Calculating live route from your location...</span>
+              </div>
+            ) : null}
+
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-2 pt-1">
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(`Directions to ${title}: https://maps.google.com/?q=${lat},${lng}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-2.5 px-3 bg-[#25D366] hover:bg-[#20bd5a] text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all"
+              >
+                <MessageCircle size={16} />
+                <span>Open in WhatsApp & Share</span>
+              </a>
+
+              <a
+                href="/airaproperties.apk"
+                download="airaproperties.apk"
+                className="w-full py-2.5 px-3 bg-ink hover:bg-charcoal text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all"
+              >
+                <Download size={15} />
+                <span>Update App to v1.2.3 (Enables 1-Click Google Maps)</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
