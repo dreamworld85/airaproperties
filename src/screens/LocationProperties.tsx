@@ -167,7 +167,7 @@ export default function LocationProperties() {
       latLngBounds.push([lat, lng]);
 
       const isSelected = selectedProperty?.id === property.id;
-      const priceText = formatPrice(property.price);
+      const propertyTypeText = property.propertyType || "Property";
 
       const customIcon = window.L.divIcon({
         className: "custom-leaflet-price-pin",
@@ -185,7 +185,7 @@ export default function LocationProperties() {
           cursor: pointer;
           transform: ${isSelected ? 'scale(1.15)' : 'scale(1.0)'};
           transition: transform 0.2s, background 0.2s;
-        ">📍 ${priceText}</div>`,
+        ">📍 ${propertyTypeText}</div>`,
         iconSize: null,
       });
 

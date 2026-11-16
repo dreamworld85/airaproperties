@@ -174,7 +174,7 @@ export default function MapSearch() {
         latLngBounds.push([lat, lng]);
       }
 
-      const priceText = formatPrice(property.price);
+      const propertyTypeText = property.propertyType || "Property";
       const bgStyle = isSelected ? '#FF5A5F' : (isMatched ? '#60A963' : '#3B82F6');
 
       const customIcon = window.L.divIcon({
@@ -193,7 +193,7 @@ export default function MapSearch() {
           cursor: pointer;
           transform: ${isSelected ? 'scale(1.15)' : 'scale(1.0)'};
           transition: transform 0.2s;
-        ">📍 ${priceText}</div>`,
+        ">📍 ${propertyTypeText}</div>`,
         iconSize: null,
       });
 
