@@ -215,9 +215,7 @@ function PropertyLocationMap({ latitude, longitude, title, address, district }: 
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <h3 className="font-display font-extrabold text-sm text-ink flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded-full bg-[#FFF9E6] border border-[#F3E2A9] flex items-center justify-center shrink-0">
-              <MapPin size={11} className="text-[#C69214] fill-[#C69214]" />
-            </span>
+            <img src="/Google_Maps.svg" alt="Google Maps" className="w-4 h-5 object-contain shrink-0" />
             <span>Property Location Map</span>
           </h3>
           <p className="text-[11px] text-slate-500 font-semibold mt-1 line-clamp-2 leading-relaxed">
