@@ -238,11 +238,16 @@ export default function Subscriptions() {
               onClick={() => setActiveTab(tab.role)}
               className={`pb-3.5 px-4 font-display font-bold text-xs border-b-2 transition-all relative shrink-0 cursor-pointer ${
                 selected 
-                  ? "border-emerald-600 text-emerald-600" 
+                  ? (tab.role === "social_media" ? "border-purple-600 text-purple-700" : "border-emerald-600 text-emerald-600")
                   : "border-transparent text-slate/85 hover:text-charcoal"
               }`}
             >
-              <span>{tab.label}</span>
+              <span className="flex items-center gap-1.5">
+                {tab.role === "social_media" && (
+                  <img src="/social-media.png" alt="Social" className="w-3.5 h-3.5 object-contain inline-block" />
+                )}
+                <span>{tab.label}</span>
+              </span>
               <span className="block text-[9px] text-slate/60 font-semibold">{tab.sub}</span>
             </button>
           );
@@ -374,12 +379,15 @@ export default function Subscriptions() {
                       className="w-full border border-charcoal/10 rounded-xl px-2.5 py-1.5 text-xs text-charcoal outline-none bg-slate-50 focus:bg-white focus:border-emerald-600 transition-all font-bold"
                     />
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-[9px] font-extrabold uppercase shrink-0 border mt-5 ${
+                  <span className={`px-2 py-1 rounded-full text-[9px] font-extrabold uppercase shrink-0 border mt-5 flex items-center gap-1 ${
                     plan.role === "social_media"
                       ? "bg-purple-50 text-purple-800 border-purple-200"
                       : (plan.role === "builder" ? "bg-amber-50 text-amber-800 border-amber-200" : "bg-emerald-50 text-emerald-800 border-emerald-200")
                   }`}>
-                    {plan.role === "social_media" ? "Social" : (plan.role === "builder" ? "Boss Pack" : "Combo")}
+                    {plan.role === "social_media" && (
+                      <img src="/social-media.png" alt="Social" className="w-3 h-3 object-contain" />
+                    )}
+                    <span>{plan.role === "social_media" ? "Social" : (plan.role === "builder" ? "Boss Pack" : "Combo")}</span>
                   </span>
                 </div>
 

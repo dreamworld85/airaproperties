@@ -321,6 +321,10 @@ export default function SocialMarketingModal({
           <div className="w-full flex flex-col items-center gap-5">
             {/* Header: Title & Badges */}
             <div className="flex flex-col items-center gap-2 pt-1 max-w-xl">
+              <div className="w-16 h-16 rounded-2xl bg-white border border-purple-200/80 p-2.5 flex items-center justify-center shadow-md">
+                <img src="/social-media.png" alt="Social Media" className="w-full h-full object-contain" />
+              </div>
+
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 text-purple-900 border border-purple-200/60 shadow-2xs">
                 <Flame size={13} className="text-pink-600 fill-pink-600" />
                 <span className="text-[11px] font-extrabold uppercase tracking-wider">
@@ -371,8 +375,8 @@ export default function SocialMarketingModal({
                     <div>
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <div className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-purple-700 bg-purple-100/80 px-2 py-0.5 rounded-md mb-1.5">
-                            <Share2 size={11} />
+                          <div className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-purple-700 bg-purple-100/80 px-2 py-0.5 rounded-md mb-1.5">
+                            <img src="/social-media.png" alt="Social" className="w-3.5 h-3.5 object-contain" />
                             <span>Social Publish</span>
                           </div>
                           <h3 className="font-display font-black text-lg text-gray-900 leading-tight">

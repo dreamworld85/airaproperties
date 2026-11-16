@@ -391,8 +391,8 @@ export default function Profile() {
 
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="flex items-start sm:items-center gap-5">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-600 to-indigo-500 flex items-center justify-center shrink-0 shadow-lg group-hover:scale-105 transition-transform">
-                  <Share2 size={32} className="text-white" />
+                <div className="w-16 h-16 rounded-2xl bg-white/10 p-2.5 border border-white/20 flex items-center justify-center shrink-0 shadow-lg group-hover:scale-105 transition-transform backdrop-blur-xs">
+                  <img src="/social-media.png" alt="Social Media" className="w-full h-full object-contain" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -465,10 +465,14 @@ export default function Profile() {
                 >
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
                     isSocial 
-                      ? "bg-purple-100/80 text-purple-700 group-hover:bg-purple-600 group-hover:text-white" 
+                      ? "bg-purple-100/80 p-2 text-purple-700 group-hover:bg-purple-600 group-hover:text-white" 
                       : "bg-slate-50 group-hover:bg-[#59AD63]/10 text-ink group-hover:text-[#59AD63]"
                   }`}>
-                    <Icon size={20} />
+                    {isSocial ? (
+                      <img src="/social-media.png" alt="Social Marketing" className="w-full h-full object-contain" />
+                    ) : (
+                      <Icon size={20} />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
@@ -761,8 +765,8 @@ export default function Profile() {
           </div>
 
           <div className="flex items-start gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-600 to-indigo-500 flex items-center justify-center shrink-0 shadow-md">
-              <Share2 size={24} className="text-white" />
+            <div className="w-12 h-12 rounded-2xl bg-white/10 p-2 border border-white/20 flex items-center justify-center shrink-0 shadow-md backdrop-blur-xs">
+              <img src="/social-media.png" alt="Social Media" className="w-full h-full object-contain" />
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-display font-black text-lg text-white">Social Marketing</h3>
@@ -825,7 +829,11 @@ export default function Profile() {
               }`}
             >
               <span className="flex items-center gap-3 text-charcoal font-medium text-[15px]">
-                <Icon size={18} className={isSocial ? "text-purple-600" : "text-ink"} /> {label}
+                {isSocial ? (
+                  <img src="/social-media.png" alt="Social Marketing" className="w-5 h-5 object-contain" />
+                ) : (
+                  <Icon size={18} className="text-ink" />
+                )} {label}
               </span>
               <div className="flex items-center gap-2">
                 {isSocial && (

@@ -303,13 +303,14 @@ export default function AccountReports() {
           </button>
           <button
             onClick={() => setPlanTypeFilter("social")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
               planTypeFilter === "social"
                 ? "bg-purple-600 text-white shadow-xs"
                 : "text-slate-600 hover:text-charcoal"
             }`}
           >
-            Social Media Marketing
+            <img src="/social-media.png" alt="Social" className="w-3.5 h-3.5 object-contain" />
+            <span>Social Media Marketing</span>
           </button>
         </div>
       </div>
