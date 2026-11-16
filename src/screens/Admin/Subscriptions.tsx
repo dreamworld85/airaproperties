@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { Sparkles, Save, Users, Coins, Layers, Home, Trash2, CheckCircle2, XCircle, Power } from "lucide-react";
+import { Sparkles, Save, Users, Coins, Layers, Home, Trash2, CheckCircle2, XCircle, Power, Share2, PlusCircle } from "lucide-react";
 import { api, ApiSubscriptionPlan } from "@/lib/api";
 
 interface PlanConfig {
   id?: number;
   plan_id?: string;
   name?: string;
-  role: "user" | "owner" | "broker" | "agency" | "builder";
+  role: "user" | "owner" | "broker" | "agency" | "builder" | "social_media" | string;
   plan_type: string;
   credits: number;
   listing_slots: number;
@@ -24,7 +24,7 @@ export default function Subscriptions() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"user" | "owner" | "broker" | "agency" | "builder">("user");
+  const [activeTab, setActiveTab] = useState<"user" | "owner" | "broker" | "agency" | "builder" | "social_media">("user");
 
   async function loadData() {
     try {
@@ -103,6 +103,42 @@ export default function Subscriptions() {
     }
   };
 
+  const handleAddSocialPlan = () => {
+    const newPlan: PlanConfig = {
+      plan_id: `social_media_${Date.now()}`,
+      name: "Social Media Starter",
+      role: "social_media",
+      plan_type: "social_media",
+      credits: 1,
+      listing_slots: 1,
+      enquiry_tokens: 0,
+      price: 499,
+      discount: 100,
+      description: "Promote 1 Property across Instagram Reels, Facebook & WhatsApp network with dedicated reach.",
+      features: [
+        "1 Property Promoted Across Platforms",
+        "Instagram Reel & Post Blast",
+        "Facebook Real Estate Groups Sharing",
+        "WhatsApp Direct Buyer Broadcast",
+        "Verified Listing Spotlight"
+      ],
+      is_active: 1
+    };
+    setPlans(prev => [...prev, newPlan]);
+  };
+
+  const handleDeletePlan = async (targetPlan: PlanConfig) => {
+    if (!window.confirm(`Are you sure you want to delete '${targetPlan.name || "this plan"}'?`)) return;
+    if (targetPlan.id) {
+      try {
+        await (api as any).adminDeleteSubscriptionPlan(targetPlan.id);
+      } catch (err: any) {
+        alert(err.message || "Failed to delete plan from database.");
+      }
+    }
+    setPlans(prev => prev.filter(p => p !== targetPlan && p.id !== targetPlan.id && p.plan_id !== targetPlan.plan_id));
+  };
+
   const handleToggleAllBossPlans = async (enable: boolean) => {
     setSaving(true);
     try {
@@ -126,12 +162,13 @@ export default function Subscriptions() {
 
   const totalSubscribers = stats ? (stats.user || 0) + (stats.owner || 0) + (stats.broker || 0) + (stats.agency || 0) : 0;
 
-  const tabs: { role: "user" | "owner" | "broker" | "agency" | "builder"; label: string; sub: string }[] = [
+  const tabs: { role: "user" | "owner" | "broker" | "agency" | "builder" | "social_media"; label: string; sub: string }[] = [
     { role: "user", label: "Seeker / Buyer", sub: "User Combos" },
     { role: "owner", label: "Owner", sub: "Owner Combos" },
     { role: "broker", label: "Broker", sub: "Broker Combos" },
     { role: "agency", label: "Agency", sub: "Agency Combos" },
     { role: "builder", label: "Builders (Boss Plans)", sub: "Launchpad / Elite / Enterprise" },
+    { role: "social_media", label: "Social Media Publish", sub: "Social Marketing Packages" },
   ];
 
   const currentPlans = plans
@@ -258,11 +295,22 @@ export default function Subscriptions() {
       <div>
         <div className="flex justify-between items-center mb-4">
           <span className="text-xs font-bold text-slate/60 uppercase tracking-widest">
-            {activeTab.toUpperCase()} Packages ({currentPlans.length} packages)
+            {activeTab === "social_media" ? "SOCIAL MEDIA PUBLISH" : `${activeTab.toUpperCase()} PACKAGES`} ({currentPlans.length} packages)
           </span>
-          <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-500/10">
-            Combined Slots + Tokens
-          </span>
+          {activeTab === "social_media" ? (
+            <button
+              type="button"
+              onClick={handleAddSocialPlan}
+              className="text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-xl border border-purple-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <PlusCircle size={14} />
+              <span>+ Add Social Media Package</span>
+            </button>
+          ) : (
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-500/10">
+              Combined Slots + Tokens
+            </span>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -326,47 +374,70 @@ export default function Subscriptions() {
                       className="w-full border border-charcoal/10 rounded-xl px-2.5 py-1.5 text-xs text-charcoal outline-none bg-slate-50 focus:bg-white focus:border-emerald-600 transition-all font-bold"
                     />
                   </div>
-                  <span className="px-2 py-1 rounded-full text-[9px] font-extrabold uppercase shrink-0 bg-emerald-50 text-emerald-800 border border-emerald-200 mt-5">
-                    {plan.role === "builder" ? "Boss Pack" : "Combo"}
+                  <span className={`px-2 py-1 rounded-full text-[9px] font-extrabold uppercase shrink-0 border mt-5 ${
+                    plan.role === "social_media"
+                      ? "bg-purple-50 text-purple-800 border-purple-200"
+                      : (plan.role === "builder" ? "bg-amber-50 text-amber-800 border-amber-200" : "bg-emerald-50 text-emerald-800 border-emerald-200")
+                  }`}>
+                    {plan.role === "social_media" ? "Social" : (plan.role === "builder" ? "Boss Pack" : "Combo")}
                   </span>
                 </div>
 
-                {/* Listing Slots & Enquiry Tokens Dual Inputs */}
-                <div className="grid grid-cols-2 gap-2.5 bg-[#FAF8F3] p-3 rounded-2xl border border-gray-200/60">
-                  <div className="flex flex-col gap-1">
+                {/* Listing Slots & Enquiry Tokens Dual Inputs (or Single Property Count for Social Media) */}
+                {plan.role === "social_media" ? (
+                  <div className="bg-[#FAF8F3] p-3 rounded-2xl border border-gray-200/60 flex flex-col gap-1">
                     <label className="text-[10px] font-bold text-[#1B5E4F] uppercase tracking-wider flex items-center gap-1">
-                      <Home size={11} /> Listing Slots
+                      <Home size={11} /> Number of Property
                     </label>
                     <input
                       type="number"
-                      min="0"
-                      value={plan.listing_slots}
+                      min="1"
+                      value={plan.listing_slots || 1}
                       onChange={(e) => {
-                        const val = Math.max(0, Number(e.target.value));
-                        setPlans((prev) => prev.map(p => p.id === plan.id ? { ...p, listing_slots: val } : p));
+                        const val = Math.max(1, Number(e.target.value));
+                        setPlans((prev) => prev.map(p => (p.id === plan.id || p.plan_id === plan.plan_id) ? { ...p, listing_slots: val, credits: val } : p));
                       }}
                       className="w-full border border-charcoal/10 rounded-xl px-2.5 py-2 text-xs text-charcoal outline-none bg-white focus:border-emerald-600 transition-all font-extrabold text-center"
                     />
                     <span className="text-[9px] text-gray-500 text-center font-medium">Reusable capacity</span>
                   </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2.5 bg-[#FAF8F3] p-3 rounded-2xl border border-gray-200/60">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-[#1B5E4F] uppercase tracking-wider flex items-center gap-1">
+                        <Home size={11} /> Listing Slots
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={plan.listing_slots}
+                        onChange={(e) => {
+                          const val = Math.max(0, Number(e.target.value));
+                          setPlans((prev) => prev.map(p => p.id === plan.id ? { ...p, listing_slots: val } : p));
+                        }}
+                        className="w-full border border-charcoal/10 rounded-xl px-2.5 py-2 text-xs text-charcoal outline-none bg-white focus:border-emerald-600 transition-all font-extrabold text-center"
+                      />
+                      <span className="text-[9px] text-gray-500 text-center font-medium">Reusable capacity</span>
+                    </div>
 
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">
-                      <Coins size={11} /> Enquiry Tokens
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={plan.enquiry_tokens}
-                      onChange={(e) => {
-                        const val = Math.max(0, Number(e.target.value));
-                        setPlans((prev) => prev.map(p => p.id === plan.id ? { ...p, enquiry_tokens: val, credits: val } : p));
-                      }}
-                      className="w-full border border-charcoal/10 rounded-xl px-2.5 py-2 text-xs text-charcoal outline-none bg-white focus:border-emerald-600 transition-all font-extrabold text-center"
-                    />
-                    <span className="text-[9px] text-gray-500 text-center font-medium">Contact reveals</span>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">
+                        <Coins size={11} /> Enquiry Tokens
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={plan.enquiry_tokens}
+                        onChange={(e) => {
+                          const val = Math.max(0, Number(e.target.value));
+                          setPlans((prev) => prev.map(p => p.id === plan.id ? { ...p, enquiry_tokens: val, credits: val } : p));
+                        }}
+                        className="w-full border border-charcoal/10 rounded-xl px-2.5 py-2 text-xs text-charcoal outline-none bg-white focus:border-emerald-600 transition-all font-extrabold text-center"
+                      />
+                      <span className="text-[9px] text-gray-500 text-center font-medium">Contact reveals</span>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Price and Discount inputs */}
                 <div className="grid grid-cols-2 gap-2.5">
@@ -421,7 +492,9 @@ export default function Subscriptions() {
                 {/* Dynamic features editor */}
                 <div className="flex flex-col gap-2 mt-1 border-t border-charcoal/5 pt-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate/60 uppercase tracking-widest">Bullet Points</span>
+                    <span className="text-[10px] font-bold text-slate/60 uppercase tracking-widest">
+                      {plan.role === "social_media" ? "Social Media Channels / Bullet Points" : "Bullet Points"}
+                    </span>
                     <button
                       onClick={() => {
                         setPlans((prev) => prev.map(p => {
@@ -467,6 +540,17 @@ export default function Subscriptions() {
                     ))}
                   </div>
                 </div>
+
+                {plan.role === "social_media" && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePlan(plan)}
+                    className="w-full mt-1 py-1.5 px-3 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 border border-red-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 size={13} />
+                    <span>Delete Social Package</span>
+                  </button>
+                )}
               </div>
             );
           })}

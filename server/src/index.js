@@ -229,7 +229,7 @@ async function checkDbMigration() {
       CREATE TABLE IF NOT EXISTS credit_transactions (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
-        credit_type ENUM('enquiry', 'listing_slot') NOT NULL,
+        credit_type VARCHAR(50) NOT NULL,
         transaction_type ENUM('purchase', 'usage', 'refund', 'bonus', 'admin_adjustment') NOT NULL,
         amount_credits INT NOT NULL,
         balance_after INT NOT NULL,
@@ -245,6 +245,12 @@ async function checkDbMigration() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
+    try {
+      await pool.query("ALTER TABLE credit_transactions MODIFY COLUMN credit_type VARCHAR(50) NOT NULL");
+    } catch (e) {
+      // Ignored if already VARCHAR
+    }
+
     const [cols] = await pool.query("SHOW COLUMNS FROM subscription_plans");
     const colNames = cols.map(c => c.Field);
     if (!colNames.includes("description")) {
@@ -257,11 +263,46 @@ async function checkDbMigration() {
     }
     if (!colNames.includes("plan_type")) {
       console.log("Adding plan_type column to subscription_plans...");
-      await pool.query("ALTER TABLE subscription_plans ADD COLUMN plan_type ENUM('enquiry_pack', 'listing_slots') NOT NULL DEFAULT 'enquiry_pack'");
+      await pool.query("ALTER TABLE subscription_plans ADD COLUMN plan_type VARCHAR(50) NOT NULL DEFAULT 'combo'");
+    } else {
+      try {
+        await pool.query("ALTER TABLE subscription_plans MODIFY COLUMN plan_type VARCHAR(50) NOT NULL DEFAULT 'combo'");
+      } catch (e) {}
     }
     if (!colNames.includes("credits")) {
       console.log("Adding credits column to subscription_plans...");
       await pool.query("ALTER TABLE subscription_plans ADD COLUMN credits INT NOT NULL DEFAULT 10");
+    }
+
+    // Seed default Social Media Publish plans if not exists
+    try {
+      const [socialPlans] = await pool.query("SELECT COUNT(*) AS count FROM subscription_plans WHERE role = 'social_media'");
+      if (socialPlans[0].count === 0) {
+        console.log("Seeding default Social Media Publish plans...");
+        await pool.query(`
+          INSERT INTO subscription_plans (plan_id, name, role, plan_type, credits, listing_slots, enquiry_tokens, duration_months, price, discount, description, features, is_active) VALUES
+          ('social_media_starter', 'Social Media Starter', 'social_media', 'social_media', 1, 1, 0, 0, 499.00, 100.00, 'Promote 1 Property across Instagram, Facebook & WhatsApp network with dedicated reach.', ?, 1),
+          ('social_media_pro', 'Social Media Pro (3 Properties)', 'social_media', 'social_media', 3, 3, 0, 0, 1299.00, 300.00, 'Promote 3 Properties with video highlights and high-engagement targeted campaigns.', ?, 1)
+        `, [
+          JSON.stringify([
+            "1 Property Promoted Across Platforms",
+            "Instagram Reel & Carousel Post Blast",
+            "Facebook Page & Real Estate Group Sharing",
+            "WhatsApp Broadcast to Active Buyers",
+            "Verified Listing Badge & Reach Analytics"
+          ]),
+          JSON.stringify([
+            "3 Properties Promoted Across Platforms",
+            "Instagram Reels + Story Highlights Blast",
+            "Facebook Sponsored Boost & Community Groups",
+            "YouTube Shorts Video Showcase",
+            "Dedicated Buyer Lead Inquiries Forwarding",
+            "Save ₹300 with Multi-Property Discount"
+          ])
+        ]);
+      }
+    } catch (e) {
+      console.warn("Could not seed default social media plans:", e.message);
     }
     if (!colNames.includes("plan_id")) {
       console.log("Adding plan_id column to subscription_plans...");

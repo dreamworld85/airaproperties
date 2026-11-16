@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Clock,
   Sparkles,
+  Share2,
 } from "lucide-react";
 import {
   adminApi,
@@ -36,7 +37,7 @@ export default function AccountReports() {
   const [availableStates, setAvailableStates] = useState<string[]>([]);
   const [selectedState, setSelectedState] = useState<string>("All");
   const [search, setSearch] = useState<string>("");
-  const [planTypeFilter, setPlanTypeFilter] = useState<"all" | "paid" | "starter">("all");
+  const [planTypeFilter, setPlanTypeFilter] = useState<"all" | "paid" | "starter" | "social">("all");
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -300,6 +301,16 @@ export default function AccountReports() {
           >
             Starter Packs
           </button>
+          <button
+            onClick={() => setPlanTypeFilter("social")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              planTypeFilter === "social"
+                ? "bg-purple-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-charcoal"
+            }`}
+          >
+            Social Media Marketing
+          </button>
         </div>
       </div>
 
@@ -408,16 +419,23 @@ export default function AccountReports() {
                       <td className="py-3.5 px-4">
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-1.5">
-                            <span
-                              className={`px-2 py-0.5 rounded-md font-bold text-[11px] inline-flex items-center gap-1 ${
-                                u.is_paid
-                                  ? "bg-emerald-100 text-emerald-900 border border-emerald-200"
-                                  : "bg-slate-100 text-slate-700 border border-slate-200"
-                              }`}
-                            >
-                              <ShieldCheck size={12} />
-                              {u.plan_name || "Starter Pack"}
-                            </span>
+                            {((u as any).has_social_package || /social/i.test(u.plan_name || "")) ? (
+                              <span className="px-2 py-0.5 rounded-md font-bold text-[11px] inline-flex items-center gap-1 bg-purple-100 text-purple-900 border border-purple-200">
+                                <Share2 size={12} className="text-purple-700" />
+                                {u.plan_name || "Social Media Publish"}
+                              </span>
+                            ) : (
+                              <span
+                                className={`px-2 py-0.5 rounded-md font-bold text-[11px] inline-flex items-center gap-1 ${
+                                  u.is_paid
+                                    ? "bg-emerald-100 text-emerald-900 border border-emerald-200"
+                                    : "bg-slate-100 text-slate-700 border border-slate-200"
+                                }`}
+                              >
+                                <ShieldCheck size={12} />
+                                {u.plan_name || "Starter Pack"}
+                              </span>
+                            )}
                           </div>
                           <span className="text-[10px] text-slate-400 flex items-center gap-1">
                             <Clock size={10} />

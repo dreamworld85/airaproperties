@@ -893,6 +893,17 @@ export const api = {
     return handle<{ success: boolean; is_active: number; message: string }>(res);
   },
 
+  async adminDeleteSubscriptionPlan(id: number | string) {
+    const res = await fetch(`${API_URL}/api/admin/subscription-plans/${id}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        "x-admin-auth": localStorage.getItem("kerala_realty_admin_token") || ""
+      }
+    });
+    return handle<{ success: boolean; message: string }>(res);
+  },
+
   async adminFetchRoleSwitches() {
     const res = await fetch(`${API_URL}/api/admin/role-switches`, {
       headers: { "x-admin-auth": localStorage.getItem("kerala_realty_admin_token") || "" },

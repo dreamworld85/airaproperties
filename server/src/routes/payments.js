@@ -207,6 +207,15 @@ router.post("/verify-subscription", requireAuth, async (req, res) => {
       );
     }
 
+    const isSocialPlan = plan?.role === 'social_media' || plan?.plan_type === 'social_media' || /social/i.test(plan?.name || '');
+    if (isSocialPlan) {
+      const numProps = Number(plan?.listing_slots ?? plan?.credits ?? 1);
+      await pool.query(
+        "INSERT INTO credit_transactions (user_id, credit_type, transaction_type, amount_credits, balance_after, price_paid, payment_id, order_id, notes) VALUES (?, 'social_marketing', 'purchase', ?, ?, ?, ?, ?, ?)",
+        [req.userId, numProps, numProps, pricePaid, razorpay_payment_id, razorpay_order_id, 'Purchased Social Media Marketing (' + (plan?.name || 'Social Media Publish') + ') - ' + numProps + ' Property Slots']
+      );
+    }
+
     // Keep subscription_status active as a flag
     await pool.query(
       "UPDATE users SET subscription_status = 'active', razorpay_subscription_id = ? WHERE id = ?",

@@ -31,6 +31,8 @@ import CustomerReviewsSection from "@/components/CustomerReviewsSection";
 import PropertyCard from "@/components/PropertyCard";
 import PropertyListCard from "@/components/PropertyListCard";
 import { toSlug } from "./AgencyProfile";
+import SocialMarketingModal from "@/components/SocialMarketingModal";
+import { Share2 } from "lucide-react";
 
 const menuItems = [
   { icon: Home, label: "My Properties", path: "/my-properties", desc: "Manage your active, draft & sold listings" },
@@ -38,6 +40,7 @@ const menuItems = [
   { icon: MessageSquare, label: "My Enquiries", path: "/visitors-enquiries", desc: "Check incoming and outgoing enquiries" },
   { icon: BarChart3, label: "Visitors & Insights", path: "/visitors-enquiries", desc: "Track views and interested buyers" },
   { icon: Coins, label: "Credits & Top-ups", path: "/subscription", desc: "Top up enquiry tokens and listing slots" },
+  { icon: Share2, label: "Social Marketing", path: "#social-marketing", action: "social_marketing", desc: "Upload property to all social media platforms" },
   { icon: Pencil, label: "Edit Profile", path: "/profile/edit", desc: "Update your name, contact details & photo" },
   { icon: Settings, label: "Settings", path: "/settings", desc: "Preferences, legal and security options" },
 ];
@@ -53,6 +56,7 @@ export default function Profile() {
   const [bannerSuccess, setBannerSuccess] = useState(false);
   const [myProperties, setMyProperties] = useState<ApiProperty[]>([]);
   const [propertiesLoading, setPropertiesLoading] = useState(false);
+  const [showSocialModal, setShowSocialModal] = useState(false);
   const [agencyViewMode, setAgencyViewMode] = useState<"grid" | "list">("grid");
 
   const isAgency = user?.role?.toLowerCase() === "agency";
@@ -376,14 +380,28 @@ export default function Profile() {
 
           {/* Quick Menu Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {menuItems.map(({ icon: Icon, label, path, desc }) => {
+            {menuItems.map((item) => {
+              const { icon: Icon, label, path, desc } = item;
+              const isSocial = (item as any).action === "social_marketing";
               return (
                 <button
                   key={label}
-                  onClick={() => navigate(path)}
-                  className="bg-white rounded-2xl p-5 border border-charcoal/5 shadow-sm hover:shadow-md hover:border-[#59AD63]/40 transition-all text-left flex items-start gap-4 cursor-pointer group"
+                  onClick={() => {
+                    if (isSocial) {
+                      setShowSocialModal(true);
+                    } else {
+                      navigate(path);
+                    }
+                  }}
+                  className={`bg-white rounded-2xl p-5 border shadow-sm hover:shadow-md transition-all text-left flex items-start gap-4 cursor-pointer group ${
+                    isSocial ? "border-purple-200/80 hover:border-purple-500/50 bg-gradient-to-br from-white to-purple-50/20" : "border-charcoal/5 hover:border-[#59AD63]/40"
+                  }`}
                 >
-                  <div className="w-10 h-10 rounded-xl bg-slate-50 group-hover:bg-[#59AD63]/10 text-ink group-hover:text-[#59AD63] flex items-center justify-center shrink-0 transition-colors">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                    isSocial 
+                      ? "bg-purple-100/80 text-purple-700 group-hover:bg-purple-600 group-hover:text-white" 
+                      : "bg-slate-50 group-hover:bg-[#59AD63]/10 text-ink group-hover:text-[#59AD63]"
+                  }`}>
                     <Icon size={20} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -658,18 +676,33 @@ export default function Profile() {
 
       {/* Menu list */}
       <div className="px-4 mt-5 flex flex-col gap-2">
-        {menuItems.map(({ icon: Icon, label, path }) => {
+        {menuItems.map((item) => {
+          const { icon: Icon, label, path } = item;
           const isSubscriptionItem = label === "Subscription" || label === "Credits & Subscription";
+          const isSocial = (item as any).action === "social_marketing";
           return (
             <button
               key={label}
-              onClick={() => navigate(path)}
-              className="flex items-center justify-between bg-white rounded-2xl shadow-card px-4 py-3.5 cursor-pointer hover:bg-slate-50/50 transition-colors"
+              onClick={() => {
+                if (isSocial) {
+                  setShowSocialModal(true);
+                } else {
+                  navigate(path);
+                }
+              }}
+              className={`flex items-center justify-between bg-white rounded-2xl shadow-card px-4 py-3.5 cursor-pointer hover:bg-slate-50/50 transition-colors ${
+                isSocial ? "border border-purple-200/80" : ""
+              }`}
             >
               <span className="flex items-center gap-3 text-charcoal font-medium text-[15px]">
-                <Icon size={18} className="text-ink" /> {label}
+                <Icon size={18} className={isSocial ? "text-purple-600" : "text-ink"} /> {label}
               </span>
               <div className="flex items-center gap-2">
+                {isSocial && (
+                  <span className="text-[9px] font-black text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    All Social Platforms
+                  </span>
+                )}
                 {isSubscriptionItem && (
                   <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-600/10">
                     {user?.enquiryCreditsLeft ?? 0} Tokens • {user?.listingSlotsLeft ?? 0} Slots

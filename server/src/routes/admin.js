@@ -1525,6 +1525,21 @@ router.put("/subscription-plans", async (req, res) => {
   }
 });
 
+// DELETE /api/admin/subscription-plans/:id (Admin deletes individual plan)
+router.delete("/subscription-plans/:id", async (req, res) => {
+  try {
+    const planId = req.params.id;
+    await pool.query("DELETE FROM subscription_plans WHERE id = ? OR plan_id = ?", [planId, planId]);
+    await pool.query(
+      "INSERT INTO activity_logs (user_id, action, category) VALUES (null, ?, 'System')",
+      [`Admin deleted subscription plan id/key: ${planId}`]
+    );
+    res.json({ success: true, message: "Subscription plan deleted successfully." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PUT /api/admin/subscription-plans/:id/toggle (Toggle individual plan active state)
 router.put("/subscription-plans/:id/toggle", async (req, res) => {
   try {
@@ -2177,6 +2192,7 @@ router.get("/account-reports", async (req, res) => {
 
     let users = userRows.map(u => {
       const uTx = txByUser[u.id] || [];
+      const socialTx = uTx.find(t => t.credit_type === "social_marketing" || /social/i.test(t.notes || ""));
       const purchaseTx = uTx.find(t => t.transaction_type === "purchase" || Number(t.price_paid) > 0);
       const bonusTx = uTx.find(t => t.transaction_type === "bonus");
       
@@ -2184,7 +2200,17 @@ router.get("/account-reports", async (req, res) => {
       let latestPaymentId = null;
       let latestOrderId = null;
 
-      if (purchaseTx) {
+      if ((planType === "social" || planType === "social_media") && socialTx) {
+        const match = (socialTx.notes || "").match(/\((.*?)\)/);
+        planName = match ? match[1] : (socialTx.notes || "Social Media Publish");
+        latestPaymentId = socialTx.payment_id;
+        latestOrderId = socialTx.order_id;
+      } else if (socialTx && !purchaseTx && !bonusTx) {
+        const match = (socialTx.notes || "").match(/\((.*?)\)/);
+        planName = match ? match[1] : (socialTx.notes || "Social Media Publish");
+        latestPaymentId = socialTx.payment_id;
+        latestOrderId = socialTx.order_id;
+      } else if (purchaseTx) {
         const match = (purchaseTx.notes || "").match(/\((.*?)\)/);
         planName = match ? match[1] : (purchaseTx.notes || "Paid Package");
         latestPaymentId = purchaseTx.payment_id;
@@ -2198,7 +2224,7 @@ router.get("/account-reports", async (req, res) => {
       }
 
       const totalPaidNum = Number(u.total_paid) || 0;
-      const isPaid = totalPaidNum > 0 || !!purchaseTx;
+      const isPaid = totalPaidNum > 0 || !!purchaseTx || !!socialTx;
 
       return {
         id: u.id,
@@ -2238,6 +2264,11 @@ router.get("/account-reports", async (req, res) => {
       users = users.filter(u => u.is_paid);
     } else if (planType === "starter") {
       users = users.filter(u => !u.is_paid);
+    } else if (planType === "social" || planType === "social_media") {
+      users = users.filter(u => 
+        (u.transactions && u.transactions.some(t => t.credit_type === "social_marketing" || /social/i.test(t.notes || ""))) ||
+        /social/i.test(u.plan_name || "")
+      );
     }
 
     // Extract available states present among users
