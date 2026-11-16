@@ -20,7 +20,9 @@ import {
   List,
   UploadCloud,
   Check,
-  Building2
+  Building2,
+  Sparkles,
+  ArrowRight
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { api, mediaUrl, ApiProperty } from "@/lib/api";
@@ -378,6 +380,70 @@ export default function Profile() {
             </div>
           </div>
 
+          {/* Social Marketing Highlighted Box (Desktop) */}
+          <div 
+            onClick={() => setShowSocialModal(true)}
+            className="relative overflow-hidden rounded-3xl p-6 sm:p-7 border-2 border-purple-400/90 bg-gradient-to-r from-purple-950 via-[#241242] to-indigo-950 text-white shadow-xl hover:shadow-2xl transition-all cursor-pointer group"
+          >
+            {/* Ambient Background Glows */}
+            <div className="absolute -right-16 -top-16 w-56 h-56 bg-pink-500/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute right-1/3 -bottom-16 w-56 h-56 bg-purple-500/25 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-start sm:items-center gap-5">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-600 to-indigo-500 flex items-center justify-center shrink-0 shadow-lg group-hover:scale-105 transition-transform">
+                  <Share2 size={32} className="text-white" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-gradient-to-r from-pink-500 to-amber-500 text-white shadow-xs flex items-center gap-1">
+                      <Sparkles size={11} /> High Engagement Boost
+                    </span>
+                    <span className="text-[10px] font-bold text-purple-200 bg-white/10 px-2.5 py-0.5 rounded-full border border-white/15">
+                      Multi-Platform Viral Reach
+                    </span>
+                  </div>
+                  <h3 className="font-display font-black text-2xl text-white">Social Marketing</h3>
+                  <p className="text-sm text-purple-100 font-medium mt-0.5">
+                    Upload property to all social media platforms
+                  </p>
+                  
+                  {/* Social Channel Pills */}
+                  <div className="flex items-center gap-2 mt-3 flex-wrap">
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white/10 text-white border border-white/10 backdrop-blur-xs">
+                      📸 Instagram Reels
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white/10 text-white border border-white/10 backdrop-blur-xs">
+                      👍 Facebook Boost
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white/10 text-white border border-white/10 backdrop-blur-xs">
+                      ▶️ YouTube Shorts
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white/10 text-white border border-white/10 backdrop-blur-xs">
+                      💬 WhatsApp Broadcast
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="shrink-0 flex sm:flex-col items-center sm:items-end justify-between gap-3 pt-2 md:pt-0 border-t md:border-t-0 border-white/10">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowSocialModal(true);
+                  }}
+                  className="py-3 px-6 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 hover:from-pink-600 hover:to-indigo-600 text-white rounded-xl text-xs sm:text-sm font-extrabold shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center gap-2"
+                >
+                  <Sparkles size={16} />
+                  <span>Show All Pricing with Details</span>
+                  <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+                <span className="text-[11px] text-purple-200/80 font-medium">Starting from ₹399</span>
+              </div>
+            </div>
+          </div>
+
           {/* Quick Menu Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {menuItems.map((item) => {
@@ -672,6 +738,70 @@ export default function Profile() {
           <PlusCircle size={14} className="text-emerald-400" />
           <span>Top Up Tokens & Slots</span>
         </button>
+      </div>
+
+      {/* Social Marketing Highlighted Box (Mobile) */}
+      <div 
+        onClick={() => setShowSocialModal(true)}
+        className="mx-4 mt-4 relative overflow-hidden rounded-3xl p-5 bg-gradient-to-br from-[#1E1145] via-[#2A165F] to-[#4A154B] text-white shadow-xl border-2 border-purple-400/80 cursor-pointer active:scale-[0.99] transition-all group"
+      >
+        {/* Glow blur effect in background */}
+        <div className="absolute -right-8 -top-8 w-36 h-36 bg-pink-500/25 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -left-8 -bottom-8 w-36 h-36 bg-purple-500/25 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-gradient-to-r from-pink-500 to-amber-500 text-white shadow-xs flex items-center gap-1">
+              <Sparkles size={11} /> High Engagement
+            </span>
+            <div className="flex items-center gap-1 text-[11px] font-extrabold text-pink-300">
+              <span>View All Pricing</span>
+              <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-600 to-indigo-500 flex items-center justify-center shrink-0 shadow-md">
+              <Share2 size={24} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-display font-black text-lg text-white">Social Marketing</h3>
+              <p className="text-xs text-purple-100 font-medium leading-snug mt-0.5">
+                Upload property to all social media platforms
+              </p>
+            </div>
+          </div>
+
+          {/* Social Icons row */}
+          <div className="flex items-center gap-1.5 pt-1 border-t border-white/10 flex-wrap">
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/10 text-white backdrop-blur-xs">
+              📸 Instagram
+            </span>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/10 text-white backdrop-blur-xs">
+              👍 Facebook
+            </span>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/10 text-white backdrop-blur-xs">
+              ▶️ YouTube
+            </span>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/10 text-white backdrop-blur-xs">
+              💬 WhatsApp
+            </span>
+          </div>
+
+          {/* View Pricing Button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowSocialModal(true);
+            }}
+            className="w-full mt-1 py-2.5 px-4 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 hover:from-pink-600 hover:to-indigo-600 text-white rounded-xl text-xs font-extrabold shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+          >
+            <Sparkles size={14} />
+            <span>Show All Pricing with Details</span>
+            <ArrowRight size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Menu list */}
