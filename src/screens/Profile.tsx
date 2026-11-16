@@ -42,7 +42,7 @@ const menuItems = [
   { icon: MessageSquare, label: "My Enquiries", path: "/visitors-enquiries", desc: "Check incoming and outgoing enquiries" },
   { icon: BarChart3, label: "Visitors & Insights", path: "/visitors-enquiries", desc: "Track views and interested buyers" },
   { icon: Coins, label: "Credits & Top-ups", path: "/subscription", desc: "Top up enquiry tokens and listing slots" },
-  { icon: Share2, label: "Social Marketing", path: "#social-marketing", action: "social_marketing", desc: "Upload property to all social media platforms" },
+  { icon: Share2, label: "Social Marketing", path: "/social-marketing", action: "social_marketing", desc: "Upload property to all social media platforms" },
   { icon: Pencil, label: "Edit Profile", path: "/profile/edit", desc: "Update your name, contact details & photo" },
   { icon: Settings, label: "Settings", path: "/settings", desc: "Preferences, legal and security options" },
 ];
@@ -382,7 +382,7 @@ export default function Profile() {
 
           {/* Social Marketing Highlighted Box (Desktop) */}
           <div 
-            onClick={() => setShowSocialModal(true)}
+            onClick={() => navigate("/social-marketing")}
             className="relative overflow-hidden rounded-3xl p-6 sm:p-7 border-2 border-purple-400/90 bg-gradient-to-r from-purple-950 via-[#241242] to-indigo-950 text-white shadow-xl hover:shadow-2xl transition-all cursor-pointer group"
           >
             {/* Ambient Background Glows */}
@@ -431,7 +431,7 @@ export default function Profile() {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setShowSocialModal(true);
+                    navigate("/social-marketing");
                   }}
                   className="py-3 px-6 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 hover:from-pink-600 hover:to-indigo-600 text-white rounded-xl text-xs sm:text-sm font-extrabold shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center gap-2"
                 >
@@ -453,11 +453,7 @@ export default function Profile() {
                 <button
                   key={label}
                   onClick={() => {
-                    if (isSocial) {
-                      setShowSocialModal(true);
-                    } else {
-                      navigate(path);
-                    }
+                    navigate(path);
                   }}
                   className={`bg-white rounded-2xl p-5 border shadow-sm hover:shadow-md transition-all text-left flex items-start gap-4 cursor-pointer group ${
                     isSocial ? "border-purple-200/80 hover:border-purple-500/50 bg-gradient-to-br from-white to-purple-50/20" : "border-charcoal/5 hover:border-[#59AD63]/40"
@@ -746,7 +742,7 @@ export default function Profile() {
 
       {/* Social Marketing Highlighted Box (Mobile) */}
       <div 
-        onClick={() => setShowSocialModal(true)}
+        onClick={() => navigate("/social-marketing")}
         className="mx-4 mt-4 relative overflow-hidden rounded-3xl p-5 bg-gradient-to-br from-[#1E1145] via-[#2A165F] to-[#4A154B] text-white shadow-xl border-2 border-purple-400/80 cursor-pointer active:scale-[0.99] transition-all group"
       >
         {/* Glow blur effect in background */}
@@ -797,7 +793,7 @@ export default function Profile() {
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              setShowSocialModal(true);
+              navigate("/social-marketing");
             }}
             className="w-full mt-1 py-2.5 px-4 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 hover:from-pink-600 hover:to-indigo-600 text-white rounded-xl text-xs font-extrabold shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
           >
@@ -818,11 +814,7 @@ export default function Profile() {
             <button
               key={label}
               onClick={() => {
-                if (isSocial) {
-                  setShowSocialModal(true);
-                } else {
-                  navigate(path);
-                }
+                navigate(path);
               }}
               className={`flex items-center justify-between bg-white rounded-2xl shadow-card px-4 py-3.5 cursor-pointer hover:bg-slate-50/50 transition-colors ${
                 isSocial ? "border border-purple-200/80" : ""

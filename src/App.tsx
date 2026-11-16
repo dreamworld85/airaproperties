@@ -35,6 +35,7 @@ import RefundPolicy from "@/screens/Legal/RefundPolicy";
 import ContactUs from "@/screens/Legal/ContactUs";
 import DataDeletion from "@/screens/Legal/DataDeletion";
 import SubscriptionDetails from "@/screens/SubscriptionDetails";
+import SocialMarketing from "@/screens/SocialMarketing";
 import Services from "@/screens/Services";
 import Landing from "@/screens/Landing";
 import MyApp from "@/screens/MyApp";
@@ -170,6 +171,7 @@ export default function App() {
         <Route path="/visitors-enquiries" element={<ProtectedRoute><VisitorsEnquiries /></ProtectedRoute>} />
         <Route path="/enquiries" element={<ProtectedRoute><VisitorsEnquiries /></ProtectedRoute>} />
         <Route path="/subscription" element={<ProtectedRoute><SubscriptionDetails /></ProtectedRoute>} />
+        <Route path="/social-marketing" element={<ProtectedRoute><SocialMarketing /></ProtectedRoute>} />
         <Route path="/services" element={<Services />} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
