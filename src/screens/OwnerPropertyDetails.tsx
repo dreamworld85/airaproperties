@@ -117,27 +117,60 @@ function PropertyLocationMap({ latitude, longitude, title, address, district }: 
     return () => clearTimeout(timer);
   }, [lat, lng, title]);
 
-  const googleMapsDirectionsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  const googleMapsDirectionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+
+  const handleOpenDirections = (e: React.MouseEvent) => {
+    e.preventDefault();
+
+    const nativeApp = (window as any).AiraNativeApp;
+    if (nativeApp && typeof nativeApp.openDirections === "function") {
+      nativeApp.openDirections(lat, lng, title || "Property Location");
+      return;
+    }
+
+    const destination = `${lat},${lng}`;
+    const isAndroid = /android/i.test(navigator.userAgent || "");
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || "");
+
+    if (isAndroid) {
+      window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+    } else if (isIOS) {
+      window.open(`https://maps.apple.com/?daddr=${destination}`, "_blank");
+    } else {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${destination}`, "_blank", "noopener,noreferrer");
+    }
+  };
 
   return (
     <div className="bg-white rounded-2xl border border-charcoal/5 p-4 sm:p-6 shadow-sm flex flex-col gap-3 text-left">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="font-display font-extrabold text-xs sm:text-sm text-ink uppercase tracking-wider">
-            Property Location Map
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <h3 className="font-display font-extrabold text-sm text-ink flex items-center gap-1.5">
+            <span className="w-5 h-5 rounded-full bg-[#FFF9E6] border border-[#F3E2A9] flex items-center justify-center shrink-0">
+              <MapPin size={11} className="text-[#C69214] fill-[#C69214]" />
+            </span>
+            <span>Property Location Map</span>
           </h3>
-          <p className="text-[11px] text-slate font-semibold mt-0.5">
+          <p className="text-[11px] text-slate-500 font-semibold mt-1 line-clamp-2 leading-relaxed">
             {[address, district].filter(Boolean).join(", ")}
           </p>
         </div>
         <a
           href={googleMapsDirectionsUrl}
+          onClick={handleOpenDirections}
           target="_blank"
-          rel="noreferrer"
-          className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-extrabold rounded-xl border border-emerald-500/15 transition-all flex items-center gap-1 cursor-pointer"
+          rel="noopener noreferrer"
+          className="shrink-0 flex flex-col items-center justify-center px-2 py-1.5 border border-[#2fa858] rounded-md bg-white hover:bg-emerald-50/50 active:scale-95 transition-all cursor-pointer no-underline min-w-[50px] shadow-2xs group"
+          title="Open Directions"
         >
-          <span>Open Directions</span>
-          <ExternalLink size={11} />
+          <img
+            src="/map-location.svg"
+            alt="Open Directions"
+            className="w-6 h-6 object-contain group-hover:scale-105 transition-transform"
+          />
+          <span className="text-[10px] font-bold text-[#2fa858] leading-tight mt-0.5">
+            Open
+          </span>
         </a>
       </div>
 

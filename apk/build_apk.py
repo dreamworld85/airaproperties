@@ -136,8 +136,8 @@ android {
         applicationId '{package_name}'
         minSdk 24
         targetSdk 36
-        versionCode 5
-        versionName "1.2.2"
+        versionCode 6
+        versionName "1.2.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -379,17 +379,57 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                String url = request.getUrl().toString();
-                if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("whatsapp:") || url.contains("wa.me") || url.startsWith("intent:")) {
+                if (request == null || request.getUrl() == null) return false;
+                return handleCustomUrl(view, request.getUrl().toString());
+            }
+
+            @SuppressWarnings("deprecation")
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return handleCustomUrl(view, url);
+            }
+
+            private boolean handleCustomUrl(WebView view, String url) {
+                if (url == null) return false;
+
+                // 1. Correctly handle intent:// scheme (e.g. Google Maps redirect)
+                if (url.startsWith("intent:")) {
+                    try {
+                        Intent intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
+                        if (intent != null) {
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            PackageManager pm = view.getContext().getPackageManager();
+                            if (intent.resolveActivity(pm) != null) {
+                                view.getContext().startActivity(intent);
+                                return true;
+                            }
+                            String fallbackUrl = intent.getStringExtra("browser_fallback_url");
+                            if (fallbackUrl != null && !fallbackUrl.isEmpty()) {
+                                view.loadUrl(fallbackUrl);
+                                return true;
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error handling intent scheme: " + e.getMessage());
+                    }
+                    return true;
+                }
+
+                // 2. Handle Google Maps, Navigation, Geo, Tel, Mail, WhatsApp, Market schemes
+                if (url.startsWith("geo:") || url.startsWith("tel:") || url.startsWith("mailto:") ||
+                    url.startsWith("sms:") || url.startsWith("whatsapp:") || url.contains("wa.me") ||
+                    url.startsWith("market:") || url.contains("maps.google.com") || url.contains("google.com/maps")) {
                     try {
                         Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         view.getContext().startActivity(intent);
                         return true;
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        Log.e(TAG, "Error opening external application for " + url + ": " + e.getMessage());
                         return false;
                     }
                 }
+
                 return false;
             }
         });
@@ -538,6 +578,34 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public boolean isNativeApp() {
             return true;
+        }
+
+        @JavascriptInterface
+        public void openDirections(double lat, double lng, String label) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Uri uri = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=" + lat + "," + lng);
+                        Intent mapIntent = new Intent(Intent.ACTION_VIEW, uri);
+                        mapIntent.setPackage("com.google.android.apps.maps");
+                        mapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        if (mapIntent.resolveActivity(getPackageManager()) != null) {
+                            startActivity(mapIntent);
+                        } else {
+                            Intent genericIntent = new Intent(Intent.ACTION_VIEW, uri);
+                            genericIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(genericIntent);
+                        }
+                    } catch (Exception e) {
+                        try {
+                            Intent fallback = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/dir/?api=1&destination=" + lat + "," + lng));
+                            fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(fallback);
+                        } catch (Exception ignored) {}
+                    }
+                }
+            });
         }
     }
 
@@ -864,7 +932,7 @@ def build_project(project_dir, output_apk_name):
     
     # Run Gradle assembleRelease, assembleDebug, and bundleRelease
     try:
-        tasks = ["clean", "assembleRelease", "bundleRelease"]
+        tasks = ["clean", "assembleRelease", "bundleRelease", "--no-daemon"]
         print(f"Executing: gradle {' '.join(tasks)}...")
         res = subprocess.run(
             [GRADLE_PATH] + tasks,
@@ -876,7 +944,7 @@ def build_project(project_dir, output_apk_name):
         if res.returncode != 0:
             print("assembleRelease failed, falling back to assembleDebug...")
             res = subprocess.run(
-                [GRADLE_PATH, "assembleDebug"],
+                [GRADLE_PATH, "assembleDebug", "--no-daemon"],
                 cwd=project_dir,
                 env=env,
                 capture_output=True,
