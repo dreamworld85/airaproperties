@@ -136,8 +136,8 @@ android {
         applicationId '{package_name}'
         minSdk 24
         targetSdk 36
-        versionCode 6
-        versionName "1.2.3"
+        versionCode 7
+        versionName "0.0.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -970,7 +970,14 @@ def build_project(project_dir, output_apk_name):
         extra_names = []
         is_user_app = "user" in project_dir or "airaproperties" in output_apk_name
         if is_user_app:
-            extra_names = ["airaproperties.apk", "aira-properties.apk", "sparrows.apk"]
+            extra_names = [
+                "airaproperties.apk",
+                "aira-properties.apk",
+                "sparrows.apk",
+                "AiraProperty-0.0.2.apk",
+                "AiraProperties-0.0.2.apk",
+                "airaproperties-0.0.2.apk",
+            ]
         elif "admin" in project_dir or "admin" in output_apk_name:
             extra_names = ["aira-admin.apk", "airaproperties-admin.apk", "sparrows-admin.apk"]
 
@@ -990,7 +997,14 @@ def build_project(project_dir, output_apk_name):
 
         # If AAB is built (Google Play Store Bundle), copy it too!
         if os.path.exists(src_aab):
-            aab_names = ["airaproperties-release.aab", "airaproperties.in.aab", "airaproperties.aab"] if is_user_app else ["aira-admin-release.aab"]
+            aab_names = [
+                "airaproperties-release.aab",
+                "airaproperties.in.aab",
+                "airaproperties.aab",
+                "AiraProperty-0.0.2.aab",
+                "AiraProperties-0.0.2.aab",
+                "airaproperties-0.0.2.aab",
+            ] if is_user_app else ["aira-admin-release.aab"]
             for aab_name in aab_names:
                 aab_targets = [
                     os.path.join(base_dir, aab_name),
@@ -1009,8 +1023,10 @@ def build_project(project_dir, output_apk_name):
                 with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
                     zf.write(src_aab, arcname="airaproperties.in.aab")
                     zf.write(src_aab, arcname="airaproperties-release.aab")
+                    zf.write(src_aab, arcname="AiraProperty-0.0.2.aab")
                     if os.path.exists(src_apk):
                         zf.write(src_apk, arcname="airaproperties.apk")
+                        zf.write(src_apk, arcname="AiraProperty-0.0.2.apk")
                 print(f"Created ZIP bundle at {zip_path}")
                 for zip_target in [
                     os.path.join(base_dir, "public", "airaproperties-bundle.zip"),
