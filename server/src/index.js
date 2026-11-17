@@ -2060,9 +2060,35 @@ app.post("/api/notifications/register-token", handleRegisterToken);
 app.get("/api/notifications/register-token", handleRegisterToken);
 
 // Serve frontend static build assets from dist if present
-const rootDistDir = path.resolve(process.cwd(), "..", "dist");
-const localDistDir = path.resolve(process.cwd(), "dist");
-export const activeDistDir = fs.existsSync(rootDistDir) ? rootDistDir : (fs.existsSync(localDistDir) ? localDistDir : null);
+export function getActiveDistDir() {
+  const airaCurrent = "/home/u859202671/domains/airaproperties.in/hbuilds/current/nodejs/dist";
+  if (fs.existsSync(airaCurrent)) return airaCurrent;
+
+  const versionsDir = "/home/u859202671/domains/airaproperties.in/hbuilds/versions";
+  if (fs.existsSync(versionsDir)) {
+    try {
+      const dirs = fs.readdirSync(versionsDir)
+        .map(name => ({ name, time: fs.statSync(path.join(versionsDir, name)).mtimeMs }))
+        .sort((a, b) => b.time - a.time);
+      for (const d of dirs) {
+        const candidate = path.join(versionsDir, d.name, "nodejs", "dist");
+        if (fs.existsSync(candidate)) return candidate;
+      }
+    } catch (e) {
+      console.warn("Could not inspect airaproperties versions:", e);
+    }
+  }
+
+  const rootDistDir = path.resolve(process.cwd(), "..", "dist");
+  if (fs.existsSync(rootDistDir)) return rootDistDir;
+
+  const localDistDir = path.resolve(process.cwd(), "dist");
+  if (fs.existsSync(localDistDir)) return localDistDir;
+
+  return null;
+}
+
+export const activeDistDir = getActiveDistDir();
 
 // Auto-sync frontend build to main domain document root on Hostinger
 export const hostingerFrontendDir = "/home/u859202671/domains/airaproperties.in/public_html";
@@ -2153,12 +2179,13 @@ export async function injectCustomCodeIntoIndexHtml(targetDir = hostingerFronten
 }
 
 export async function syncFrontendToLive(targetDir = hostingerFrontendDir) {
-  if (!activeDistDir || !fs.existsSync(targetDir)) {
-    return { synced: false, reason: "activeDistDir or targetDir not found", activeDistDir, targetDirExists: fs.existsSync(targetDir) };
+  const sourceDist = getActiveDistDir();
+  if (!sourceDist || !fs.existsSync(targetDir)) {
+    return { synced: false, reason: "sourceDist or targetDir not found", sourceDist, targetDirExists: fs.existsSync(targetDir) };
   }
   try {
-    fs.cpSync(activeDistDir, targetDir, { recursive: true, force: true });
-    console.log(`[DEPLOY] Successfully synced full frontend build from ${activeDistDir} to ${targetDir}`);
+    fs.cpSync(sourceDist, targetDir, { recursive: true, force: true });
+    console.log(`[DEPLOY] Successfully synced full frontend build from ${sourceDist} to ${targetDir}`);
     await injectCustomCodeIntoIndexHtml(targetDir);
 
     // Clean legacy gcm_sender_id from live manifest.json to prevent Chrome "Registration failed - push service error"
@@ -2177,7 +2204,7 @@ export async function syncFrontendToLive(targetDir = hostingerFrontendDir) {
       }
     }
 
-    return { synced: true, source: activeDistDir, target: targetDir };
+    return { synced: true, source: sourceDist, target: targetDir };
   } catch (err) {
     console.error(`[DEPLOY] Failed syncing frontend build to ${targetDir}:`, err);
     return { synced: false, error: err.message };
