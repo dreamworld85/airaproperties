@@ -270,54 +270,76 @@ export default function SocialMarketing() {
         )}
 
         {/* Hero Banner Section */}
-        <div className="relative overflow-hidden rounded-3xl p-6 sm:p-10 border-2 border-purple-400/90 bg-gradient-to-br from-[#1b0d38] via-[#241242] to-[#3b0764] text-white shadow-2xl">
+        <div className="relative overflow-hidden rounded-3xl p-4 sm:p-7 border-2 border-purple-500 bg-gradient-to-br from-[#1b0d38] via-[#241242] to-[#3b0764] text-white shadow-2xl">
           {/* Ambient Background Glows */}
           <div className="absolute -right-20 -top-20 w-80 h-80 bg-pink-500/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute left-1/3 -bottom-20 w-80 h-80 bg-purple-500/30 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-            <div className="flex items-start sm:items-center gap-5 sm:gap-6">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-white/10 p-3 sm:p-3.5 border border-white/20 flex items-center justify-center shrink-0 shadow-2xl backdrop-blur-md">
-                <img src="/social-media.png" alt="Social Media Marketing" className="w-full h-full object-contain drop-shadow" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full bg-gradient-to-r from-pink-500 to-amber-500 text-white shadow-md flex items-center gap-1.5">
-                    <Sparkles size={12} /> High Engagement Boost
-                  </span>
-                  <span className="text-[10px] font-bold text-purple-200 bg-white/10 px-3 py-1 rounded-full border border-white/15">
-                    Multi-Platform Viral Reach
-                  </span>
+          <div className="relative z-10 flex flex-col gap-4">
+            {/* Top Banner Image exactly as in user screenshot */}
+            <div className="w-full rounded-2xl overflow-hidden bg-white shadow-sm border border-white/20">
+              <img 
+                src="/SocialMarketing.png" 
+                alt="Social Marketing Banner" 
+                className="w-full h-auto object-cover max-h-56 sm:max-h-72" 
+              />
+            </div>
+
+            {/* Badges */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider px-3.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-amber-500 text-white shadow-md flex items-center gap-1.5">
+                <Sparkles size={12} /> HIGH ENGAGEMENT BOOST
+              </span>
+              <span className="text-[10px] sm:text-xs font-semibold text-purple-200 bg-white/10 px-3 py-1 rounded-full border border-white/15">
+                Multi-Platform Viral Reach
+              </span>
+            </div>
+
+            {/* Title */}
+            <h1 className="font-display font-black text-2xl sm:text-4xl text-white tracking-tight">
+              Social Marketing
+            </h1>
+
+            {/* Inner description box with 2x2 grid channel tags */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-5 backdrop-blur-xs flex flex-col gap-3.5">
+              <p className="italic text-xs sm:text-sm text-purple-100 font-medium leading-relaxed">
+                Upload property to all social media platforms. Reach active buyers across Instagram Reels, Facebook Community Groups, YouTube Shorts, and direct WhatsApp broadcasts.
+              </p>
+
+              {/* Channel Tags (2-column on mobile, 4-column on desktop) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                <div className="px-3 py-2 rounded-xl text-xs font-bold bg-white/10 text-white border border-white/15 backdrop-blur-md flex items-center gap-2">
+                  <span>📸</span>
+                  <span>Instagram Reels & Feed</span>
                 </div>
-                <h1 className="font-display font-black text-2xl sm:text-4xl text-white tracking-tight">
-                  Social Marketing
-                </h1>
-                <p className="text-sm sm:text-base text-purple-100 font-medium max-w-2xl leading-relaxed">
-                  Upload property to all social media platforms. Reach active buyers across Instagram Reels, Facebook Community Groups, YouTube Shorts, and direct WhatsApp broadcasts.
-                </p>
-                
-                {/* Social Channel Pills */}
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  <span className="px-3 py-1 rounded-xl text-xs font-bold bg-white/10 text-white border border-white/15 backdrop-blur-md">
-                    📸 Instagram Reels & Feed
-                  </span>
-                  <span className="px-3 py-1 rounded-xl text-xs font-bold bg-white/10 text-white border border-white/15 backdrop-blur-md">
-                    👍 Facebook Groups & Boost
-                  </span>
-                  <span className="px-3 py-1 rounded-xl text-xs font-bold bg-white/10 text-white border border-white/15 backdrop-blur-md">
-                    ▶️ YouTube Shorts Showcase
-                  </span>
-                  <span className="px-3 py-1 rounded-xl text-xs font-bold bg-white/10 text-white border border-white/15 backdrop-blur-md">
-                    💬 WhatsApp Buyer Broadcast
-                  </span>
+                <div className="px-3 py-2 rounded-xl text-xs font-bold bg-white/10 text-white border border-white/15 backdrop-blur-md flex items-center gap-2">
+                  <span>▶️</span>
+                  <span>YouTube Shorts Showcase</span>
+                </div>
+                <div className="px-3 py-2 rounded-xl text-xs font-bold bg-white/10 text-white border border-white/15 backdrop-blur-md flex items-center gap-2">
+                  <span>👍</span>
+                  <span>Facebook Groups & Boost</span>
+                </div>
+                <div className="px-3 py-2 rounded-xl text-xs font-bold bg-white/10 text-white border border-white/15 backdrop-blur-md flex items-center gap-2">
+                  <span>💬</span>
+                  <span>WhatsApp Buyer Broadcast</span>
                 </div>
               </div>
             </div>
 
-            <div className="shrink-0 flex flex-col items-start md:items-end gap-2 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
-              <span className="text-[11px] uppercase tracking-wider text-purple-200 font-bold">Fast-Track Deals</span>
-              <span className="text-xl sm:text-2xl font-black text-amber-300">10x More Views</span>
-              <span className="text-[11px] text-purple-200/80">Direct buyer inquiries to your WhatsApp</span>
+            {/* Fast-Track Deals Box */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-5 backdrop-blur-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-purple-200 font-bold block mb-0.5">
+                  FAST-TRACK DEALS
+                </span>
+                <span className="text-xl sm:text-3xl font-black text-white">
+                  10x More Views
+                </span>
+              </div>
+              <span className="text-xs text-purple-200/90 font-medium">
+                Direct buyer inquiries to your WhatsApp
+              </span>
             </div>
           </div>
         </div>
