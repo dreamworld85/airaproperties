@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { pool } from "../db.js";
-import { upload } from "../middleware/upload.js";
+import { upload, optimizeImages } from "../middleware/upload.js";
 import { deleteUploadedFile } from "../utils/fileHelper.js";
 import { deleteUserCompletely } from "../utils/userCleanup.js";
 import { 
@@ -823,7 +823,7 @@ router.get("/properties/:id", async (req, res) => {
 });
 
 // PUT /api/admin/properties/:id - Update property details, YouTube URL, status, and images by Admin
-router.put("/properties/:id", upload.any(), async (req, res) => {
+router.put("/properties/:id", upload.any(), optimizeImages, async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const { id } = req.params;
@@ -854,16 +854,16 @@ router.put("/properties/:id", upload.any(), async (req, res) => {
     const updates = [];
     const params = [];
 
-    if (title !== undefined) { updates.push("title = ?"); params.push(title); }
-    if (price !== undefined) { updates.push("price = ?"); params.push(price); }
-    if (property_type !== undefined) { updates.push("property_type = ?"); params.push(property_type); }
-    if (purpose !== undefined) { updates.push("purpose = ?"); params.push(purpose); }
-    if (area_sqft !== undefined) { updates.push("area_sqft = ?"); params.push(area_sqft); }
-    if (address !== undefined) { updates.push("address = ?"); params.push(address); }
-    if (district !== undefined) { updates.push("district = ?"); params.push(district); }
-    if (state !== undefined) { updates.push("state = ?"); params.push(state); }
-    if (description !== undefined) { updates.push("description = ?"); params.push(description); }
-    if (status !== undefined) { updates.push("status = ?"); params.push(status); }
+    if (title !== undefined && title !== null) { updates.push("title = ?"); params.push(title); }
+    if (price !== undefined && price !== null && price !== "") { updates.push("price = ?"); params.push(price); }
+    if (property_type !== undefined && property_type !== null) { updates.push("property_type = ?"); params.push(property_type); }
+    if (purpose !== undefined && purpose !== null) { updates.push("purpose = ?"); params.push(purpose); }
+    if (area_sqft !== undefined && area_sqft !== null && area_sqft !== "") { updates.push("area_sqft = ?"); params.push(area_sqft); }
+    if (address !== undefined && address !== null) { updates.push("address = ?"); params.push(address); }
+    if (district !== undefined && district !== null) { updates.push("district = ?"); params.push(district); }
+    if (state !== undefined && state !== null) { updates.push("state = ?"); params.push(state); }
+    if (description !== undefined && description !== null) { updates.push("description = ?"); params.push(description); }
+    if (status !== undefined && status !== null) { updates.push("status = ?"); params.push(status); }
     if (youtube_url !== undefined) { updates.push("youtube_url = ?"); params.push(youtube_url || null); }
 
     if (updates.length > 0) {
@@ -879,6 +879,10 @@ router.put("/properties/:id", upload.any(), async (req, res) => {
       } catch (e) {
         deletedIds = Array.isArray(deleted_media_ids) ? deleted_media_ids : [deleted_media_ids];
       }
+    }
+
+    if (Array.isArray(deletedIds)) {
+      deletedIds = deletedIds.map(Number).filter((n) => !isNaN(n) && n > 0);
     }
 
     if (Array.isArray(deletedIds) && deletedIds.length > 0) {

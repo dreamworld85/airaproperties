@@ -1571,9 +1571,9 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json({
-  type: ["application/json", "application/json; utf-8", "application/json; charset=utf-8", "application/*+json", "text/plain", "*/*"]
+  limit: "50mb"
 }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 const uploadsDir = process.env.UPLOADS_DIR 
   ? path.resolve(process.env.UPLOADS_DIR) 
@@ -2302,8 +2302,12 @@ if (activeDistDir) {
 }
 
 app.use((err, _req, res, _next) => {
-  console.error(err);
-  res.status(500).json({ error: "Internal server error" });
+  console.error("EXPRESS ERROR:", err);
+  if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+    return res.status(400).json({ error: "Invalid JSON payload" });
+  }
+  const status = typeof err.status === "number" ? err.status : 500;
+  res.status(status).json({ error: err.message || "Internal server error" });
 });
 
 const port = process.env.PORT || 4000;
