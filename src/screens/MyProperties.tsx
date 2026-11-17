@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, Pencil, Power, Trash2, Star, CheckCircle, Layers, PlusCircle } from "lucide-react";
-import { api, ApiProperty, mediaUrl } from "@/lib/api";
+import { api, ApiProperty, mediaUrl, thumbnailUrl } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import StatusBadge from "@/components/StatusBadge";
+import PageLoader from "@/components/PageLoader";
 import { useAddProperty } from "@/lib/AddPropertyContext";
 import PropertyActivationModal from "@/components/PropertyActivationModal";
 import SubscriptionPaywallModal from "@/components/SubscriptionPaywallModal";
@@ -287,7 +288,7 @@ export default function MyProperties() {
         })}
       </div>
 
-      {loading && <p className="px-4 text-sm text-slate">Loading your properties…</p>}
+      {loading && <PageLoader label="Loading properties..." />}
       {error && <p className="px-4 text-sm text-coral mb-3">{error}</p>}
 
       <div className="px-4 flex flex-col gap-4">
@@ -303,7 +304,9 @@ export default function MyProperties() {
               className="w-full flex gap-3 p-3 text-left"
             >
               <img
-                src={p.images[0] ? mediaUrl(p.images[0]) : FALLBACK_IMAGE}
+                src={p.images[0] ? thumbnailUrl(p.images[0], 400) : FALLBACK_IMAGE}
+                loading="lazy"
+                decoding="async"
                 alt={p.title}
                 className="w-20 h-20 rounded-xl object-cover shrink-0"
               />

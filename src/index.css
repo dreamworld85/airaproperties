@@ -253,3 +253,34 @@ textarea:focus-visible {
   border: none !important;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
 }
+
+
+/* Page Load Animated Logo Styles */
+@keyframes bounceSlow {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-8px) scale(1.05);
+  }
+}
+
+.animate-bounce-slow {
+  animation: bounceSlow 1.8s ease-in-out infinite;
+}
+
+@keyframes loaderSlide {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+.animate-loader-slide {
+  animation: loaderSlide 1.4s ease-in-out infinite;
+}

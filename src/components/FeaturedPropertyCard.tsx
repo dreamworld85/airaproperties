@@ -1,5 +1,5 @@
 import { Star, ChevronRight } from "lucide-react";
-import { ApiProperty, mediaUrl } from "@/lib/api";
+import { ApiProperty, mediaUrl, thumbnailUrl } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -22,7 +22,7 @@ export default function FeaturedPropertyCard({ property }: { property: ApiProper
   const isOwner = user && user.id === property.ownerId;
   const isSold = property.status === "Sold" || (property.status as string) === "";
 
-  const image = property.images[0] ? mediaUrl(property.images[0]) : FALLBACK_IMAGE;
+  const image = property.images[0] ? thumbnailUrl(property.images[0], 800) : FALLBACK_IMAGE;
   const rating = property.avgRating !== undefined && property.avgRating > 0 ? property.avgRating : 4.5;
 
   return (
@@ -41,6 +41,8 @@ export default function FeaturedPropertyCard({ property }: { property: ApiProper
       <img
         src={image}
         alt={property.title}
+        loading="lazy"
+        decoding="async"
         style={{ objectFit: "cover" }}
         className="absolute inset-0 w-full h-full scale-[1.28] group-hover:scale-[1.33] transition-transform duration-500"
       />

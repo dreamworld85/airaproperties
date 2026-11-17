@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { User } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
-import { api, mediaUrl } from "@/lib/api";
+import { api, mediaUrl, thumbnailUrl } from "@/lib/api";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
+import PageLoader from "@/components/PageLoader";
 
 export default function TopLocationsScreen() {
   const navigate = useNavigate();
@@ -43,9 +44,7 @@ export default function TopLocationsScreen() {
       <Header title="Top Locations" showBack trailing={trailing} />
 
       {loading ? (
-        <div className="flex-1 flex items-center justify-center min-h-[300px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#59AD63]" />
-        </div>
+        <PageLoader label="Loading locations..." />
       ) : (
         <div className="px-6 pt-4 flex flex-col gap-6 flex-1">
           {/* Top Locations Grid */}
@@ -58,7 +57,9 @@ export default function TopLocationsScreen() {
               >
                 <div className="aspect-[4/3] w-full overflow-hidden bg-slate-50">
                   <img 
-                    src={mediaUrl(loc.image_url)} 
+                    src={thumbnailUrl(loc.image_url, 400)} 
+                    loading="lazy"
+                    decoding="async"
                     alt={loc.name} 
                     className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                   />

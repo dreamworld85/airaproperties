@@ -9,6 +9,7 @@ import PropertyViewersModal from "@/components/PropertyViewersModal";
 import SubscriptionPaywallModal from "@/components/SubscriptionPaywallModal";
 import DesktopPropertyDetailsView from "@/components/DesktopPropertyDetailsView";
 import AppDownloadInterstitial from "./AppDownloadInterstitial";
+import PageLoader from "@/components/PageLoader";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80";
@@ -549,7 +550,7 @@ export default function PublicPropertyDetails() {
   };
 
   if (loading) {
-    return <p className="px-4 py-10 text-sm text-slate">Loading property…</p>;
+    return <PageLoader label="Loading property..." fullScreen />;
   }
   if (error || !property) {
     return <p className="px-4 py-10 text-sm text-coral">{error || "Property not found."}</p>;

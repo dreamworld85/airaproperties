@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Heart, Star } from "lucide-react";
-import { ApiProperty, mediaUrl, api } from "@/lib/api";
+import { ApiProperty, mediaUrl, thumbnailUrl, api } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -74,7 +74,7 @@ export default function PropertyCard({
   }
 
   const firstImg = property.images && property.images[0] ? property.images[0] : null;
-  const image = firstImg ? mediaUrl(firstImg) : FALLBACK_IMAGE;
+  const image = firstImg ? thumbnailUrl(firstImg, 600) : FALLBACK_IMAGE;
 
   const rating = property.avgRating !== undefined && property.avgRating > 0 ? property.avgRating : 5.0;
 
@@ -110,6 +110,8 @@ export default function PropertyCard({
         <img
           src={image}
           alt={property.title}
+          loading="lazy"
+          decoding="async"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
         />

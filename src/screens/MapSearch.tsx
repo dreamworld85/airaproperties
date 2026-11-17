@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ChevronLeft, MapPin, X, Search as SearchIcon, ChevronDown, SlidersHorizontal } from "lucide-react";
-import { api, ApiProperty, mediaUrl } from "@/lib/api";
+import { api, ApiProperty, mediaUrl, thumbnailUrl } from "@/lib/api";
 import BottomNav from "@/components/BottomNav";
 import PropertyCard from "@/components/PropertyCard";
+import PageLoader from "@/components/PageLoader";
 import { INDIAN_STATES, STATE_COORDINATES } from "@/lib/indiaLocationData";
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&q=80";
@@ -324,9 +325,8 @@ export default function MapSearch() {
       {/* Main Map Container (Set to a stable size to allow lists below) */}
       <div className="w-full h-[360px] relative shrink-0">
         {mapLoading && (
-          <div className="absolute inset-0 bg-slate-50/80 backdrop-blur-xs flex flex-col items-center justify-center z-10">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-            <p className="text-xs text-slate font-semibold mt-2.5">Loading Google Maps...</p>
+          <div className="absolute inset-0 bg-slate-50/90 backdrop-blur-xs flex flex-col items-center justify-center z-10">
+            <PageLoader label="Loading Maps..." className="py-2 min-h-0" />
           </div>
         )}
 
@@ -340,8 +340,10 @@ export default function MapSearch() {
               onClick={() => navigate(`/property/${selectedProperty.id}`)}
             >
               <img
-                src={selectedProperty.images && selectedProperty.images.length > 0 ? mediaUrl(selectedProperty.images[0]) : FALLBACK_IMAGE}
+                src={selectedProperty.images && selectedProperty.images.length > 0 ? thumbnailUrl(selectedProperty.images[0], 400) : FALLBACK_IMAGE}
                 alt={selectedProperty.title}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
               <span className="absolute bottom-1 left-1 text-[7.5px] font-extrabold bg-[#60A963] text-white px-1.5 py-0.5 rounded-md uppercase tracking-wider">

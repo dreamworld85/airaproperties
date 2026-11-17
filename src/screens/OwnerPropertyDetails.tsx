@@ -43,6 +43,7 @@ import { useAddProperty } from "@/lib/AddPropertyContext";
 import { useAuth } from "@/lib/AuthContext";
 import PropertyViewersModal from "@/components/PropertyViewersModal";
 import PropertyActivationModal from "@/components/PropertyActivationModal";
+import PageLoader from "@/components/PageLoader";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80";
@@ -466,14 +467,7 @@ export default function OwnerPropertyDetails() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F3] flex items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-3 border-[#1B5E4F] border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-gray-500 font-medium">Loading property management dashboard...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader label="Loading property..." fullScreen />;
   }
 
   if (error || !property) {

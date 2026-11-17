@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Bell, Search, SlidersHorizontal, ChevronDown, ChevronRight, X, Heart, Star, MapPin } from "lucide-react";
-import { api, ApiProperty, mediaUrl, ApiNotification, ApiUser } from "@/lib/api";
+import { api, ApiProperty, mediaUrl, thumbnailUrl, ApiNotification, ApiUser } from "@/lib/api";
 import PropertyCard from "@/components/PropertyCard";
 import FeaturedPropertyCard from "@/components/FeaturedPropertyCard";
 import DesktopPropertyListing from "@/components/DesktopPropertyListing";
 import BottomNav from "@/components/BottomNav";
+import PageLoader from "@/components/PageLoader";
 import Select from "@/components/Select";
 import { useAuth } from "@/lib/AuthContext";
 import { useBrand } from "@/lib/BrandContext";
@@ -350,7 +351,7 @@ export default function Home() {
 
 
       {loading && (
-        <p className="px-5 mt-6 text-sm text-slate select-none text-left">Loading properties…</p>
+        <PageLoader label="Loading properties..." />
       )}
 
       {error && (
@@ -469,7 +470,9 @@ export default function Home() {
                     className="relative w-[105px] h-[135px] shrink-0 rounded-2xl overflow-hidden shadow-sm cursor-pointer border border-charcoal/5 hover:scale-[1.02] active:scale-[0.98] transition-all"
                   >
                     <img 
-                      src={mediaUrl(loc.image_url)} 
+                      src={thumbnailUrl(loc.image_url, 300)} 
+                      loading="lazy"
+                      decoding="async"
                       alt={loc.name} 
                       className="absolute inset-0 w-full h-full object-cover" 
                     />

@@ -53,6 +53,18 @@ export async function optimizeImages(req, res, next) {
           .webp({ quality: 80 })
           .toFile(webpPath);
 
+        // Pre-generate optimized 600px thumbnail for card & mobile feed speeds
+        try {
+          const thumbsDir = path.join(dir, "thumbs");
+          if (!fs.existsSync(thumbsDir)) fs.mkdirSync(thumbsDir, { recursive: true });
+          await sharp(webpPath)
+            .resize({ width: 600, fit: "inside", withoutEnlargement: true })
+            .webp({ quality: 82 })
+            .toFile(path.join(thumbsDir, `600_${webpFilename}`));
+        } catch (tErr) {
+          console.warn("Failed pre-generating thumbnail:", tErr);
+        }
+
         // Clean up the original file if it was not already a webp file
         if (originalPath !== webpPath) {
           try {

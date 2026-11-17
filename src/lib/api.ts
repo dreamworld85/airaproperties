@@ -1011,6 +1011,43 @@ export function mediaUrl(path: string): string {
   return path;
 }
 
+/**
+ * Returns an optimized thumbnail URL for listings, feeds, and cards to maximize page load speeds.
+ * Full-size images are reserved exclusively for individual property details pages.
+ */
+export function thumbnailUrl(path: string, width = 600, quality = 82): string {
+  if (!path) return "";
+
+  // Unsplash images support dynamic resizing via query parameters
+  if (path.includes("images.unsplash.com")) {
+    if (path.includes("w=")) {
+      return path.replace(/w=\d+/, `w=${width}`).replace(/q=\d+/, `q=${quality}`);
+    }
+    const sep = path.includes("?") ? "&" : "?";
+    return `${path}${sep}w=${width}&auto=format&fit=crop&q=${quality}`;
+  }
+
+  // Blob and inline data URLs
+  if (path.startsWith("blob:") || path.startsWith("data:")) return path;
+
+  // Third-party external images without server resizing
+  if (path.startsWith("http") && !path.includes("airaproperties.in")) {
+    return path;
+  }
+
+  const base = mediaUrl(path);
+  if (!base) return "";
+
+  // Avoid querying non-image assets (e.g. video files)
+  const lower = base.toLowerCase();
+  if (lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".mov")) {
+    return base;
+  }
+
+  const sep = base.includes("?") ? "&" : "?";
+  return `${base}${sep}w=${width}&thumb=1&q=${quality}`;
+}
+
 export function isLandProperty(propertyType?: string | null): boolean {
   if (!propertyType) return false;
   const t = propertyType.toLowerCase().trim();

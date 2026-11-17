@@ -4,6 +4,7 @@ import Header from "../components/Header";
 import BottomNav from "../components/BottomNav";
 import DesktopHeader from "../components/DesktopHeader";
 import DesktopFooter from "../components/DesktopFooter";
+import PageLoader from "../components/PageLoader";
 import { useAuth } from "../lib/AuthContext";
 import { 
   Sparkles, 
@@ -430,11 +431,7 @@ export default function SocialMarketing() {
 
         {/* Plans Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map((n) => (
-              <div key={n} className="bg-white rounded-3xl p-6 border border-charcoal/5 shadow-sm animate-pulse h-96" />
-            ))}
-          </div>
+          <PageLoader label="Loading marketing plans..." />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
             {plans.map((plan, index) => {

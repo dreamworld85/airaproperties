@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronLeft, MapPin, BedDouble, Bath, X, Sparkles } from "lucide-react";
-import { api, ApiProperty, mediaUrl, formatArea, isLandProperty } from "@/lib/api";
+import { api, ApiProperty, mediaUrl, thumbnailUrl, formatArea, isLandProperty } from "@/lib/api";
 import BottomNav from "@/components/BottomNav";
 import PropertyCard from "@/components/PropertyCard";
+import PageLoader from "@/components/PageLoader";
 import { STATE_COORDINATES } from "@/lib/indiaLocationData";
 
 const DISTRICT_COORDINATES: Record<string, { lat: number; lng: number }> = {
@@ -250,9 +251,8 @@ export default function LocationProperties() {
       {/* Map View Section */}
       <div id="properties-map" className="relative w-full h-[270px] bg-slate-50 border-b border-charcoal/5 shrink-0">
         {mapLoading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate bg-slate-100 z-10">
-            <div className="w-8 h-8 border-4 border-[#59AD63] border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-semibold">Loading Map View...</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-100 z-10">
+            <PageLoader label="Loading Map..." className="py-2 min-h-0" />
           </div>
         )}
         <div ref={mapContainerRef} className="w-full h-full" />
@@ -266,8 +266,10 @@ export default function LocationProperties() {
               className="w-20 h-20 rounded-lg bg-slate-50 overflow-hidden shrink-0 cursor-pointer"
             >
               <img 
-                src={selectedProperty.images[0] ? mediaUrl(selectedProperty.images[0]) : FALLBACK_IMAGE} 
+                src={selectedProperty.images[0] ? thumbnailUrl(selectedProperty.images[0], 400) : FALLBACK_IMAGE} 
                 alt={selectedProperty.title} 
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
             </div>
@@ -352,9 +354,7 @@ export default function LocationProperties() {
         </div>
 
         {loading ? (
-          <div className="flex-1 flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#59AD63]" />
-          </div>
+          <PageLoader label="Loading properties..." />
         ) : properties.length === 0 ? (
           <div className="text-center py-16 px-4 bg-white border border-charcoal/5 rounded-2xl flex flex-col items-center justify-center gap-3">
             <MapPin size={32} className="text-slate-300" />

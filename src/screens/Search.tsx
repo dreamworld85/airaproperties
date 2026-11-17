@@ -4,6 +4,7 @@ import { Search as SearchIcon, ChevronDown, SlidersHorizontal, RefreshCw, Heart,
 import { api, ApiProperty } from "@/lib/api";
 import PropertyCard from "@/components/PropertyCard";
 import BottomNav from "@/components/BottomNav";
+import PageLoader from "@/components/PageLoader";
 import DesktopPropertyListing from "@/components/DesktopPropertyListing";
 import { INDIAN_STATES, getDistrictsForState, getAllDistricts } from "@/lib/indiaLocationData";
 
@@ -326,7 +327,7 @@ export default function Search() {
       <div className="px-4 max-w-md mx-auto w-full mt-2">
         {loading && (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+            <PageLoader label="Searching properties..." />
           </div>
         )}
         

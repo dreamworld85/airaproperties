@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 dotenv.config({ override: true });
 import path from "path";
 import fs from "fs";
+import sharp from "sharp";
 
 // Auto-configure persistent UPLOADS_DIR on Hostinger server immediately at startup
 const hostingerUploadsDir = "/home/u859202671/domains/api.airaproperties.in/uploads";
@@ -1666,8 +1667,22 @@ app.get("/api/sync-uploads", (req, res) => {
 });
 
 // Dynamic fallback route for /uploads/:filename to catch and auto-sync any missed files
-app.get("/uploads/:filename", (req, res, next) => {
+app.get("/uploads/:filename", async (req, res, next) => {
   const filename = path.basename(req.params.filename);
+  const width = req.query.w ? parseInt(req.query.w, 10) : (req.query.thumb ? 600 : 0);
+  const quality = req.query.q ? Math.min(100, Math.max(10, parseInt(req.query.q, 10))) : 82;
+  const isImage = /\.(webp|jpg|jpeg|png)$/i.test(filename);
+
+  // If thumbnail requested, check cached thumbnail first
+  if (width > 0 && isImage) {
+    const thumbsDir = path.join(uploadsDir, "thumbs");
+    const thumbFilename = `${width}_${filename}`;
+    const cachedThumbPath = path.join(thumbsDir, thumbFilename);
+    if (fs.existsSync(cachedThumbPath)) {
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      return res.sendFile(cachedThumbPath);
+    }
+  }
   const searchPaths = [
     path.join(uploadsDir, filename),
     path.join(__dirname, "uploads", filename),
@@ -1706,6 +1721,28 @@ app.get("/uploads/:filename", (req, res, next) => {
       } catch (copyErr) {
         console.error("Auto-sync error:", copyErr);
       }
+      // Generate and cache thumbnail if requested
+      if (width > 0 && isImage && sharp) {
+        try {
+          const thumbsDir = path.join(uploadsDir, "thumbs");
+          if (!fs.existsSync(thumbsDir)) fs.mkdirSync(thumbsDir, { recursive: true });
+          const thumbFilename = `${width}_${filename}`;
+          const cachedThumbPath = path.join(thumbsDir, thumbFilename);
+
+          await sharp(p)
+            .resize({ width: Math.min(1200, width), withoutEnlargement: true })
+            .webp({ quality })
+            .toFile(cachedThumbPath);
+
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          res.setHeader("Content-Type", "image/webp");
+          return res.sendFile(cachedThumbPath);
+        } catch (sharpErr) {
+          console.warn("Failed generating sharp thumbnail:", sharpErr);
+        }
+      }
+
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
       return res.sendFile(p);
     }
   }

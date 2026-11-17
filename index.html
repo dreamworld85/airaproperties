@@ -75,7 +75,31 @@
     <!-- END CUSTOM CODE: HEAD -->
   </head>
   <body class="bg-cream font-body text-charcoal">
-    <div id="root"></div>
+    <div id="root">
+      <div style="position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #FAF8F3; font-family: Inter, sans-serif; z-index: 9999;">
+        <style>
+          @keyframes airaPulseDot {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+          }
+          .aira-loading-gif {
+            width: 140px;
+            max-width: 80vw;
+            height: auto;
+            object-fit: contain;
+          }
+        </style>
+        <img src="/looding.gif" alt="Loading..." class="aira-loading-gif" />
+        <div style="margin-top: 8px; font-weight: 700; font-size: 15px; color: #334155; letter-spacing: 0.02em; display: flex; align-items: center; gap: 4px;">
+          <span>Loading</span>
+          <span style="display: inline-flex; gap: 2px; color: #0284c7; font-weight: 900;">
+            <span style="animation: airaPulseDot 1.2s infinite; animation-delay: 0s;">.</span>
+            <span style="animation: airaPulseDot 1.2s infinite; animation-delay: 0.2s;">.</span>
+            <span style="animation: airaPulseDot 1.2s infinite; animation-delay: 0.4s;">.</span>
+          </span>
+        </div>
+      </div>
+    </div>
     <!-- BEGIN CUSTOM CODE: FOOTER -->
     <!-- END CUSTOM CODE: FOOTER -->
     <script type="module" src="/src/main.tsx"></script>

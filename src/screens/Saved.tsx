@@ -3,6 +3,7 @@ import { api, ApiProperty } from "@/lib/api";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import PropertyCard from "@/components/PropertyCard";
+import PageLoader from "@/components/PageLoader";
 
 export default function Saved() {
   const [properties, setProperties] = useState<ApiProperty[]>([]);
@@ -22,7 +23,7 @@ export default function Saved() {
       <Header title="Saved Properties" showBack />
 
       <div className="px-4">
-        {loading && <p className="text-sm text-slate">Loading…</p>}
+        {loading && <PageLoader label="Loading saved properties..." />}
         {error && <p className="text-sm text-coral">{error}</p>}
         {!loading && properties.length === 0 && !error && (
           <p className="text-sm text-slate py-8 text-center">
