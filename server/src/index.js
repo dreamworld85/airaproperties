@@ -1,9 +1,19 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-dotenv.config({ override: true });
 import path from "path";
 import fs from "fs";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ override: true });
+if (!process.env.DATABASE_URL && !process.env.DB_PASSWORD) {
+  dotenv.config({ path: path.resolve(__dirname, "../../.env"), override: true });
+  dotenv.config({ path: path.resolve(process.cwd(), "../.env"), override: true });
+}
+
 import sharp from "sharp";
 
 // Auto-configure persistent UPLOADS_DIR on Hostinger server immediately at startup
@@ -12,9 +22,6 @@ if (!process.env.UPLOADS_DIR && (process.cwd().includes("api.airaproperties.in")
   process.env.UPLOADS_DIR = hostingerUploadsDir;
 }
 
-import { fileURLToPath } from "url";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 import { pool } from "./db.js";
 
 // Ensure uploads directory exists
