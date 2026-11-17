@@ -854,3 +854,24 @@ export async function clearAllPushNotificationLogs(): Promise<{ success: boolean
   if (!res.ok) throw new Error(data.error || "Failed to clear notification logs");
   return data;
 }
+
+export async function registerAdminDeviceToken(token: string): Promise<{ success: boolean; message?: string }> {
+  const res = await fetch(`${API_URL}/api/admin/push-notifications/register-admin-token`, {
+    method: "POST",
+    headers: getAdminHeaders(),
+    body: JSON.stringify({ token }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to register admin device token");
+  return data;
+}
+
+export async function sendTestAdminAlert(): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const res = await fetch(`${API_URL}/api/admin/push-notifications/test-admin-alert`, {
+    method: "POST",
+    headers: getAdminHeaders(),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to send test admin alert");
+  return data;
+}

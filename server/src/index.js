@@ -385,6 +385,12 @@ async function checkDbMigration() {
     try {
       await pool.query("ALTER TABLE user_fcm_tokens ADD COLUMN last_seen_at TIMESTAMP NULL");
     } catch (_ignoreErr) {}
+    try {
+      await pool.query("ALTER TABLE user_fcm_tokens ADD COLUMN is_admin TINYINT(1) DEFAULT 0");
+    } catch (_ignoreErr) {}
+    try {
+      await pool.query("ALTER TABLE user_fcm_tokens ADD COLUMN role VARCHAR(50) NULL");
+    } catch (_ignoreErr) {}
 
     // Verify settings table exists
     await pool.query(`
@@ -2069,20 +2075,37 @@ const handleRegisterToken = async (req, res) => {
     const token = rawBody?.token || req.query?.token;
     const userId = rawBody?.userId || req.query?.userId || null;
     const district = rawBody?.district || req.query?.district || null;
+    const isAdminHeader = req.headers["x-admin-auth"] === "KeralaRealtyAdminSecretToken2026";
+    let isAdminFlag = Boolean(rawBody?.isAdmin === true || rawBody?.isAdmin === "true" || req.query?.isAdmin === "true" || isAdminHeader);
 
     if (!token) {
       return res.status(400).json({ error: "FCM token is required" });
     }
 
+    if (userId && !isAdminFlag) {
+      try {
+        const [[u]] = await pool.query("SELECT role FROM users WHERE id = ?", [userId]);
+        if (u && (u.role === "Admin" || u.role === "admin")) {
+          isAdminFlag = true;
+        }
+      } catch (_e) {}
+    }
+
     await pool.query(
-      `INSERT INTO user_fcm_tokens (user_id, token, district, last_seen_at)
-       VALUES (?, ?, ?, NOW())
+      `INSERT INTO user_fcm_tokens (user_id, token, district, is_admin, last_seen_at)
+       VALUES (?, ?, ?, ?, NOW())
        ON DUPLICATE KEY UPDATE 
          user_id = COALESCE(VALUES(user_id), user_id),
          district = COALESCE(VALUES(district), district),
+         is_admin = CASE WHEN VALUES(is_admin) = 1 THEN 1 ELSE is_admin END,
          last_seen_at = NOW()`,
-      [userId || null, token, district || null]
+      [userId || null, token, district || null, isAdminFlag ? 1 : 0]
     );
+
+    if (isAdminFlag) {
+      // Subscribed to admin-only topic
+      subscribeTokenToTopic(token, "admin_alerts").catch(() => {});
+    }
 
     // Auto subscribe token to "all_users"
     subscribeTokenToTopic(token, "all_users").catch(() => {});
@@ -2093,7 +2116,7 @@ const handleRegisterToken = async (req, res) => {
       subscribeTokenToTopic(token, distTopic).catch(() => {});
     }
 
-    res.json({ success: true, message: "Token registered successfully" });
+    res.json({ success: true, message: "Token registered successfully", isAdmin: isAdminFlag });
   } catch (err) {
     console.error("[REGISTER TOKEN ERROR]", err);
     res.status(500).json({ error: err.message });

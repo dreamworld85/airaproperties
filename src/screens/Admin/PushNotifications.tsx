@@ -25,6 +25,7 @@ import {
   saveServiceAccountKey,
   deletePushNotificationLog,
   clearAllPushNotificationLogs,
+  sendTestAdminAlert,
   PushNotificationLog, 
   PushNotificationStatus 
 } from "@/lib/adminApi";
@@ -103,7 +104,7 @@ export default function PushNotifications() {
         throw new Error("Notifications are blocked in your browser site settings. Click the tune/padlock icon left of https://airaproperties.in to set Notifications to 'Allow'.");
       }
 
-      const result = await enablePushNotifications(null, "All Kerala");
+      const result = await enablePushNotifications(null, "All Kerala", null, true);
       if (!result.success || !result.token) {
         throw new Error(result.error || "Could not generate or register FCM device token.");
       }
@@ -111,17 +112,12 @@ export default function PushNotifications() {
       // Re-fetch status so device count increments
       await fetchData();
 
-      // Trigger test broadcast directly
-      await sendCustomPushNotification({
-        title: "Test Alert: Push Working!",
-        body: "Your device is registered and receiving notifications properly.",
-        clickAction: window.location.href,
-        targetType: "all",
-      });
+      // Trigger test broadcast directly to Admin
+      await sendTestAdminAlert();
 
       setDeviceTestResult({
         type: "success",
-        message: `Device successfully registered! FCM Token preview: ...${result.token.slice(-10)}. Test broadcast sent!`
+        message: `Admin device successfully registered & subscribed to admin_alerts! FCM Token preview: ...${result.token.slice(-10)}. Test admin alert sent!`
       });
       fetchData();
     } catch (err: any) {

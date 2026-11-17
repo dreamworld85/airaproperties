@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { adminApi, AdminUser } from "@/lib/adminApi";
 import { useBrand } from "@/lib/BrandContext";
+import { enablePushNotifications } from "@/firebase";
 
 export default function AdminLayout() {
   const token = localStorage.getItem("kerala_realty_admin_token");
@@ -38,6 +39,24 @@ export default function AdminLayout() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [adminPushGranted, setAdminPushGranted] = useState(
+    typeof window !== "undefined" && "Notification" in window ? Notification.permission === "granted" : false
+  );
+  const [enablingPush, setEnablingPush] = useState(false);
+
+  async function handleEnableAdminPush() {
+    setEnablingPush(true);
+    try {
+      const res = await enablePushNotifications(null, null, null, true);
+      if (res.success) {
+        setAdminPushGranted(true);
+      }
+    } catch (e) {
+      console.error("Error enabling admin push:", e);
+    } finally {
+      setEnablingPush(false);
+    }
+  }
 
   async function fetchNotifications() {
     setLoadingNotifications(true);
@@ -54,6 +73,12 @@ export default function AdminLayout() {
   useEffect(() => {
     if (token) {
       fetchNotifications();
+      // Auto-register this device for Admin Alerts if permission is granted
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        enablePushNotifications(null, null, null, true).then((res) => {
+          if (res.success) setAdminPushGranted(true);
+        }).catch(() => {});
+      }
     }
   }, [token]);
 
@@ -359,6 +384,25 @@ export default function AdminLayout() {
                   >
                     Close
                   </button>
+                </div>
+
+                {/* Admin Live Push Alert Status */}
+                <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-2.5 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${adminPushGranted ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                    <span className="text-[11px] font-semibold text-amber-900 truncate">
+                      {adminPushGranted ? 'Admin Push Alerts Active' : 'Admin Push Notifications'}
+                    </span>
+                  </div>
+                  {!adminPushGranted && (
+                    <button
+                      onClick={handleEnableAdminPush}
+                      disabled={enablingPush}
+                      className="text-[10px] font-bold px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs cursor-pointer shrink-0 disabled:opacity-50"
+                    >
+                      {enablingPush ? 'Activating...' : 'Enable'}
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-2.5 max-h-72 overflow-y-auto no-scrollbar">

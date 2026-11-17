@@ -5,6 +5,7 @@ import { deleteUploadedFile } from "../utils/fileHelper.js";
 import { deleteUserCompletely } from "../utils/userCleanup.js";
 import { 
   sendNotificationToTopic, 
+  sendAdminPushNotification,
   districtToTopic, 
   isFirebaseAdminReady,
   getFirebaseAdminDetails,
@@ -2439,6 +2440,50 @@ router.post("/push-notifications/send", checkAdminSession, async (req, res) => {
     });
   } catch (err) {
     console.error("[ADMIN PUSH SEND ERROR]", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/push-notifications/register-admin-token
+router.post("/push-notifications/register-admin-token", checkAdminSession, async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ error: "FCM token is required." });
+    }
+
+    await pool.query(
+      `INSERT INTO user_fcm_tokens (token, is_admin, role, last_seen_at)
+       VALUES (?, 1, 'admin', NOW())
+       ON DUPLICATE KEY UPDATE 
+         is_admin = 1,
+         role = 'admin',
+         last_seen_at = NOW()`,
+      [token]
+    );
+
+    // Subscribe admin token to dedicated topic
+    const { subscribeTokenToTopic } = await import("../utils/firebaseAdmin.js");
+    subscribeTokenToTopic(token, "admin_alerts").catch(() => {});
+
+    res.json({ success: true, message: "Admin device token successfully registered for instant alerts." });
+  } catch (err) {
+    console.error("[REGISTER ADMIN TOKEN ERROR]", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/push-notifications/test-admin-alert
+router.post("/push-notifications/test-admin-alert", checkAdminSession, async (req, res) => {
+  try {
+    const result = await sendAdminPushNotification({
+      title: "🔔 Admin Instant Alert Test",
+      body: "Admin Push Notification verified! You will receive push notifications when users register, start a payment, or purchase a subscription or Marketing Package.",
+      clickAction: "https://airaproperties.in/admin"
+    });
+    res.json(result);
+  } catch (err) {
+    console.error("[TEST ADMIN ALERT ERROR]", err);
     res.status(500).json({ error: err.message });
   }
 });

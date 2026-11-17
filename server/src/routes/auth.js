@@ -7,6 +7,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { sendOtpEmail } from "../utils/mailer.js";
 import { sendOtpSms } from "../utils/sms.js";
 import { getStarterPackConfig, getStarterPackForRole, activateStarterPlanForUser } from "../utils/starterPack.js";
+import { sendAdminPushNotification } from "../utils/firebaseAdmin.js";
 
 const router = Router();
 
@@ -253,6 +254,22 @@ router.post("/register", async (req, res) => {
     await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [newUserId]);
     const token = signToken(newUserId);
     setAuthCookie(res, token);
+
+    // Notify Admin of new registration
+    sendAdminPushNotification({
+      title: "👤 New User Registered",
+      body: `${trimmedName || "New User"} registered as ${userRole}${trimmedPhone ? ` • ${trimmedPhone}` : ""}${trimmedEmail ? ` • ${trimmedEmail}` : ""}`,
+      clickAction: `https://airaproperties.in/admin/user-details/${newUserId}`,
+      data: {
+        type: "new_user",
+        userId: String(newUserId),
+        name: String(trimmedName || ""),
+        role: String(userRole),
+        phone: String(trimmedPhone || ""),
+        email: String(trimmedEmail || "")
+      }
+    }).catch((e) => console.warn("[ADMIN PUSH] New user alert error:", e.message));
+
     res.status(201).json({ token, user: toPublicUser(rows[0]) });
   } catch (err) {
     console.error(err);
@@ -462,6 +479,19 @@ async function handleVerifyMobileOtp(req, res) {
       const [userRows] = await pool.query("SELECT * FROM users WHERE id = ?", [newUserId]);
       user = userRows[0];
       isNewUser = true;
+
+      // Notify Admin of new registration via Mobile OTP
+      sendAdminPushNotification({
+        title: "👤 New User Registered (Mobile OTP)",
+        body: `${userName} registered via Mobile OTP • ${fullPhone}`,
+        clickAction: `https://airaproperties.in/admin/user-details/${newUserId}`,
+        data: {
+          type: "new_user",
+          userId: String(newUserId),
+          name: String(userName),
+          phone: String(fullPhone)
+        }
+      }).catch((e) => console.warn("[ADMIN PUSH] Mobile OTP alert error:", e.message));
     }
 
     await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [user.id]);
@@ -741,6 +771,19 @@ router.post("/google", async (req, res) => {
       );
       const [newRows] = await pool.query("SELECT * FROM users WHERE id = ?", [newUserId]);
       userRow = newRows[0];
+
+      // Notify Admin of new registration via Google
+      sendAdminPushNotification({
+        title: "👤 New User Registered (Google)",
+        body: `${name || "New User"} registered via Google • ${trimmedEmail}`,
+        clickAction: `https://airaproperties.in/admin/user-details/${newUserId}`,
+        data: {
+          type: "new_user",
+          userId: String(newUserId),
+          name: String(name || ""),
+          email: String(trimmedEmail)
+        }
+      }).catch((e) => console.warn("[ADMIN PUSH] Google signup alert error:", e.message));
     } else {
       userRow = rows[0];
       if (!userRow.role || userRow.role.toLowerCase() === "user") {

@@ -3,6 +3,7 @@ import { pool } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import Razorpay from "razorpay";
 import crypto from "crypto";
+import { sendAdminPushNotification } from "../utils/firebaseAdmin.js";
 
 const router = Router();
 
@@ -104,6 +105,27 @@ router.post("/create-subscription", requireAuth, async (req, res) => {
     const { razorpay, keyId } = await getRazorpay();
     console.log(`Creating Razorpay order for user ${req.userId} (Plan: ${plan?.plan_id || plan?.id}, Role: ${userRole}): Amount = ₹${finalPrice}`);
     const order = await razorpay.orders.create(options);
+
+    // Notify Admin that user has reached checkout / initiated payment
+    try {
+      const [[buyerUser]] = await pool.query("SELECT name, phone, email FROM users WHERE id = ?", [req.userId]);
+      const isSocial = plan?.role === 'social_media' || plan?.plan_type === 'social_media' || /social/i.test(plan?.name || '');
+      const categoryLabel = isSocial ? "Social Media Marketing" : (plan?.role === 'builder' ? "Builder Plan" : "Subscription Plan");
+
+      sendAdminPushNotification({
+        title: `💳 Payment Initiated: ₹${finalPrice} (${categoryLabel})`,
+        body: `${buyerUser?.name || 'Customer'} (${buyerUser?.phone || buyerUser?.email || ''}) is proceeding to pay ₹${finalPrice} for ${plan?.name || 'Package'}.`,
+        clickAction: "https://airaproperties.in/admin/accounts",
+        data: {
+          type: "payment_initiated",
+          userId: String(req.userId),
+          amount: String(finalPrice),
+          planName: String(plan?.name || ""),
+          category: categoryLabel,
+          orderId: String(order.id)
+        }
+      }).catch((e) => console.warn("[ADMIN PUSH] Payment initiated alert error:", e.message));
+    } catch (_notifyErr) {}
 
     res.json({
       id: order.id,
@@ -222,6 +244,27 @@ router.post("/verify-subscription", requireAuth, async (req, res) => {
       [razorpay_payment_id, req.userId]
     );
 
+    // Notify Admin that payment has been successfully completed
+    try {
+      const [[buyerUser]] = await pool.query("SELECT name, phone, email, role FROM users WHERE id = ?", [req.userId]);
+      const categoryLabel = isSocialPlan ? "Social Media Marketing" : (plan?.role === 'builder' ? "Builder Plan" : "Subscription Plan");
+
+      sendAdminPushNotification({
+        title: `💰 Payment Received: ₹${pricePaid} (${categoryLabel})`,
+        body: `Received ₹${pricePaid} from ${buyerUser?.name || 'Customer'} (${buyerUser?.phone || buyerUser?.email || ''}) for ${plan?.name || 'Package'}!`,
+        clickAction: "https://airaproperties.in/admin/accounts",
+        data: {
+          type: "payment_completed",
+          userId: String(req.userId),
+          amount: String(pricePaid),
+          planName: String(plan?.name || ""),
+          category: categoryLabel,
+          paymentId: String(razorpay_payment_id),
+          orderId: String(razorpay_order_id)
+        }
+      }).catch((e) => console.warn("[ADMIN PUSH] Payment completed alert error:", e.message));
+    } catch (_notifyErr) {}
+
     res.json({
       success: true,
       planType: plan?.plan_type || "combo",
@@ -279,6 +322,22 @@ router.post("/create-featured-order", requireAuth, async (req, res) => {
     console.log(`Creating Razorpay featured order for property ${propertyId} (Owner: ${req.userId}): Amount = ₹${price}`);
     const order = await razorpay.orders.create(options);
 
+    // Notify Admin of featured listing payment initiation
+    try {
+      const [[propOwner]] = await pool.query("SELECT name, phone, email FROM users WHERE id = ?", [req.userId]);
+      sendAdminPushNotification({
+        title: `⭐ Featured Listing Payment Initiated: ₹${price}`,
+        body: `${propOwner?.name || 'Owner'} (${propOwner?.phone || ''}) is paying ₹${price} to feature Property #${propertyId} (${rows[0]?.title || ''}).`,
+        clickAction: "https://airaproperties.in/admin/properties",
+        data: {
+          type: "featured_payment_initiated",
+          userId: String(req.userId),
+          propertyId: String(propertyId),
+          amount: String(price)
+        }
+      }).catch(() => {});
+    } catch (_notifyErr) {}
+
     res.json({
       id: order.id,
       amount: order.amount,
@@ -332,6 +391,21 @@ router.post("/verify-featured-payment", requireAuth, async (req, res) => {
       "INSERT INTO activity_logs (user_id, action, category) VALUES (?, ?, 'Properties')",
       [req.userId, logAction]
     );
+
+    // Notify Admin of featured listing activated
+    try {
+      const [[propOwner]] = await pool.query("SELECT name, phone FROM users WHERE id = ?", [req.userId]);
+      sendAdminPushNotification({
+        title: "⭐ Featured Listing Paid & Activated",
+        body: `Property #${propertyId} ("${title}") is now Featured! Received payment from ${propOwner?.name || 'Owner'} (${propOwner?.phone || ''}).`,
+        clickAction: "https://airaproperties.in/admin/properties",
+        data: {
+          type: "featured_payment_completed",
+          userId: String(req.userId),
+          propertyId: String(propertyId)
+        }
+      }).catch(() => {});
+    } catch (_notifyErr) {}
 
     res.json({ success: true });
   } catch (err) {

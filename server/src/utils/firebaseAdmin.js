@@ -475,3 +475,156 @@ export async function sendPropertySubmissionNotification(property, firstMediaUrl
 
   return result;
 }
+
+export async function sendAdminPushNotification({ title, body, imageUrl, clickAction, data }) {
+  const adminTopic = "admin_alerts";
+  const defaultClickAction = clickAction || "https://airaproperties.in/admin";
+
+  const payload = {
+    topic: adminTopic,
+    notification: {
+      title,
+      body,
+      ...(imageUrl ? { imageUrl } : {})
+    },
+    data: {
+      title: String(title || ""),
+      body: String(body || ""),
+      isAdminAlert: "true",
+      clickAction: defaultClickAction,
+      click_action: defaultClickAction,
+      url: defaultClickAction,
+      ...(imageUrl ? { image: String(imageUrl) } : {}),
+      ...(data ? Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v ?? "")])) : {})
+    },
+    webpush: {
+      notification: {
+        title,
+        body,
+        icon: "https://airaproperties.in/app-icon.png",
+        badge: "https://airaproperties.in/app-icon.png",
+        ...(imageUrl ? { image: imageUrl } : {}),
+        requireInteraction: true,
+        actions: [
+          { action: "open_admin", title: "Open Admin" },
+          { action: "dismiss", title: "Dismiss" }
+        ]
+      },
+      fcmOptions: {
+        link: defaultClickAction
+      }
+    },
+    android: {
+      priority: "high",
+      notification: {
+        channelId: "aira_admin_alerts",
+        title: String(title || "Aira Admin Alert"),
+        body: String(body || ""),
+        icon: "ic_launcher",
+        color: "#B45309",
+        sound: "default",
+        defaultSound: true,
+        defaultVibrateTimings: true,
+        priority: "max",
+        visibility: "public",
+        ...(imageUrl ? { imageUrl } : {}),
+        clickAction: defaultClickAction
+      }
+    }
+  };
+
+  let messageId = null;
+  let status = "sent";
+  let errorMessage = null;
+
+  try {
+    await ensureFirebaseAdminInitialized();
+    if (!hasValidServiceAccount) {
+      console.warn("[FIREBASE FCM ADMIN] Firebase service account key not configured. Cannot send admin alert.");
+      return { success: false, error: "Firebase service account not initialized" };
+    }
+    const messaging = getMessaging(getApp());
+
+    // 1. Broadcast to topic "admin_alerts"
+    try {
+      const resp = await messaging.send(payload);
+      messageId = resp;
+      console.log(`[FIREBASE FCM ADMIN] Notification published to "${adminTopic}": ${resp}`);
+    } catch (topErr) {
+      console.warn("[FIREBASE FCM ADMIN] Topic publish warning:", topErr.message);
+      errorMessage = topErr.message;
+    }
+
+    // 2. Multicast directly to all admin device tokens
+    try {
+      const [adminRows] = await pool.query(
+        "SELECT token FROM user_fcm_tokens WHERE is_admin = 1 OR role = 'admin' ORDER BY id DESC LIMIT 50"
+      );
+      const adminTokens = adminRows.map(r => r.token).filter(Boolean);
+
+      if (adminTokens.length > 0) {
+        // Ensure tokens are subscribed to admin_alerts topic
+        messaging.subscribeToTopic(adminTokens, adminTopic).catch(() => {});
+
+        const mcPayload = {
+          tokens: adminTokens,
+          notification: payload.notification,
+          data: payload.data,
+          webpush: payload.webpush,
+          android: payload.android
+        };
+
+        const mcRes = await messaging.sendEachForMulticast(mcPayload);
+        console.log(`[FIREBASE FCM ADMIN] Multicast to ${adminTokens.length} admin devices: ${mcRes.successCount} succeeded, ${mcRes.failureCount} failed`);
+
+        if (mcRes.successCount > 0) {
+          status = "sent";
+          if (!messageId) messageId = `admin-multicast-${mcRes.successCount}-devices`;
+          errorMessage = null;
+        }
+
+        // Clean dead tokens
+        if (mcRes.failureCount > 0) {
+          mcRes.responses.forEach((resp, idx) => {
+            if (!resp.success && (
+              resp.error?.code === "messaging/registration-token-not-registered" ||
+              resp.error?.code === "messaging/invalid-registration-token"
+            )) {
+              pool.query("DELETE FROM user_fcm_tokens WHERE token = ?", [adminTokens[idx]]).catch(() => {});
+            }
+          });
+        }
+      } else if (!messageId) {
+        status = "failed";
+        errorMessage = errorMessage || "No admin devices registered for push alerts.";
+      }
+    } catch (mcErr) {
+      console.warn("[FIREBASE FCM ADMIN] Direct multicast error:", mcErr.message);
+    }
+  } catch (err) {
+    status = "failed";
+    errorMessage = err.message || "Admin FCM send error";
+    console.error("[FIREBASE FCM ADMIN] General error:", err.message);
+  }
+
+  // Record in database push_notifications table
+  try {
+    await pool.query(
+      `INSERT INTO push_notifications 
+       (title, body, image_url, click_action, target_type, target_topic, status, error_message)
+       VALUES (?, ?, ?, ?, 'admin', 'admin_alerts', ?, ?)`,
+      [
+        title,
+        body,
+        imageUrl || null,
+        defaultClickAction,
+        status,
+        errorMessage
+      ]
+    );
+  } catch (dbErr) {
+    console.warn("[FIREBASE FCM ADMIN] Could not log notification to DB:", dbErr.message);
+  }
+
+  return { success: status === "sent", messageId, error: errorMessage };
+}

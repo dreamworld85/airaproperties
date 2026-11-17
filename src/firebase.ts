@@ -147,17 +147,41 @@ export async function onMessageListener(callback: (payload: MessagePayload) => v
 export async function registerTokenWithServer(
   token: string,
   userId: number | string | null = null,
-  district: string | null = null
+  district: string | null = null,
+  isAdmin: boolean = false
 ): Promise<any> {
   if (!token) return null;
   try {
     const { getApiUrl } = await import("./lib/api");
     const apiUrl = getApiUrl();
+    const adminToken = typeof window !== "undefined" ? localStorage.getItem("kerala_realty_admin_token") : null;
+    const effectiveIsAdmin = isAdmin || !!adminToken;
+
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (adminToken) {
+      headers["x-admin-auth"] = adminToken;
+    }
+
     const res = await fetch(`${apiUrl}/api/notifications/register-token`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, userId: userId || null, district: district || null })
+      headers,
+      body: JSON.stringify({ 
+        token, 
+        userId: userId || null, 
+        district: district || null,
+        isAdmin: effectiveIsAdmin
+      })
     });
+
+    // Also register explicitly with admin endpoint if admin token is present
+    if (effectiveIsAdmin && adminToken) {
+      fetch(`${apiUrl}/api/admin/push-notifications/register-admin-token`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ token })
+      }).catch(() => {});
+    }
+
     return await res.json();
   } catch (err) {
     console.warn("[FIREBASE] Could not register token with server:", err);
@@ -168,8 +192,12 @@ export async function registerTokenWithServer(
 export async function enablePushNotifications(
   userId: number | string | null = null,
   district: string | null = null,
-  vapidKey: string | null = null
+  vapidKey: string | null = null,
+  isAdmin: boolean = false
 ): Promise<PushTokenResult> {
+  const adminToken = typeof window !== "undefined" ? localStorage.getItem("kerala_realty_admin_token") : null;
+  const effectiveIsAdmin = isAdmin || !!adminToken;
+
   // If running inside Android Native App wrapper with Native FCM
   if (typeof window !== "undefined") {
     const nativeBridge = (window as any).AiraNativeApp;
@@ -178,8 +206,11 @@ export async function enablePushNotifications(
       if (district && nativeBridge?.subscribeDistrict) {
         nativeBridge.subscribeDistrict(district);
       }
+      if (effectiveIsAdmin && nativeBridge?.subscribeAdmin) {
+        nativeBridge.subscribeAdmin();
+      }
       if (nativeToken) {
-        const serverRes = await registerTokenWithServer(nativeToken, userId, district);
+        const serverRes = await registerTokenWithServer(nativeToken, userId, district, effectiveIsAdmin);
         return { success: true, token: nativeToken, serverRes };
       }
       return { success: true };
@@ -188,7 +219,7 @@ export async function enablePushNotifications(
 
   const result = await requestNotificationPermissionAndGetToken(vapidKey);
   if (result.success && result.token) {
-    const serverRes = await registerTokenWithServer(result.token, userId, district);
+    const serverRes = await registerTokenWithServer(result.token, userId, district, effectiveIsAdmin);
     return { ...result, serverRes };
   }
   return result;
