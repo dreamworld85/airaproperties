@@ -159,7 +159,7 @@ export default function EditProfile() {
 
   return (
     <div className="min-h-screen flex flex-col pb-28 bg-[#FAF8F3] font-display select-none">
-      <Header title="edit profile" showBack />
+      <Header title="Back To Home" showBack backTo="/home" />
 
       <div className="px-5 pt-3 flex flex-col gap-3.5 flex-1 max-w-xl mx-auto w-full">
         {/* Profile Photo Section */}
