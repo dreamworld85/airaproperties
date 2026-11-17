@@ -35,29 +35,30 @@ export async function optimizeImages(req, res, next) {
     return next();
   }
 
-  try {
-    for (const file of req.files) {
+  for (const file of req.files) {
+    try {
       // Process if it's an image and not a gif
-      if (file.mimetype.startsWith("image/") && !file.mimetype.includes("gif")) {
+      if (file.mimetype && file.mimetype.startsWith("image/") && !file.mimetype.includes("gif")) {
         const originalPath = file.path;
         const dir = path.dirname(originalPath);
         const ext = path.extname(originalPath);
         
         // Generate unique webp filename
-        const webpFilename = file.filename.replace(ext, ".webp");
+        const webpFilename = `${path.basename(file.filename, ext)}.webp`;
         const webpPath = path.join(dir, webpFilename);
+        const tempWebpPath = path.join(dir, `opt_${Date.now()}_${Math.round(Math.random() * 1e6)}.webp`);
 
-        // Convert to WebP, resize max dimension to 1600px, compress to 80% quality
+        // Convert / optimize into temp file first to avoid reading & writing to identical file
         await sharp(originalPath)
           .resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true })
           .webp({ quality: 80 })
-          .toFile(webpPath);
+          .toFile(tempWebpPath);
 
         // Pre-generate optimized 600px thumbnail for card & mobile feed speeds
         try {
           const thumbsDir = path.join(dir, "thumbs");
           if (!fs.existsSync(thumbsDir)) fs.mkdirSync(thumbsDir, { recursive: true });
-          await sharp(webpPath)
+          await sharp(tempWebpPath)
             .resize({ width: 600, fit: "inside", withoutEnlargement: true })
             .webp({ quality: 82 })
             .toFile(path.join(thumbsDir, `600_${webpFilename}`));
@@ -65,13 +66,21 @@ export async function optimizeImages(req, res, next) {
           console.warn("Failed pre-generating thumbnail:", tErr);
         }
 
-        // Clean up the original file if it was not already a webp file
-        if (originalPath !== webpPath) {
+        // Clean up original file if different
+        if (fs.existsSync(originalPath) && originalPath !== webpPath) {
           try {
             fs.unlinkSync(originalPath);
           } catch (err) {
             console.error("Failed to delete original file after webp conversion:", err);
           }
+        }
+
+        // Move tempWebpPath to webpPath (or replace webpPath if already exists)
+        if (fs.existsSync(tempWebpPath)) {
+          if (fs.existsSync(webpPath)) {
+            try { fs.unlinkSync(webpPath); } catch {}
+          }
+          fs.renameSync(tempWebpPath, webpPath);
         }
 
         // Overwrite multer file metadata in place
@@ -80,14 +89,16 @@ export async function optimizeImages(req, res, next) {
         file.mimetype = "image/webp";
 
         // Update size info to match the optimized WebP size
-        const stats = fs.statSync(webpPath);
-        file.size = stats.size;
+        if (fs.existsSync(webpPath)) {
+          const stats = fs.statSync(webpPath);
+          file.size = stats.size;
+        }
       }
+    } catch (err) {
+      console.error(`Image optimization error for ${file.originalname || file.filename}:`, err);
     }
-    next();
-  } catch (err) {
-    console.error("Image optimization error:", err);
-    next(); // Fallback: continue request execution even if optimization fails
   }
+
+  next();
 }
 

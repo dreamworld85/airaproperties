@@ -801,7 +801,7 @@ router.get("/properties/:id", async (req, res) => {
     const [[property]] = await pool.query(
       `SELECT p.*, u.name as uploader_name, u.email as uploader_email, u.phone as uploader_phone, u.role as user_role
        FROM properties p
-       JOIN users u ON p.owner_id = u.id
+       LEFT JOIN users u ON p.owner_id = u.id
        WHERE p.id = ?`,
       [id]
     );
@@ -856,10 +856,22 @@ router.put("/properties/:id", upload.any(), optimizeImages, async (req, res) => 
     const params = [];
 
     if (title !== undefined && title !== null) { updates.push("title = ?"); params.push(title); }
-    if (price !== undefined && price !== null && price !== "") { updates.push("price = ?"); params.push(price); }
+    if (price !== undefined && price !== null && String(price).trim() !== "") {
+      const cleanPrice = String(price).replace(/[^0-9.]/g, "");
+      if (cleanPrice && !isNaN(Number(cleanPrice))) {
+        updates.push("price = ?");
+        params.push(Number(cleanPrice));
+      }
+    }
     if (property_type !== undefined && property_type !== null) { updates.push("property_type = ?"); params.push(property_type); }
     if (purpose !== undefined && purpose !== null) { updates.push("purpose = ?"); params.push(purpose); }
-    if (area_sqft !== undefined && area_sqft !== null && area_sqft !== "") { updates.push("area_sqft = ?"); params.push(area_sqft); }
+    if (area_sqft !== undefined && area_sqft !== null && String(area_sqft).trim() !== "") {
+      const cleanArea = String(area_sqft).replace(/[^0-9.]/g, "");
+      if (cleanArea && !isNaN(Number(cleanArea))) {
+        updates.push("area_sqft = ?");
+        params.push(Math.round(Number(cleanArea)));
+      }
+    }
     if (address !== undefined && address !== null) { updates.push("address = ?"); params.push(address); }
     if (district !== undefined && district !== null) { updates.push("district = ?"); params.push(district); }
     if (state !== undefined && state !== null) { updates.push("state = ?"); params.push(state); }
