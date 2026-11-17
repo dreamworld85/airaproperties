@@ -136,8 +136,8 @@ android {
         applicationId '{package_name}'
         minSdk 24
         targetSdk 36
-        versionCode 7
-        versionName "0.0.2"
+        versionCode 8
+        versionName "0.0.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -974,6 +974,9 @@ def build_project(project_dir, output_apk_name):
                 "airaproperties.apk",
                 "aira-properties.apk",
                 "sparrows.apk",
+                "AiraProperty-0.0.3.apk",
+                "AiraProperties-0.0.3.apk",
+                "airaproperties-0.0.3.apk",
                 "AiraProperty-0.0.2.apk",
                 "AiraProperties-0.0.2.apk",
                 "airaproperties-0.0.2.apk",
@@ -1001,6 +1004,9 @@ def build_project(project_dir, output_apk_name):
                 "airaproperties-release.aab",
                 "airaproperties.in.aab",
                 "airaproperties.aab",
+                "AiraProperty-0.0.3.aab",
+                "AiraProperties-0.0.3.aab",
+                "airaproperties-0.0.3.aab",
                 "AiraProperty-0.0.2.aab",
                 "AiraProperties-0.0.2.aab",
                 "airaproperties-0.0.2.aab",
@@ -1023,9 +1029,12 @@ def build_project(project_dir, output_apk_name):
                 with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
                     zf.write(src_aab, arcname="airaproperties.in.aab")
                     zf.write(src_aab, arcname="airaproperties-release.aab")
+                    zf.write(src_aab, arcname="AiraProperty-0.0.3.aab")
+                    zf.write(src_aab, arcname="AiraProperties-0.0.3.aab")
                     zf.write(src_aab, arcname="AiraProperty-0.0.2.aab")
                     if os.path.exists(src_apk):
                         zf.write(src_apk, arcname="airaproperties.apk")
+                        zf.write(src_apk, arcname="AiraProperty-0.0.3.apk")
                         zf.write(src_apk, arcname="AiraProperty-0.0.2.apk")
                 print(f"Created ZIP bundle at {zip_path}")
                 for zip_target in [
