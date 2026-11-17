@@ -307,22 +307,22 @@ export default function SocialMarketing() {
               </p>
 
               {/* Channel Tags (2-column on mobile, 4-column on desktop) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
-                <div className="px-3 py-2 rounded-xl text-xs font-bold bg-white/10 text-white border border-white/15 backdrop-blur-md flex items-center gap-2">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                <div className="px-2.5 py-2 rounded-xl text-[11px] sm:text-xs font-bold bg-white/10 text-white border border-white/15 backdrop-blur-md flex items-center gap-1.5 sm:gap-2">
                   <span>📸</span>
-                  <span>Instagram Reels & Feed</span>
+                  <span className="truncate">Instagram Reels & Feed</span>
                 </div>
-                <div className="px-3 py-2 rounded-xl text-xs font-bold bg-white/10 text-white border border-white/15 backdrop-blur-md flex items-center gap-2">
+                <div className="px-2.5 py-2 rounded-xl text-[11px] sm:text-xs font-bold bg-white/10 text-white border border-white/15 backdrop-blur-md flex items-center gap-1.5 sm:gap-2">
                   <span>▶️</span>
-                  <span>YouTube Shorts Showcase</span>
+                  <span className="truncate">YouTube Shorts Showcase</span>
                 </div>
-                <div className="px-3 py-2 rounded-xl text-xs font-bold bg-white/10 text-white border border-white/15 backdrop-blur-md flex items-center gap-2">
+                <div className="px-2.5 py-2 rounded-xl text-[11px] sm:text-xs font-bold bg-white/10 text-white border border-white/15 backdrop-blur-md flex items-center gap-1.5 sm:gap-2">
                   <span>👍</span>
-                  <span>Facebook Groups & Boost</span>
+                  <span className="truncate">Facebook Groups & Boost</span>
                 </div>
-                <div className="px-3 py-2 rounded-xl text-xs font-bold bg-white/10 text-white border border-white/15 backdrop-blur-md flex items-center gap-2">
+                <div className="px-2.5 py-2 rounded-xl text-[11px] sm:text-xs font-bold bg-white/10 text-white border border-white/15 backdrop-blur-md flex items-center gap-1.5 sm:gap-2">
                   <span>💬</span>
-                  <span>WhatsApp Buyer Broadcast</span>
+                  <span className="truncate">WhatsApp Buyer Broadcast</span>
                 </div>
               </div>
             </div>
