@@ -13,6 +13,7 @@ import os
 import sys
 import subprocess
 import shutil
+from urllib.parse import urlparse
 
 # Ensure user site-packages is in sys.path
 user_site = os.path.expanduser("~\\AppData\\Roaming\\Python\\Python313\\site-packages")
@@ -64,6 +65,15 @@ def ensure_keystore(keystore_path):
 
 def create_android_project(project_dir, app_name, app_url, package_name, icon_src):
     print(f"Creating Android project for {app_name}...")
+
+    # The WebView only trusts the app's own HTTPS origin (plus its www. twin).
+    parsed_url = urlparse(app_url)
+    if parsed_url.scheme != "https" or not parsed_url.hostname:
+        raise ValueError(f"app_url must be an https:// URL, got {app_url!r}")
+    app_host = parsed_url.hostname.lower()
+    app_origin = f"https://{app_host}"
+    base_host = app_host[4:] if app_host.startswith("www.") else app_host
+    trusted_hosts_java = ", ".join(f'"{h}"' for h in sorted({base_host, "www." + base_host}))
     
     # Create directories
     java_dir = os.path.join(project_dir, "app", "src", "main", "java", *package_name.split("."))
@@ -136,8 +146,8 @@ android {
         applicationId '{package_name}'
         minSdk 24
         targetSdk 36
-        versionCode 8
-        versionName "0.0.3"
+        versionCode 9
+        versionName "0.0.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -171,6 +181,7 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.webkit:webkit:1.9.0'
     implementation platform('com.google.firebase:firebase-bom:32.8.0')
     implementation 'com.google.firebase:firebase-messaging'
 }
@@ -202,7 +213,8 @@ dependencies {
         android:supportsRtl="true"
         android:theme="@style/Theme.App"
         android:hardwareAccelerated="true"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="false"
+        android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -214,6 +226,15 @@ dependencies {
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Opens notification taps. Not exported: only this app's own notifications can start it. -->
+        <activity
+            android:name=".NotificationOpenActivity"
+            android:exported="false"
+            android:noHistory="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <!-- Native Firebase Cloud Messaging Service for Instant Alerts -->
         <service
@@ -239,6 +260,21 @@ dependencies {
     with open(os.path.join(project_dir, "app", "src", "main", "AndroidManifest.xml"), "w") as f:
         f.write(manifest_template.replace("{app_name}", app_name))
 
+    # 5.1 Network security: HTTPS only, system certificate authorities only
+    #     (user-installed CAs are not trusted, so traffic can't be intercepted with them).
+    xml_dir = os.path.join(res_dir, "xml")
+    os.makedirs(xml_dir, exist_ok=True)
+    with open(os.path.join(xml_dir, "network_security_config.xml"), "w") as f:
+        f.write("""<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
+""")
+
     # 6. Colors and Themes
     values_dir = os.path.join(res_dir, "values")
     os.makedirs(values_dir, exist_ok=True)
@@ -262,7 +298,7 @@ dependencies {
 """)
 
 # 7. MainActivity.java with Native FCM Push Notification Support
-    java_template = """package {package_name};
+    java_template = r"""package {package_name};
 
 import android.annotation.SuppressLint;
 import android.os.Bundle;
@@ -279,7 +315,6 @@ import android.webkit.SslErrorHandler;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.PermissionRequest;
-import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.net.http.SslError;
 import android.content.Context;
@@ -290,22 +325,83 @@ import android.content.ClipData;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.util.Log;
+import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.webkit.JavaScriptReplyProxy;
+import androidx.webkit.WebMessageCompat;
+import androidx.webkit.WebViewCompat;
+import androidx.webkit.WebViewFeature;
 import com.google.firebase.messaging.FirebaseMessaging;
+import org.json.JSONObject;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "AiraMainActivity";
+
+    // The app's own HTTPS hosts. Only pages served from these hosts may use the native
+    // bridge, receive the FCM token, or be granted location / camera / microphone.
+    private static final Set<String> TRUSTED_HOSTS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+        {trusted_hosts}
+    )));
+
+    // Hosts that may load inside the WebView (the backend's sign-in redirects and the
+    // Google / Facebook login pages) but are never trusted with the bridge.
+    // Every other web page opens in the user's browser instead of inside the app.
+    private static final Set<String> IN_APP_HOSTS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+        "api.airaproperties.in",
+        "accounts.google.com", "accounts.youtube.com",
+        "facebook.com", "www.facebook.com", "m.facebook.com", "web.facebook.com"
+    )));
+
+    private static final String APP_ORIGIN = "{app_origin}";
+    private static final String DEFAULT_URL = "{app_url}";
+
+    private static final Pattern USER_ID_PATTERN = Pattern.compile("[A-Za-z0-9_.:@-]{1,128}");
+    private static final int MAX_BRIDGE_MESSAGE_LENGTH = 4096;
+
+    // Name of the message channel object that androidx.webkit injects, only into frames
+    // whose origin is in TRUSTED_HOSTS.
+    private static final String BRIDGE_CHANNEL = "__airaNativeChannel";
+
+    // Defines window.AiraNativeApp (same methods the web app already uses) on top of the
+    // origin-restricted message channel. Injected at document start, trusted origins only.
+    private static final String BRIDGE_SHIM =
+        "(function(){" +
+        "if(window.AiraNativeApp){return;}" +
+        "var ch=window." + BRIDGE_CHANNEL + ";if(!ch){return;}" +
+        "var token=null;" +
+        "ch.onmessage=function(e){try{var m=JSON.parse(e.data);" +
+            "if(m&&m.type==='fcmToken'&&typeof m.token==='string'){token=m.token;window.__AIRA_NATIVE_FCM_TOKEN=m.token;}" +
+        "}catch(_){}};" +
+        "function send(o){try{ch.postMessage(JSON.stringify(o));}catch(_){}}" +
+        "var api=Object.freeze({" +
+            "isNativeApp:function(){return true;}," +
+            "getNativeFcmToken:function(){return token||window.__AIRA_NATIVE_FCM_TOKEN||null;}," +
+            "subscribeDistrict:function(d){send({type:'subscribeDistrict',district:String(d==null?'':d)});}," +
+            "registerUser:function(u,d){send({type:'registerUser',userId:String(u==null?'':u),district:String(d==null?'':d)});}," +
+            "openDirections:function(lat,lng){send({type:'openDirections',lat:Number(lat),lng:Number(lng)});}" +
+        "});" +
+        "Object.defineProperty(window,'AiraNativeApp',{value:api,writable:false,configurable:false});" +
+        "send({type:'hello'});" +
+        "})();";
+
     private WebView mWebView;
     private ValueCallback<Uri[]> mUploadMessage;
     private final static int REQUEST_SELECT_FILE = 100;
     private final static int REQUEST_NOTIFICATION_PERMISSION = 101;
     private String mNativeFcmToken = null;
+    private JavaScriptReplyProxy mBridgeReply = null;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
+
         // 1. Setup Notification Channel
         createNotificationChannel();
 
@@ -335,22 +431,33 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setSupportZoom(false);
         webSettings.setBuiltInZoomControls(false);
         webSettings.setDisplayZoomControls(false);
-        webSettings.setAllowFileAccess(true);
-        webSettings.setAllowContentAccess(true);
         webSettings.setMediaPlaybackRequiresUserGesture(false);
         webSettings.setLoadsImagesAutomatically(true);
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-            webSettings.setOffscreenPreRaster(true);
+        webSettings.setOffscreenPreRaster(true);
+
+        // Web content gets no access to device files or content providers.
+        // (Uploads through the file picker still work; they don't depend on these settings.)
+        webSettings.setAllowFileAccess(false);
+        webSettings.setAllowContentAccess(false);
+        webSettings.setAllowFileAccessFromFileURLs(false);
+        webSettings.setAllowUniversalAccessFromFileURLs(false);
+
+        // Pages may not pop up new windows on their own.
+        webSettings.setJavaScriptCanOpenWindowsAutomatically(false);
+        webSettings.setSupportMultipleWindows(false);
+
+        // HTTPS pages may never load HTTP sub-resources.
+        webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            webSettings.setSafeBrowsingEnabled(true);
         }
 
         // Enable session persistence and third-party cookies for seamless auth
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            cookieManager.setAcceptThirdPartyCookies(mWebView, true);
-        }
+        cookieManager.setAcceptThirdPartyCookies(mWebView, true);
 
         // Clean user agent so Google and social OAuth logins work seamlessly without rejection
         String defaultUa = webSettings.getUserAgentString();
@@ -358,86 +465,52 @@ public class MainActivity extends AppCompatActivity {
             webSettings.setUserAgentString(defaultUa.replace("; wv", ""));
         }
 
-        // Add JavaScript Interface for Native-Web communication
-        mWebView.addJavascriptInterface(new AiraNativeBridge(), "AiraNativeApp");
+        // Native bridge, restricted to the app's own origins (replaces addJavascriptInterface,
+        // which exposed native methods to every page and every iframe).
+        setupNativeBridge();
 
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
-                handler.proceed();
+                // Never bypass certificate validation. An invalid, expired, self-signed or
+                // mismatched certificate means the connection can't be trusted: stop the load.
+                handler.cancel();
+                Log.e(TAG, "Blocked load after SSL error " + (error != null ? error.getPrimaryError() : -1));
+                Toast.makeText(view.getContext(),
+                        "Secure connection failed. Please check your network and try again.",
+                        Toast.LENGTH_LONG).show();
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 CookieManager.getInstance().flush();
-                // Inject native FCM token into web app so it knows push is active
-                if (mNativeFcmToken != null) {
-                    mWebView.evaluateJavascript("window.__AIRA_NATIVE_FCM_TOKEN = '" + mNativeFcmToken + "';", null);
+                // Only the app's own pages are told the push token.
+                if (mNativeFcmToken != null && isTrustedUrl(url)) {
+                    view.evaluateJavascript(
+                            "window.__AIRA_NATIVE_FCM_TOKEN=" + JSONObject.quote(mNativeFcmToken) + ";", null);
                 }
             }
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                if (request == null || request.getUrl() == null) return false;
-                return handleCustomUrl(view, request.getUrl().toString());
+                if (request == null || request.getUrl() == null) return true;
+                if (!request.isForMainFrame()) return false;
+                return handleNavigation(view, request.getUrl().toString());
             }
 
             @SuppressWarnings("deprecation")
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                return handleCustomUrl(view, url);
-            }
-
-            private boolean handleCustomUrl(WebView view, String url) {
-                if (url == null) return false;
-
-                // 1. Correctly handle intent:// scheme (e.g. Google Maps redirect)
-                if (url.startsWith("intent:")) {
-                    try {
-                        Intent intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
-                        if (intent != null) {
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            PackageManager pm = view.getContext().getPackageManager();
-                            if (intent.resolveActivity(pm) != null) {
-                                view.getContext().startActivity(intent);
-                                return true;
-                            }
-                            String fallbackUrl = intent.getStringExtra("browser_fallback_url");
-                            if (fallbackUrl != null && !fallbackUrl.isEmpty()) {
-                                view.loadUrl(fallbackUrl);
-                                return true;
-                            }
-                        }
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error handling intent scheme: " + e.getMessage());
-                    }
-                    return true;
-                }
-
-                // 2. Handle Google Maps, Navigation, Geo, Tel, Mail, WhatsApp, Market schemes
-                if (url.startsWith("geo:") || url.startsWith("tel:") || url.startsWith("mailto:") ||
-                    url.startsWith("sms:") || url.startsWith("whatsapp:") || url.contains("wa.me") ||
-                    url.startsWith("market:") || url.contains("maps.google.com") || url.contains("google.com/maps")) {
-                    try {
-                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        view.getContext().startActivity(intent);
-                        return true;
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error opening external application for " + url + ": " + e.getMessage());
-                        return false;
-                    }
-                }
-
-                return false;
+                return handleNavigation(view, url);
             }
         });
 
         mWebView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
-                callback.invoke(origin, true, false);
+                // Location only for the app's own pages, never for third-party pages or iframes.
+                callback.invoke(origin, isTrustedUrl(origin), false);
             }
 
             @Override
@@ -445,7 +518,11 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        request.grant(request.getResources());
+                        if (isTrustedUri(request.getOrigin())) {
+                            request.grant(request.getResources());
+                        } else {
+                            request.deny();
+                        }
                     }
                 });
             }
@@ -468,19 +545,305 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Handle target URL from notification click
-        String targetUrl = "{app_url}";
-        if (getIntent() != null && getIntent().hasExtra("target_url")) {
-            String extraUrl = getIntent().getStringExtra("target_url");
-            if (extraUrl != null && !extraUrl.isEmpty()) {
-                targetUrl = extraUrl;
-            }
+        // This activity is exported (it is the launcher), so it never reads a URL from an Intent.
+        // Notification taps go through the non-exported NotificationOpenActivity, which checks the
+        // URL and hands it over in-process via takePendingUrl().
+        String targetUrl = DEFAULT_URL;
+        String requested = takePendingUrl();
+        if (requested != null) {
+            targetUrl = requested;
         }
 
         if (savedInstanceState == null) {
             mWebView.loadUrl(targetUrl);
         }
     }
+
+    // ---------------------------------------------------------------- URL policy
+
+    static boolean isTrustedUrl(String url) {
+        if (url == null) return false;
+        try {
+            return isTrustedUri(Uri.parse(url));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static boolean isTrustedUri(Uri uri) {
+        return isHttpsHostIn(uri, TRUSTED_HOSTS);
+    }
+
+    private static boolean isInAppUri(Uri uri) {
+        return isTrustedUri(uri) || isHttpsHostIn(uri, IN_APP_HOSTS);
+    }
+
+    private static boolean isHttpsHostIn(Uri uri, Set<String> hosts) {
+        if (uri == null) return false;
+        String host = uri.getHost();
+        int port = uri.getPort();
+        return "https".equalsIgnoreCase(uri.getScheme())
+                && host != null
+                && hosts.contains(host.toLowerCase(Locale.ROOT))
+                && (port == -1 || port == 443)
+                && uri.getUserInfo() == null;
+    }
+
+    private static Set<String> trustedOriginRules() {
+        Set<String> rules = new HashSet<>();
+        for (String host : TRUSTED_HOSTS) {
+            rules.add("https://" + host);
+        }
+        return rules;
+    }
+
+    // In-process hand-off from NotificationOpenActivity. Never filled from an Intent that
+    // another app could send to this (exported) activity.
+    private static volatile String sPendingUrl = null;
+
+    /** Called by NotificationOpenActivity. Keeps the page only if it is one of the app's own HTTPS pages. */
+    static void offerPendingUrl(String raw) {
+        if (raw == null) return;
+        raw = raw.trim();
+        if (raw.isEmpty()) return;
+        // Allow site-relative paths such as "/property/123" from push payloads.
+        if (raw.startsWith("/") && !raw.startsWith("//")) {
+            raw = APP_ORIGIN + raw;
+        }
+        if (isTrustedUrl(raw)) {
+            sPendingUrl = raw;
+        } else {
+            Log.w(TAG, "Ignored untrusted notification URL");
+        }
+    }
+
+    private static String takePendingUrl() {
+        String url = sPendingUrl;
+        sPendingUrl = null;
+        return isTrustedUrl(url) ? url : null;
+    }
+
+    /** Main-frame navigation policy. Returns true when the WebView must NOT load the URL itself. */
+    private boolean handleNavigation(WebView view, String url) {
+        if (url == null) return true;
+        Uri uri;
+        try {
+            uri = Uri.parse(url);
+        } catch (Exception e) {
+            return true;
+        }
+        String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+
+        switch (scheme) {
+            case "https": {
+                String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+                String path = uri.getPath() == null ? "" : uri.getPath();
+                boolean isMaps = host.equals("maps.google.com")
+                        || ((host.equals("google.com") || host.equals("www.google.com")) && path.startsWith("/maps"));
+                if (!isMaps && isInAppUri(uri)) {
+                    return false; // the app's own pages and sign-in pages stay in the app
+                }
+                openExternally(view.getContext(), uri); // everything else: user's browser / maps / WhatsApp
+                return true;
+            }
+            case "http":
+                // Cleartext is blocked in the app; let the browser handle (and upgrade) it.
+                openExternally(view.getContext(), uri);
+                return true;
+            case "intent":
+                handleIntentUrl(view, url);
+                return true;
+            case "about":
+            case "blob":
+                return false;
+            case "file":
+            case "content":
+            case "javascript":
+            case "data":
+            case "":
+                return true; // never navigate the top-level page to these
+            default:
+                // tel:, mailto:, sms:, geo:, whatsapp:, market: and other app links
+                openExternally(view.getContext(), uri);
+                return true;
+        }
+    }
+
+    /** Handles intent:// links the way a browser does: no explicit targets, no permission grants. */
+    private void handleIntentUrl(WebView view, String url) {
+        try {
+            Intent intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
+            if (intent == null) return;
+            intent.addCategory(Intent.CATEGORY_BROWSABLE);
+            intent.setComponent(null);
+            intent.setSelector(null);
+            intent.setClipData(null);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK); // drops any URI-permission grant flags
+            if (getPackageName().equals(intent.getPackage())) {
+                return; // a web page may not launch this app's own screens
+            }
+
+            PackageManager pm = view.getContext().getPackageManager();
+            if (intent.resolveActivity(pm) != null) {
+                view.getContext().startActivity(intent);
+                return;
+            }
+
+            String fallbackUrl = intent.getStringExtra("browser_fallback_url");
+            if (fallbackUrl != null && !fallbackUrl.isEmpty()) {
+                Uri fallback = Uri.parse(fallbackUrl);
+                if (isInAppUri(fallback)) {
+                    view.loadUrl(fallbackUrl);
+                } else if ("https".equalsIgnoreCase(fallback.getScheme())) {
+                    openExternally(view.getContext(), fallback);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling intent link: " + e.getMessage());
+        }
+    }
+
+    private static void openExternally(Context context, Uri uri) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+            intent.addCategory(Intent.CATEGORY_BROWSABLE);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception e) {
+            Log.w(TAG, "No app available to open " + uri.getScheme() + " link");
+        }
+    }
+
+    // ---------------------------------------------------------------- native bridge
+
+    private void setupNativeBridge() {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)
+                || !WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            // Old WebView without origin-restricted messaging: leave the bridge off rather than
+            // fall back to addJavascriptInterface. The web app still gets the push token through
+            // window.__AIRA_NATIVE_FCM_TOKEN on trusted pages (see onPageFinished).
+            Log.w(TAG, "WebView does not support origin-restricted messaging; native bridge disabled");
+            return;
+        }
+        Set<String> rules = trustedOriginRules();
+        WebViewCompat.addWebMessageListener(mWebView, BRIDGE_CHANNEL, rules,
+                new WebViewCompat.WebMessageListener() {
+                    @Override
+                    public void onPostMessage(WebView view, WebMessageCompat message, Uri sourceOrigin,
+                                              boolean isMainFrame, JavaScriptReplyProxy replyProxy) {
+                        onBridgeMessage(message, sourceOrigin, isMainFrame, replyProxy);
+                    }
+                });
+        WebViewCompat.addDocumentStartJavaScript(mWebView, BRIDGE_SHIM, rules);
+    }
+
+    /** Runs on the UI thread. Accepts messages only from the top-level frame of a trusted origin. */
+    private void onBridgeMessage(WebMessageCompat message, Uri sourceOrigin, boolean isMainFrame,
+                                 JavaScriptReplyProxy replyProxy) {
+        if (!isMainFrame || !isTrustedUri(sourceOrigin)) {
+            Log.w(TAG, "Rejected bridge message from untrusted frame");
+            return;
+        }
+        String data = message == null ? null : message.getData();
+        if (data == null || data.length() > MAX_BRIDGE_MESSAGE_LENGTH) return;
+
+        JSONObject msg;
+        try {
+            msg = new JSONObject(data);
+        } catch (Exception e) {
+            return;
+        }
+
+        switch (msg.optString("type", "")) {
+            case "hello":
+                mBridgeReply = replyProxy;
+                sendTokenToBridge();
+                break;
+            case "subscribeDistrict":
+                subscribeDistrict(msg.optString("district", ""));
+                break;
+            case "registerUser":
+                registerUser(msg.optString("userId", ""), msg.optString("district", ""));
+                break;
+            case "openDirections":
+                openDirections(msg.optDouble("lat", Double.NaN), msg.optDouble("lng", Double.NaN));
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void sendTokenToBridge() {
+        if (mBridgeReply == null || mNativeFcmToken == null) return;
+        try {
+            JSONObject out = new JSONObject();
+            out.put("type", "fcmToken");
+            out.put("token", mNativeFcmToken);
+            mBridgeReply.postMessage(out.toString());
+        } catch (Exception e) {
+            Log.w(TAG, "Could not deliver FCM token to page");
+        }
+    }
+
+    private String getStoredToken() {
+        if (mNativeFcmToken == null) {
+            SharedPreferences fcmPrefs = getSharedPreferences("aira_fcm_prefs", Context.MODE_PRIVATE);
+            mNativeFcmToken = fcmPrefs.getString("fcm_token", null);
+        }
+        return mNativeFcmToken;
+    }
+
+    private static String cleanDistrict(String district) {
+        if (district == null) return null;
+        String trimmed = district.trim();
+        if (trimmed.isEmpty() || trimmed.length() > 64) return null;
+        return trimmed;
+    }
+
+    private void subscribeDistrict(String rawDistrict) {
+        String district = cleanDistrict(rawDistrict);
+        if (district == null) return;
+        String topic = district.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "_");
+        FirebaseMessaging.getInstance().subscribeToTopic("district_" + topic);
+        String token = getStoredToken();
+        if (token != null) {
+            FCMRegistrationHelper.sendTokenToServer(MainActivity.this, token, district);
+        }
+    }
+
+    private void registerUser(String rawUserId, String rawDistrict) {
+        String userId = rawUserId == null ? "" : rawUserId.trim();
+        if (!userId.isEmpty() && !USER_ID_PATTERN.matcher(userId).matches()) {
+            Log.w(TAG, "Rejected malformed userId from page");
+            return;
+        }
+        String token = getStoredToken();
+        if (token != null) {
+            FCMRegistrationHelper.sendTokenToServer(MainActivity.this, token, cleanDistrict(rawDistrict),
+                    userId.isEmpty() ? null : userId);
+        }
+    }
+
+    private void openDirections(double lat, double lng) {
+        if (Double.isNaN(lat) || Double.isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            return;
+        }
+        Uri uri = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=" + lat + "," + lng);
+        try {
+            Intent mapIntent = new Intent(Intent.ACTION_VIEW, uri);
+            mapIntent.setPackage("com.google.android.apps.maps");
+            mapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (mapIntent.resolveActivity(getPackageManager()) != null) {
+                startActivity(mapIntent);
+                return;
+            }
+        } catch (Exception ignored) {
+            // fall through to the browser
+        }
+        openExternally(this, uri);
+    }
+
+    // ---------------------------------------------------------------- notifications
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -502,7 +865,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             // Subscribe device to all_users topic
             FirebaseMessaging.getInstance().subscribeToTopic("all_users");
-            
+
             // Fetch native token and send to server
             FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
                 if (!task.isSuccessful()) {
@@ -510,7 +873,6 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
                 mNativeFcmToken = task.getResult();
-                Log.d(TAG, "Native FCM Registration Token: " + mNativeFcmToken);
                 SharedPreferences fcmPrefs = getSharedPreferences("aira_fcm_prefs", Context.MODE_PRIVATE);
                 fcmPrefs.edit().putString("fcm_token", mNativeFcmToken).apply();
 
@@ -518,7 +880,11 @@ public class MainActivity extends AppCompatActivity {
 
                 if (mWebView != null) {
                     mWebView.post(() -> {
-                        mWebView.evaluateJavascript("window.__AIRA_NATIVE_FCM_TOKEN = '" + mNativeFcmToken + "';", null);
+                        sendTokenToBridge();
+                        if (isTrustedUrl(mWebView.getUrl())) {
+                            mWebView.evaluateJavascript(
+                                    "window.__AIRA_NATIVE_FCM_TOKEN=" + JSONObject.quote(mNativeFcmToken) + ";", null);
+                        }
                     });
                 }
             });
@@ -531,81 +897,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        if (intent != null && intent.hasExtra("target_url")) {
-            String url = intent.getStringExtra("target_url");
-            if (url != null && !url.isEmpty() && mWebView != null) {
-                mWebView.loadUrl(url);
-            }
-        }
-    }
-
-    public class AiraNativeBridge {
-        @JavascriptInterface
-        public String getNativeFcmToken() {
-            if (mNativeFcmToken == null) {
-                SharedPreferences fcmPrefs = getSharedPreferences("aira_fcm_prefs", Context.MODE_PRIVATE);
-                mNativeFcmToken = fcmPrefs.getString("fcm_token", null);
-            }
-            return mNativeFcmToken;
-        }
-
-        @JavascriptInterface
-        public void subscribeDistrict(String district) {
-            if (district != null && !district.isEmpty()) {
-                String clean = district.trim().toLowerCase().replaceAll("[^a-z0-9]", "_");
-                FirebaseMessaging.getInstance().subscribeToTopic("district_" + clean);
-                if (mNativeFcmToken == null) {
-                    SharedPreferences fcmPrefs = getSharedPreferences("aira_fcm_prefs", Context.MODE_PRIVATE);
-                    mNativeFcmToken = fcmPrefs.getString("fcm_token", null);
-                }
-                if (mNativeFcmToken != null) {
-                    FCMRegistrationHelper.sendTokenToServer(MainActivity.this, mNativeFcmToken, district);
-                }
-            }
-        }
-
-        @JavascriptInterface
-        public void registerUser(String userId, String district) {
-            if (mNativeFcmToken == null) {
-                SharedPreferences fcmPrefs = getSharedPreferences("aira_fcm_prefs", Context.MODE_PRIVATE);
-                mNativeFcmToken = fcmPrefs.getString("fcm_token", null);
-            }
-            if (mNativeFcmToken != null) {
-                FCMRegistrationHelper.sendTokenToServer(MainActivity.this, mNativeFcmToken, district, userId);
-            }
-        }
-
-        @JavascriptInterface
-        public boolean isNativeApp() {
-            return true;
-        }
-
-        @JavascriptInterface
-        public void openDirections(double lat, double lng, String label) {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        Uri uri = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=" + lat + "," + lng);
-                        Intent mapIntent = new Intent(Intent.ACTION_VIEW, uri);
-                        mapIntent.setPackage("com.google.android.apps.maps");
-                        mapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        if (mapIntent.resolveActivity(getPackageManager()) != null) {
-                            startActivity(mapIntent);
-                        } else {
-                            Intent genericIntent = new Intent(Intent.ACTION_VIEW, uri);
-                            genericIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            startActivity(genericIntent);
-                        }
-                    } catch (Exception e) {
-                        try {
-                            Intent fallback = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/dir/?api=1&destination=" + lat + "," + lng));
-                            fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            startActivity(fallback);
-                        } catch (Exception ignored) {}
-                    }
-                }
-            });
+        // The Intent itself is ignored; only a URL handed over by NotificationOpenActivity is used.
+        String url = takePendingUrl();
+        if (url != null && mWebView != null) {
+            mWebView.loadUrl(url);
         }
     }
 
@@ -656,7 +951,11 @@ public class MainActivity extends AppCompatActivity {
 }
 """
     with open(os.path.join(java_dir, "MainActivity.java"), "w") as f:
-        f.write(java_template.replace("{package_name}", package_name).replace("{app_url}", app_url))
+        f.write(java_template
+                .replace("{package_name}", package_name)
+                .replace("{trusted_hosts}", trusted_hosts_java)
+                .replace("{app_origin}", app_origin)
+                .replace("{app_url}", app_url))
 
     # 7.1 AiraFirebaseMessagingService.java
     fcm_service_template = """package {package_name};
@@ -753,8 +1052,8 @@ public class AiraFirebaseMessagingService extends FirebaseMessagingService {
             }
         }
 
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        // Taps go to the non-exported NotificationOpenActivity, never straight to MainActivity.
+        Intent intent = new Intent(this, NotificationOpenActivity.class);
         intent.putExtra("target_url", clickUrl);
 
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
@@ -810,6 +1109,43 @@ public class AiraFirebaseMessagingService extends FirebaseMessagingService {
 """
     with open(os.path.join(java_dir, "AiraFirebaseMessagingService.java"), "w") as f:
         f.write(fcm_service_template.replace("{package_name}", package_name).replace("{app_url}", app_url))
+
+    # 7.1.1 NotificationOpenActivity.java: non-exported trampoline for notification taps, so the
+    #       exported MainActivity never loads a URL taken from an Intent (cross-app scripting).
+    notification_open_template = r"""package {package_name};
+
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
+
+/**
+ * Started only by this app's own notification PendingIntents (android:exported="false").
+ * Validates the target page, hands it to MainActivity in-process, then closes.
+ */
+public class NotificationOpenActivity extends Activity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        String raw = null;
+        try {
+            Intent in = getIntent();
+            if (in != null) {
+                raw = in.getStringExtra("target_url");
+            }
+        } catch (Exception ignored) {
+            // malformed extras
+        }
+        MainActivity.offerPendingUrl(raw);
+
+        Intent open = new Intent(this, MainActivity.class);
+        open.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        startActivity(open);
+        finish();
+    }
+}
+"""
+    with open(os.path.join(java_dir, "NotificationOpenActivity.java"), "w") as f:
+        f.write(notification_open_template.replace("{package_name}", package_name))
 
     # 7.2 FCMRegistrationHelper.java
     fcm_helper_template = """package {package_name};
