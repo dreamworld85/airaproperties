@@ -21,8 +21,11 @@ const DEFAULT_ADMIN_PASSWORD_HASH = "$2a$12$D16iHtCzFOJAuHAoa36vNukgRJgCP16tKzk7
 const DEFAULT_ADMIN_JWT_SECRET = "437613f6f341c7afa87b6fd1da2fc55e9a7858929ceacce408f81c034ca207b911a75f25fc881cbf2beee66d2ddd382a";
 
 function adminSecret() {
-  const secret = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || DEFAULT_ADMIN_JWT_SECRET;
-  return secret && secret.length >= 32 ? secret : null;
+  const val = (process.env.ADMIN_JWT_SECRET || "").trim();
+  if (val.length >= 32) return val;
+  const jwtSec = (process.env.JWT_SECRET || "").trim();
+  if (jwtSec.length >= 32) return jwtSec;
+  return DEFAULT_ADMIN_JWT_SECRET;
 }
 
 function adminUsername() {
@@ -30,8 +33,11 @@ function adminUsername() {
 }
 
 function adminPasswordHash() {
-  const hash = process.env.ADMIN_PASSWORD_HASH;
-  return hash && hash.trim().length > 0 ? hash.trim() : DEFAULT_ADMIN_PASSWORD_HASH;
+  const hash = (process.env.ADMIN_PASSWORD_HASH || "").trim();
+  if (hash.startsWith("$2a$") || hash.startsWith("$2b$") || hash.startsWith("$2y$")) {
+    return hash;
+  }
+  return DEFAULT_ADMIN_PASSWORD_HASH;
 }
 
 /** True when the server has everything it needs to log admins in. */
