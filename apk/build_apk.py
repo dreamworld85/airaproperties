@@ -1,4 +1,3 @@
-import zipfile
 def safe_copy(src, dst):
     try:
         os.makedirs(os.path.dirname(dst), exist_ok=True)
@@ -1302,86 +1301,26 @@ def build_project(project_dir, output_apk_name):
 
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
-        # Extra alias names for full backward compatibility
-        extra_names = []
+        # One file name per app. These are the names the website and API link to:
+        #   website: /airaproperties.apk, /aira-admin.apk   (public/ and dist/)
+        #   API:     /apk/airaproperties.apk, /apk/aira-admin.apk   (server/src/uploads/)
+        # The .aab bundles are for uploading to Google Play.
         is_user_app = "user" in project_dir or "airaproperties" in output_apk_name
-        if is_user_app:
-            extra_names = [
-                "airaproperties.apk",
-                "aira-properties.apk",
-                "sparrows.apk",
-                "AiraProperty-0.0.3.apk",
-                "AiraProperties-0.0.3.apk",
-                "airaproperties-0.0.3.apk",
-                "AiraProperty-0.0.2.apk",
-                "AiraProperties-0.0.2.apk",
-                "airaproperties-0.0.2.apk",
-            ]
-        elif "admin" in project_dir or "admin" in output_apk_name:
-            extra_names = ["aira-admin.apk", "airaproperties-admin.apk", "sparrows-admin.apk"]
+        apk_name = "airaproperties.apk" if is_user_app else "aira-admin.apk"
+        aab_name = "airaproperties-release.aab" if is_user_app else "aira-admin-release.aab"
 
-        all_names = list(set([output_apk_name] + extra_names))
-        for name in all_names:
-            targets = [
-                os.path.join(base_dir, name),
-                os.path.join(base_dir, "public", name),
-                os.path.join(base_dir, "dist", name),
-                os.path.join(base_dir, "server", "src", "uploads", name),
-                os.path.join(base_dir, "apk", name),
-            ]
-            for target in targets:
-                os.makedirs(os.path.dirname(target), exist_ok=True)
-                safe_copy(src_apk, target)
-                print(f"Copied APK to {target}")
+        for folder in ["apk", "public", "dist", os.path.join("server", "src", "uploads")]:
+            target = os.path.join(base_dir, folder, apk_name)
+            safe_copy(src_apk, target)
+            print(f"Copied APK to {target}")
 
-        # If AAB is built (Google Play Store Bundle), copy it too!
         if os.path.exists(src_aab):
-            aab_names = [
-                "airaproperties-release.aab",
-                "airaproperties.in.aab",
-                "airaproperties.aab",
-                "AiraProperty-0.0.3.aab",
-                "AiraProperties-0.0.3.aab",
-                "airaproperties-0.0.3.aab",
-                "AiraProperty-0.0.2.aab",
-                "AiraProperties-0.0.2.aab",
-                "airaproperties-0.0.2.aab",
-            ] if is_user_app else ["aira-admin-release.aab"]
-            for aab_name in aab_names:
-                aab_targets = [
-                    os.path.join(base_dir, aab_name),
-                    os.path.join(base_dir, "apk", aab_name),
-                    os.path.join(base_dir, "public", aab_name),
-                    os.path.join(base_dir, "dist", aab_name),
-                ]
-                for target in aab_targets:
-                    os.makedirs(os.path.dirname(target), exist_ok=True)
-                    safe_copy(src_aab, target)
-                    print(f"Copied Play Store Bundle (AAB) to {target}")
-
-            # Create ZIP bundle with both AAB and APK for direct user download
-            if is_user_app:
-                zip_path = os.path.join(base_dir, "airaproperties-bundle.zip")
-                with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-                    zf.write(src_aab, arcname="airaproperties.in.aab")
-                    zf.write(src_aab, arcname="airaproperties-release.aab")
-                    zf.write(src_aab, arcname="AiraProperty-0.0.3.aab")
-                    zf.write(src_aab, arcname="AiraProperties-0.0.3.aab")
-                    zf.write(src_aab, arcname="AiraProperty-0.0.2.aab")
-                    if os.path.exists(src_apk):
-                        zf.write(src_apk, arcname="airaproperties.apk")
-                        zf.write(src_apk, arcname="AiraProperty-0.0.3.apk")
-                        zf.write(src_apk, arcname="AiraProperty-0.0.2.apk")
-                print(f"Created ZIP bundle at {zip_path}")
-                for zip_target in [
-                    os.path.join(base_dir, "public", "airaproperties-bundle.zip"),
-                    os.path.join(base_dir, "dist", "airaproperties-bundle.zip"),
-                    os.path.join(base_dir, "public", "airaproperties.zip"),
-                    os.path.join(base_dir, "dist", "airaproperties.zip"),
-                    os.path.join(base_dir, "public", "airaproperties-in.zip"),
-                    os.path.join(base_dir, "dist", "airaproperties-in.zip")
-                ]:
-                    safe_copy(zip_path, zip_target)
+            for folder in ["apk", "public", "dist"]:
+                target = os.path.join(base_dir, folder, aab_name)
+                safe_copy(src_aab, target)
+                print(f"Copied Play Store Bundle (AAB) to {target}")
+        else:
+            print("Warning: no AAB was produced for this app.")
             
         return True
     except Exception as e:
