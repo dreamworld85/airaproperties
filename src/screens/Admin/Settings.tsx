@@ -82,6 +82,20 @@ export default function Settings() {
   });
   const [saving, setSaving] = useState(false);
 
+  // Loading screen: background color (around the centered column) and its own logo
+  const [loadingBgColor, setLoadingBgColor] = useState<string>(() => {
+    const val = localStorage.getItem("sparrow_loading_bg_color");
+    return val && /^#[0-9a-fA-F]{6}$/.test(val) ? val : "#0D2436";
+  });
+  const [savedLoadingBgColor, setSavedLoadingBgColor] = useState<string>(loadingBgColor);
+  const [currentLoadingLogo, setCurrentLoadingLogo] = useState<string>(() => {
+    return localStorage.getItem("sparrow_loading_logo") || "";
+  });
+  const [loadingLogoFile, setLoadingLogoFile] = useState<File | null>(null);
+  const [loadingLogoPreview, setLoadingLogoPreview] = useState<string | null>(null);
+  const [savingLoadingColor, setSavingLoadingColor] = useState(false);
+  const [savingLoadingLogo, setSavingLoadingLogo] = useState(false);
+
   // Brand Logo States
   const [currentDesktopLogo, setCurrentDesktopLogo] = useState("/brand_logo-web.png");
   const [currentMobileLogo, setCurrentMobileLogo] = useState("/brand_logo.png");
@@ -695,6 +709,27 @@ export default function Settings() {
       })
       .catch(err => console.error("Error loading loading banner setting:", err));
 
+    // Fetch loading screen background color
+    fetch(`${getApiUrl()}/api/admin/settings/loading_bg_color`)
+      .then(res => res.json())
+      .then(data => {
+        const color = data && /^#[0-9a-fA-F]{6}$/.test(data.value || "") ? data.value : "#0D2436";
+        setLoadingBgColor(color);
+        setSavedLoadingBgColor(color);
+        localStorage.setItem("sparrow_loading_bg_color", color);
+      })
+      .catch(err => console.error("Error loading loading screen color:", err));
+
+    // Fetch loading screen logo
+    fetch(`${getApiUrl()}/api/admin/settings/loading_logo_url`)
+      .then(res => res.json())
+      .then(data => {
+        const logo = (data && data.value) || "";
+        setCurrentLoadingLogo(logo);
+        localStorage.setItem("sparrow_loading_logo", logo);
+      })
+      .catch(err => console.error("Error loading loading screen logo:", err));
+
     // Fetch default_trial_days_broker setting
     fetch(`${getApiUrl()}/api/admin/settings/default_trial_days_broker`)
       .then(res => res.json())
@@ -1012,6 +1047,62 @@ export default function Settings() {
       alert(err.message || "Failed to reset banner.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSaveLoadingBgColor(color: string) {
+    if (color !== "" && !/^#[0-9a-fA-F]{6}$/.test(color)) {
+      alert("Please enter a color like #0D2436.");
+      return;
+    }
+    setSavingLoadingColor(true);
+    try {
+      await adminApi.updateSetting("loading_bg_color", color);
+      const applied = color || "#0D2436";
+      setLoadingBgColor(applied);
+      setSavedLoadingBgColor(applied);
+      localStorage.setItem("sparrow_loading_bg_color", applied);
+      window.dispatchEvent(new Event("sparrow-banners-updated"));
+      alert(color ? "Loading screen color saved!" : "Loading screen color reset to default.");
+    } catch (err: any) {
+      alert(err.message || "Failed to save loading screen color.");
+    } finally {
+      setSavingLoadingColor(false);
+    }
+  }
+
+  async function handleUploadLoadingLogo() {
+    if (!loadingLogoFile) return;
+    setSavingLoadingLogo(true);
+    try {
+      const data = await adminApi.updateSetting("loading_logo_url", loadingLogoFile);
+      setCurrentLoadingLogo(data.value);
+      localStorage.setItem("sparrow_loading_logo", data.value);
+      window.dispatchEvent(new Event("sparrow-banners-updated"));
+      setLoadingLogoFile(null);
+      setLoadingLogoPreview(null);
+      alert("Loading screen logo updated!");
+    } catch (err: any) {
+      alert(err.message || "Failed to upload loading screen logo.");
+    } finally {
+      setSavingLoadingLogo(false);
+    }
+  }
+
+  async function handleResetLoadingLogo() {
+    setSavingLoadingLogo(true);
+    try {
+      await adminApi.updateSetting("loading_logo_url", "");
+      setCurrentLoadingLogo("");
+      localStorage.setItem("sparrow_loading_logo", "");
+      window.dispatchEvent(new Event("sparrow-banners-updated"));
+      setLoadingLogoFile(null);
+      setLoadingLogoPreview(null);
+      alert("Loading screen logo reset. The main site logo will be used.");
+    } catch (err: any) {
+      alert(err.message || "Failed to reset loading screen logo.");
+    } finally {
+      setSavingLoadingLogo(false);
     }
   }
 
@@ -2861,25 +2952,41 @@ export default function Settings() {
                 </div>
               </div>
             ) : (
-              <div className="relative h-40 rounded-2xl overflow-hidden border border-charcoal/10 shadow-inner bg-[#0D2436] mb-4 flex items-center justify-center">
-                {(previewUrl || currentLoadingBanner) ? (
-                  <img 
-                    src={mediaUrl(previewUrl || currentLoadingBanner)} 
-                    alt="Loading Preview" 
-                    className="w-full h-full object-cover brightness-[0.75]"
-                  />
-                ) : (
-                  <div className="text-white/60 text-xs font-semibold">Clean Default Theme (Solid #0D2436)</div>
-                )}
-                <div className="absolute inset-0 flex flex-col justify-end p-4 bg-gradient-to-t from-black/85 via-black/30 to-transparent">
-                  <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Preview: Loading Screen BG</span>
-                  <h2 className="font-display font-extrabold text-sm text-white leading-tight mt-0.5">
-                    AIRA PROPERTIES
-                  </h2>
-                  <p className="text-white/80 text-[10px] mt-0.5 leading-none">
-                    Loading your professional workspace...
-                  </p>
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold text-slate uppercase tracking-wider">
+                    Preview: Login Loading Screen
+                  </span>
+                  <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                    Live preview
+                  </span>
                 </div>
+                {/* Mirrors the real loading screen: color on the sides, BG image in the center column, logo on top */}
+                <div
+                  className="relative h-44 rounded-2xl overflow-hidden border border-charcoal/10 shadow-inner flex justify-center"
+                  style={{ backgroundColor: loadingBgColor }}
+                >
+                  <div
+                    className="h-full w-[38%] min-w-[120px] flex items-center justify-center shadow-2xl"
+                    style={
+                      (previewUrl || currentLoadingBanner)
+                        ? { backgroundImage: `url(${previewUrl || mediaUrl(currentLoadingBanner)})`, backgroundSize: "cover", backgroundPosition: "center" }
+                        : undefined
+                    }
+                  >
+                    <img
+                      src={loadingLogoPreview || (currentLoadingLogo ? mediaUrl(currentLoadingLogo) : mediaUrl(currentDesktopLogo))}
+                      alt="Loading logo preview"
+                      className="w-3/4 max-h-16 object-contain select-none"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = "/brand_logo.png";
+                      }}
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate mt-1.5">
+                  Sides: background color. Center column: Loading BG image (if set). On phones the center column fills the screen.
+                </p>
               </div>
             )}
 
@@ -2923,6 +3030,102 @@ export default function Settings() {
                 <span>Reset Default</span>
               </button>
             </div>
+
+            {selectedSetting === "loading_banner_url" && (
+              <div className="flex flex-col gap-5 mt-6 pt-5 border-t border-charcoal/10">
+                {/* Loading screen background color */}
+                <div className="flex flex-col gap-2.5">
+                  <div>
+                    <label htmlFor="loading-bg-color" className="text-xs font-bold text-ink">Background Color</label>
+                    <p className="text-[10px] text-slate mt-0.5">Fills the screen around the center column (and the whole screen if no Loading BG image is set).</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="loading-bg-color"
+                      type="color"
+                      value={loadingBgColor}
+                      onChange={(e) => setLoadingBgColor(e.target.value.toUpperCase())}
+                      className="h-11 w-14 shrink-0 cursor-pointer rounded-xl border border-charcoal/10 bg-white p-1"
+                      aria-label="Pick loading screen background color"
+                    />
+                    <input
+                      type="text"
+                      value={loadingBgColor}
+                      onChange={(e) => {
+                        const v = e.target.value.trim();
+                        setLoadingBgColor(v.startsWith("#") ? v : `#${v}`);
+                      }}
+                      maxLength={7}
+                      spellCheck={false}
+                      className="w-28 text-xs font-mono text-ink border border-charcoal/10 px-3 py-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-emerald-500"
+                      aria-label="Loading screen background color hex value"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleSaveLoadingBgColor(loadingBgColor)}
+                      disabled={savingLoadingColor || loadingBgColor === savedLoadingBgColor || !/^#[0-9a-fA-F]{6}$/.test(loadingBgColor)}
+                      className="flex-1 py-3 bg-emerald-600 text-white hover:bg-emerald-500 rounded-2xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      {savingLoadingColor ? "Saving..." : "Save Color"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSaveLoadingBgColor("")}
+                      disabled={savingLoadingColor}
+                      title="Reset to the default navy (#0D2436)"
+                      className="px-4 py-3 bg-slate-100 text-charcoal hover:bg-slate-200 rounded-2xl text-xs font-bold font-display transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <RotateCcw size={14} />
+                      <span>Reset</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Loading screen logo */}
+                <div className="flex flex-col gap-2.5">
+                  <div>
+                    <label htmlFor="loading-logo-file" className="text-xs font-bold text-ink">Loading Screen Logo</label>
+                    <p className="text-[10px] text-slate mt-0.5">
+                      {currentLoadingLogo ? "A custom logo is set for the loading screen." : "Not set — the main site logo is shown."} PNG or SVG with a transparent background works best.
+                    </p>
+                  </div>
+                  <input
+                    id="loading-logo-file"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setLoadingLogoFile(file);
+                        setLoadingLogoPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                    className="text-xs text-slate border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none w-full"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleUploadLoadingLogo}
+                      disabled={savingLoadingLogo || !loadingLogoFile}
+                      className="flex-1 py-3.5 bg-emerald-600 text-white hover:bg-emerald-500 rounded-2xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Upload size={14} />
+                      <span>{savingLoadingLogo ? "Saving..." : "Update Loading Logo"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResetLoadingLogo}
+                      disabled={savingLoadingLogo || (!currentLoadingLogo && !loadingLogoFile)}
+                      title="Use the main site logo on the loading screen"
+                      className="px-4 py-3.5 bg-slate-100 text-charcoal hover:bg-slate-200 rounded-2xl text-xs font-bold font-display transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <RotateCcw size={14} />
+                      <span>Reset</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

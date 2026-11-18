@@ -169,7 +169,13 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, token, user } = useAuth();
-  const { activeLogoUrl, loadingBannerUrl: brandLoadingBanner, loginBannerUrl: brandLoginBanner } = useBrand();
+  const {
+    activeLogoUrl,
+    loadingBannerUrl: brandLoadingBanner,
+    loginBannerUrl: brandLoginBanner,
+    loadingBgColor,
+    loadingLogoUrl,
+  } = useBrand();
 
   const [mode, setMode] = useState<"loading" | "login" | "login_otp" | "register" | "register_otp" | "forgot_password" | "reset_password">(() => {
     if (typeof window !== "undefined" && (localStorage.getItem("pending_deep_link") || (location.state as any)?.from)) {
@@ -685,15 +691,18 @@ export default function Login() {
 
   if (mode === "loading") {
     return (
-      <div className="min-h-screen bg-[#0D2436] flex items-center justify-center p-0 select-none overflow-x-hidden relative">
-        <div 
+      <div
+        style={{ backgroundColor: loadingBgColor }}
+        className="min-h-screen flex items-center justify-center p-0 select-none overflow-x-hidden relative"
+      >
+        <div
           style={loadingBgUrl ? { backgroundImage: `url(${loadingBgUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
           className="w-full max-w-md min-h-screen flex flex-col justify-center relative overflow-hidden font-display shadow-2xl"
         >
           {/* Central Logo Panel */}
           <div className="flex-1 flex flex-col items-center justify-center text-center animate-fade-in px-8 mt-12 select-none relative z-10">
-            <img 
-              src={activeLogoUrl} 
+            <img
+              src={loadingLogoUrl || activeLogoUrl}
               alt="Logo" 
               className="w-56 h-auto object-contain select-none animate-pulse brightness-110" 
               onError={(e) => {

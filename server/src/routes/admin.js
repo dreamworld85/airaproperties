@@ -348,6 +348,14 @@ router.put("/settings/:key", upload.any(), async (req, res) => {
       return res.status(400).json({ message: "Setting value is required." });
     }
 
+    // Loading-screen background color: "#RRGGBB", or "" to reset to the default.
+    if (key === "loading_bg_color") {
+      value = String(value).trim();
+      if (value !== "" && !/^#[0-9a-fA-F]{6}$/.test(value)) {
+        return res.status(400).json({ message: "Color must be a hex value like #0D2436." });
+      }
+    }
+
     await pool.query(
       "INSERT INTO settings (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = ?",
       [key, value, value]

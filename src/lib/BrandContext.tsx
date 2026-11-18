@@ -9,12 +9,19 @@ export const DEFAULT_WELCOME_BANNER = "/kerala_house_banner.jpg";
 export const DEFAULT_HOME_HERO_BANNER = "/images/home-hero.png";
 export const DEFAULT_LOGIN_BANNER = "/kerala_house_login.jpg";
 export const DEFAULT_LOADING_BANNER = "";
+export const DEFAULT_LOADING_BG_COLOR = "#0D2436";
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+const cleanColor = (val: string | null | undefined) => (val && HEX_COLOR.test(val) ? val : DEFAULT_LOADING_BG_COLOR);
 
 interface BrandContextType {
   desktopLogoUrl: string;
   mobileLogoUrl: string;
   activeLogoUrl: string;
   loadingBannerUrl: string;
+  /** Loading screen: color around the centered column. */
+  loadingBgColor: string;
+  /** Loading screen logo; falls back to activeLogoUrl when not set. */
+  loadingLogoUrl: string;
   loginBannerUrl: string;
   welcomeBannerUrl: string;
   homeHeroBannerUrl: string;
@@ -30,6 +37,8 @@ const BrandContext = createContext<BrandContextType>({
   mobileLogoUrl: DEFAULT_MOBILE_LOGO,
   activeLogoUrl: DEFAULT_DESKTOP_LOGO,
   loadingBannerUrl: DEFAULT_LOADING_BANNER,
+  loadingBgColor: DEFAULT_LOADING_BG_COLOR,
+  loadingLogoUrl: DEFAULT_DESKTOP_LOGO,
   loginBannerUrl: DEFAULT_LOGIN_BANNER,
   welcomeBannerUrl: DEFAULT_WELCOME_BANNER,
   homeHeroBannerUrl: DEFAULT_HOME_HERO_BANNER,
@@ -51,6 +60,12 @@ export function BrandProvider({ children }: { children: ReactNode }) {
     const val = localStorage.getItem("sparrow_loading_banner");
     if (!val || val === "/app_background.jpg") return DEFAULT_LOADING_BANNER;
     return val;
+  });
+  const [loadingBgColor, setLoadingBgColor] = useState<string>(() => {
+    return cleanColor(localStorage.getItem("sparrow_loading_bg_color"));
+  });
+  const [loadingLogo, setLoadingLogo] = useState<string>(() => {
+    return localStorage.getItem("sparrow_loading_logo") || "";
   });
   const [loginBanner, setLoginBanner] = useState<string>(() => {
     const val = localStorage.getItem("sparrow_login_banner");
@@ -99,6 +114,16 @@ export function BrandProvider({ children }: { children: ReactNode }) {
         if (data.loading_banner_url && data.loading_banner_url !== "/app_background.jpg") {
           setLoadingBanner(data.loading_banner_url);
           localStorage.setItem("sparrow_loading_banner", data.loading_banner_url);
+        }
+        if (data.loading_bg_color !== undefined) {
+          const color = cleanColor(data.loading_bg_color);
+          setLoadingBgColor(color);
+          localStorage.setItem("sparrow_loading_bg_color", color);
+        }
+        if (data.loading_logo_url !== undefined) {
+          const logo = data.loading_logo_url || "";
+          setLoadingLogo(logo);
+          localStorage.setItem("sparrow_loading_logo", logo);
         }
         if (data.login_banner_url) {
           setLoginBanner(data.login_banner_url);
@@ -177,6 +202,7 @@ export function BrandProvider({ children }: { children: ReactNode }) {
   const resolvedMobile = mobileLogo ? mediaUrl(mobileLogo) : DEFAULT_MOBILE_LOGO;
   const activeLogoUrl = isDesktop ? resolvedDesktop : resolvedMobile;
   const resolvedLoadingBanner = loadingBanner ? mediaUrl(loadingBanner) : "";
+  const resolvedLoadingLogo = loadingLogo ? mediaUrl(loadingLogo) : activeLogoUrl;
   const resolvedLoginBanner = loginBanner ? mediaUrl(loginBanner) : DEFAULT_LOGIN_BANNER;
   const resolvedWelcomeBanner = welcomeBanner ? mediaUrl(welcomeBanner) : DEFAULT_WELCOME_BANNER;
   const resolvedHomeHeroBanner = homeHeroBanner ? mediaUrl(homeHeroBanner) : DEFAULT_HOME_HERO_BANNER;
@@ -188,6 +214,8 @@ export function BrandProvider({ children }: { children: ReactNode }) {
         mobileLogoUrl: resolvedMobile,
         activeLogoUrl,
         loadingBannerUrl: resolvedLoadingBanner,
+        loadingBgColor,
+        loadingLogoUrl: resolvedLoadingLogo,
         loginBannerUrl: resolvedLoginBanner,
         welcomeBannerUrl: resolvedWelcomeBanner,
         homeHeroBannerUrl: resolvedHomeHeroBanner,
