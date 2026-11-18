@@ -63,7 +63,7 @@ export default function Settings() {
       setActiveTab("menu");
     }
   }, [location.search]);
-  const [selectedSetting, setSelectedSetting] = useState<"home_hero_banner_url" | "welcome_banner_url" | "login_banner_url" | "loading_banner_url">("home_hero_banner_url");
+  const [selectedSetting, setSelectedSetting] = useState<"home_hero_banner_url" | "welcome_banner_url" | "login_banner_url" | "loading_banner_url">("loading_banner_url");
   const [currentHomeHeroBanner, setCurrentHomeHeroBanner] = useState<string>(() => {
     return localStorage.getItem("sparrow_home_hero_banner") || "/images/home-hero.png";
   });
@@ -1042,7 +1042,7 @@ export default function Settings() {
       window.dispatchEvent(new Event("sparrow-banners-updated"));
       setSelectedFile(null);
       setPreviewUrl(null);
-      alert("Banner reset to default asset successfully!");
+      alert(selectedSetting === "loading_banner_url" ? "Loading background image removed successfully!" : "Banner reset to default asset successfully!");
     } catch (err: any) {
       alert(err.message || "Failed to reset banner.");
     } finally {
@@ -2824,176 +2824,103 @@ export default function Settings() {
         <div className="bg-white border border-charcoal/5 rounded-3xl p-5 shadow-sm text-left">
           <div className="mb-4">
             <h2 className="font-display font-extrabold text-base text-black">Site Graphic Assets</h2>
-            <p className="text-[10px] text-slate mt-0.5">Customize website background graphics and banners.</p>
+            <p className="text-[10px] text-slate mt-0.5">Customize website background graphics and loading screen.</p>
           </div>
 
           <div>
-            <span className="text-[10px] font-bold text-slate uppercase tracking-wider block mb-2.5">
-              Choose Banner Asset to Customize
-            </span>
-
-            <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl mb-4">
-               <button 
-                 onClick={() => {
-                   setSelectedSetting("welcome_banner_url");
-                   setSelectedFile(null);
-                   setPreviewUrl(null);
-                 }}
-                 className={`flex-1 py-2 text-center text-[10px] font-bold rounded-xl transition-all cursor-pointer ${selectedSetting === "welcome_banner_url" ? "bg-white text-ink shadow-sm" : "text-slate hover:text-ink"}`}
-               >
-                 Home Banner
-               </button>
-               <button 
-                 onClick={() => {
-                   setSelectedSetting("login_banner_url");
-                   setSelectedFile(null);
-                   setPreviewUrl(null);
-                 }}
-                 className={`flex-1 py-2 text-center text-[10px] font-bold rounded-xl transition-all cursor-pointer ${selectedSetting === "login_banner_url" ? "bg-white text-ink shadow-sm" : "text-slate hover:text-ink"}`}
-               >
-                 Login Banner
-               </button>
-               <button 
-                 onClick={() => {
-                   setSelectedSetting("loading_banner_url");
-                   setSelectedFile(null);
-                   setPreviewUrl(null);
-                 }}
-                 className={`flex-1 py-2 text-center text-[10px] font-bold rounded-xl transition-all cursor-pointer ${selectedSetting === "loading_banner_url" ? "bg-white text-ink shadow-sm" : "text-slate hover:text-ink"}`}
-               >
-                 Loading BG
-               </button>
+            {/* Live Loading Screen Preview */}
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold text-slate uppercase tracking-wider">
+                  Loading Screen Preview
+                </span>
+                <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                  Live preview
+                </span>
+              </div>
+              {/* Mirrors the real loading screen: color on sides, uploaded BG image in center if set, logo on top */}
+              <div
+                className="relative h-48 rounded-2xl overflow-hidden border border-charcoal/10 shadow-inner flex justify-center items-center"
+                style={{ backgroundColor: loadingBgColor }}
+              >
+                <div
+                  className="h-full w-full max-w-sm flex items-center justify-center relative"
+                  style={
+                    (previewUrl || currentLoadingBanner)
+                      ? { backgroundImage: `url(${previewUrl || mediaUrl(currentLoadingBanner)})`, backgroundSize: "cover", backgroundPosition: "center" }
+                      : undefined
+                  }
+                >
+                  <img
+                    src={loadingLogoPreview || (currentLoadingLogo ? mediaUrl(currentLoadingLogo) : (currentDesktopLogo ? mediaUrl(currentDesktopLogo) : "/brand_logo.png"))}
+                    alt="Loading logo preview"
+                    className="w-48 max-h-16 object-contain select-none animate-pulse"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = "/brand_logo.png";
+                    }}
+                  />
+                </div>
+              </div>
+              <p className="text-[10px] text-slate mt-1.5">
+                Background color is active. Background image appears only if uploaded.
+              </p>
             </div>
 
-            {selectedSetting === "home_hero_banner_url" ? (
-              <div className="mb-4">
-                {/* Enable / Disable Banner Toggle */}
-                <div className="flex items-center justify-between bg-slate-50 border border-charcoal/5 p-3.5 rounded-2xl mb-4">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-xs font-bold text-ink">Desktop Hero Banner Visibility</span>
-                    <p className="text-[10px] text-slate">
-                      {enableHomeHeroBanner
-                        ? "Banner is currently active and visible on the desktop homepage."
-                        : "Banner is currently disabled and hidden from the desktop homepage."}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleToggleHomeHeroBanner}
-                    disabled={saving}
-                    className={`px-4 py-2 rounded-xl text-[10px] font-bold font-display cursor-pointer transition-all ${
-                      enableHomeHeroBanner
-                        ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
-                        : "bg-rose-100 text-rose-700 hover:bg-rose-200"
-                    }`}
-                  >
-                    {enableHomeHeroBanner ? "Active (Visible)" : "Disabled (Hidden)"}
-                  </button>
-                </div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold text-slate uppercase tracking-wider">
-                    Desktop Hero Banner Preview
-                  </span>
-                  <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">
-                    Below &lt;DesktopHeader /&gt; on Home Page
-                  </span>
-                </div>
-                <div className="w-full overflow-hidden rounded-2xl border border-gray-200/80 shadow-xs bg-white p-2">
-                  <div className="w-full overflow-hidden rounded-xl bg-[#FAF8F3] border border-gray-200/60 relative">
-                    <img 
-                      src={mediaUrl(previewUrl || currentHomeHeroBanner)} 
-                      alt="Desktop Hero Banner Preview" 
-                      className="w-full h-auto max-h-52 object-cover select-none"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = "/images/home-hero.png";
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ) : selectedSetting === "welcome_banner_url" ? (
-              <div className="relative h-40 rounded-2xl overflow-hidden border border-charcoal/10 shadow-inner bg-slate-100 mb-4">
-                <img 
-                  src={mediaUrl(previewUrl || currentBanner)} 
-                  alt="Banner Preview" 
-                  className="w-full h-full object-cover brightness-[0.75]"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = "/kerala_house_banner.jpg";
-                  }}
-                />
-                <div className="absolute inset-0 flex flex-col justify-end p-4 bg-gradient-to-t from-black/85 via-black/30 to-transparent">
-                  <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Preview: Homepage Banner</span>
-                  <h2 className="font-display font-extrabold text-sm text-white leading-tight mt-0.5">
-                    Find homes, villas, lands & escapes
-                  </h2>
-                  <p className="text-white/80 text-[10px] mt-0.5 leading-none">
-                    Discover unique properties that match your lifestyle.
-                  </p>
-                </div>
-              </div>
-            ) : selectedSetting === "login_banner_url" ? (
-              <div className="relative h-40 rounded-2xl overflow-hidden border border-charcoal/10 shadow-inner bg-slate-100 mb-4">
-                <img 
-                  src={mediaUrl(previewUrl || currentLoginBanner)} 
-                  alt="Login Preview" 
-                  className="w-full h-full object-cover brightness-[0.75]"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = "/kerala_house_login.jpg";
-                  }}
-                />
-                <div className="absolute inset-0 flex flex-col justify-end p-4 bg-gradient-to-t from-black/85 via-black/30 to-transparent">
-                  <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Preview: Login Banner</span>
-                  <h2 className="font-display font-extrabold text-sm text-white leading-tight mt-0.5">
-                    PERFECT STAY
-                  </h2>
-                  <p className="text-white/80 text-[10px] mt-0.5 leading-none">
-                    Find homes, villas, lands and escapes that match your lifestyle.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold text-slate uppercase tracking-wider">
-                    Preview: Login Loading Screen
-                  </span>
-                  <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">
-                    Live preview
-                  </span>
-                </div>
-                {/* Mirrors the real loading screen: color on the sides, BG image in the center column, logo on top */}
-                <div
-                  className="relative h-44 rounded-2xl overflow-hidden border border-charcoal/10 shadow-inner flex justify-center"
-                  style={{ backgroundColor: loadingBgColor }}
-                >
-                  <div
-                    className="h-full w-[38%] min-w-[120px] flex items-center justify-center shadow-2xl"
-                    style={
-                      (previewUrl || currentLoadingBanner)
-                        ? { backgroundImage: `url(${previewUrl || mediaUrl(currentLoadingBanner)})`, backgroundSize: "cover", backgroundPosition: "center" }
-                        : undefined
-                    }
-                  >
-                    <img
-                      src={loadingLogoPreview || (currentLoadingLogo ? mediaUrl(currentLoadingLogo) : mediaUrl(currentDesktopLogo))}
-                      alt="Loading logo preview"
-                      className="w-3/4 max-h-16 object-contain select-none"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = "/brand_logo.png";
-                      }}
-                    />
-                  </div>
-                </div>
-                <p className="text-[10px] text-slate mt-1.5">
-                  Sides: background color. Center column: Loading BG image (if set). On phones the center column fills the screen.
-                </p>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-2.5">
+            {/* 1. Loading screen background color */}
+            <div className="flex flex-col gap-2.5 pb-5 border-b border-charcoal/10">
               <div>
-                <label className="text-xs font-bold text-ink">Choose New Image File</label>
-                <p className="text-[10px] text-slate mt-0.5">Supports SVG, PNG, JPG, JPEG, WebP or any image format.</p>
+                <label htmlFor="loading-bg-color" className="text-xs font-bold text-ink">Loading Screen Background Color</label>
+                <p className="text-[10px] text-slate mt-0.5">Fills the screen (and the whole screen if no Loading BG image is set).</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="loading-bg-color"
+                  type="color"
+                  value={loadingBgColor}
+                  onChange={(e) => setLoadingBgColor(e.target.value.toUpperCase())}
+                  className="h-11 w-14 shrink-0 cursor-pointer rounded-xl border border-charcoal/10 bg-white p-1"
+                  aria-label="Pick loading screen background color"
+                />
+                <input
+                  type="text"
+                  value={loadingBgColor}
+                  onChange={(e) => {
+                    const v = e.target.value.trim();
+                    setLoadingBgColor(v.startsWith("#") ? v : `#${v}`);
+                  }}
+                  maxLength={7}
+                  spellCheck={false}
+                  className="w-28 text-xs font-mono text-ink border border-charcoal/10 px-3 py-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-emerald-500"
+                  aria-label="Loading screen background color hex value"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleSaveLoadingBgColor(loadingBgColor)}
+                  disabled={savingLoadingColor || loadingBgColor === savedLoadingBgColor || !/^#[0-9a-fA-F]{6}$/.test(loadingBgColor)}
+                  className="flex-1 py-3 bg-emerald-600 text-white hover:bg-emerald-500 rounded-2xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {savingLoadingColor ? "Saving..." : "Save Color"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaveLoadingBgColor("")}
+                  disabled={savingLoadingColor}
+                  title="Reset to default navy (#0D2436)"
+                  className="px-4 py-3 bg-slate-100 text-charcoal hover:bg-slate-200 rounded-2xl text-xs font-bold font-display transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RotateCcw size={14} />
+                  <span>Reset</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Loading Screen Background Image */}
+            <div className="flex flex-col gap-2.5 py-5 border-b border-charcoal/10">
+              <div>
+                <label className="text-xs font-bold text-ink">Loading BG Image (Optional)</label>
+                <p className="text-[10px] text-slate mt-0.5">
+                  {currentLoadingBanner ? "A custom background image is currently active." : "No background image is set. Only background color will be shown."} Supports SVG, PNG, JPG, JPEG, WebP.
+                </p>
               </div>
               <input 
                 type="file" 
@@ -3007,125 +2934,73 @@ export default function Settings() {
                 }}
                 className="text-xs text-slate border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none w-full"
               />
-            </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleUploadBanner}
+                  disabled={saving || !selectedFile}
+                  className="flex-1 py-3.5 bg-emerald-600 text-white hover:bg-emerald-500 rounded-2xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer text-center"
+                >
+                  <Upload size={14} />
+                  <span>{saving ? "Saving..." : "Update Loading BG"}</span>
+                </button>
 
-            <div className="flex gap-2 mt-5">
-              <button
-                onClick={handleUploadBanner}
-                disabled={saving || !selectedFile}
-                className="flex-1 py-3.5 bg-emerald-600 text-white hover:bg-emerald-500 rounded-2xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer text-center"
-              >
-                <Upload size={14} />
-                <span>{saving ? "Saving..." : "Update Image Asset"}</span>
-              </button>
-
-              <button
-                onClick={handleResetBanner}
-                disabled={saving}
-                type="button"
-                title="Reset this banner to default system asset"
-                className="px-4 py-3.5 bg-slate-100 text-charcoal hover:bg-slate-200 rounded-2xl text-xs font-bold font-display transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <RotateCcw size={14} />
-                <span>Reset Default</span>
-              </button>
-            </div>
-
-            {selectedSetting === "loading_banner_url" && (
-              <div className="flex flex-col gap-5 mt-6 pt-5 border-t border-charcoal/10">
-                {/* Loading screen background color */}
-                <div className="flex flex-col gap-2.5">
-                  <div>
-                    <label htmlFor="loading-bg-color" className="text-xs font-bold text-ink">Background Color</label>
-                    <p className="text-[10px] text-slate mt-0.5">Fills the screen around the center column (and the whole screen if no Loading BG image is set).</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="loading-bg-color"
-                      type="color"
-                      value={loadingBgColor}
-                      onChange={(e) => setLoadingBgColor(e.target.value.toUpperCase())}
-                      className="h-11 w-14 shrink-0 cursor-pointer rounded-xl border border-charcoal/10 bg-white p-1"
-                      aria-label="Pick loading screen background color"
-                    />
-                    <input
-                      type="text"
-                      value={loadingBgColor}
-                      onChange={(e) => {
-                        const v = e.target.value.trim();
-                        setLoadingBgColor(v.startsWith("#") ? v : `#${v}`);
-                      }}
-                      maxLength={7}
-                      spellCheck={false}
-                      className="w-28 text-xs font-mono text-ink border border-charcoal/10 px-3 py-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-emerald-500"
-                      aria-label="Loading screen background color hex value"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleSaveLoadingBgColor(loadingBgColor)}
-                      disabled={savingLoadingColor || loadingBgColor === savedLoadingBgColor || !/^#[0-9a-fA-F]{6}$/.test(loadingBgColor)}
-                      className="flex-1 py-3 bg-emerald-600 text-white hover:bg-emerald-500 rounded-2xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed cursor-pointer"
-                    >
-                      {savingLoadingColor ? "Saving..." : "Save Color"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSaveLoadingBgColor("")}
-                      disabled={savingLoadingColor}
-                      title="Reset to the default navy (#0D2436)"
-                      className="px-4 py-3 bg-slate-100 text-charcoal hover:bg-slate-200 rounded-2xl text-xs font-bold font-display transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <RotateCcw size={14} />
-                      <span>Reset</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Loading screen logo */}
-                <div className="flex flex-col gap-2.5">
-                  <div>
-                    <label htmlFor="loading-logo-file" className="text-xs font-bold text-ink">Loading Screen Logo</label>
-                    <p className="text-[10px] text-slate mt-0.5">
-                      {currentLoadingLogo ? "A custom logo is set for the loading screen." : "Not set — the main site logo is shown."} PNG or SVG with a transparent background works best.
-                    </p>
-                  </div>
-                  <input
-                    id="loading-logo-file"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setLoadingLogoFile(file);
-                        setLoadingLogoPreview(URL.createObjectURL(file));
-                      }
-                    }}
-                    className="text-xs text-slate border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none w-full"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleUploadLoadingLogo}
-                      disabled={savingLoadingLogo || !loadingLogoFile}
-                      className="flex-1 py-3.5 bg-emerald-600 text-white hover:bg-emerald-500 rounded-2xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <Upload size={14} />
-                      <span>{savingLoadingLogo ? "Saving..." : "Update Loading Logo"}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleResetLoadingLogo}
-                      disabled={savingLoadingLogo || (!currentLoadingLogo && !loadingLogoFile)}
-                      title="Use the main site logo on the loading screen"
-                      className="px-4 py-3.5 bg-slate-100 text-charcoal hover:bg-slate-200 rounded-2xl text-xs font-bold font-display transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <RotateCcw size={14} />
-                      <span>Reset</span>
-                    </button>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleResetBanner}
+                  disabled={saving || (!currentLoadingBanner && !selectedFile)}
+                  title="Remove loading background image"
+                  className="px-4 py-3.5 bg-slate-100 text-charcoal hover:bg-slate-200 rounded-2xl text-xs font-bold font-display transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <RotateCcw size={14} />
+                  <span>Remove Image</span>
+                </button>
               </div>
-            )}
+            </div>
+
+            {/* 3. Loading Screen Logo */}
+            <div className="flex flex-col gap-2.5 pt-5">
+              <div>
+                <label htmlFor="loading-logo-file" className="text-xs font-bold text-ink">Loading Screen Logo</label>
+                <p className="text-[10px] text-slate mt-0.5">
+                  {currentLoadingLogo ? "A custom logo is set for the loading screen." : "Not set — the main site logo is shown."} PNG or SVG with transparent background works best.
+                </p>
+              </div>
+              <input
+                id="loading-logo-file"
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setLoadingLogoFile(file);
+                    setLoadingLogoPreview(URL.createObjectURL(file));
+                  }
+                }}
+                className="text-xs text-slate border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none w-full"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleUploadLoadingLogo}
+                  disabled={savingLoadingLogo || !loadingLogoFile}
+                  className="flex-1 py-3.5 bg-emerald-600 text-white hover:bg-emerald-500 rounded-2xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Upload size={14} />
+                  <span>{savingLoadingLogo ? "Saving..." : "Update Loading Logo"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetLoadingLogo}
+                  disabled={savingLoadingLogo || (!currentLoadingLogo && !loadingLogoFile)}
+                  title="Use the main site logo on the loading screen"
+                  className="px-4 py-3.5 bg-slate-100 text-charcoal hover:bg-slate-200 rounded-2xl text-xs font-bold font-display transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RotateCcw size={14} />
+                  <span>Reset Logo</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -3136,25 +3011,50 @@ export default function Settings() {
             <p className="text-[10px] text-slate mt-0.5">Toggle system features on or off dynamically.</p>
           </div>
 
-          <div className="flex items-center justify-between bg-slate-50 border border-charcoal/5 p-4 rounded-2xl">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs font-bold text-ink">Schedule Tour / Visit Option</span>
-              <p className="text-[9.5px] text-slate leading-normal max-w-[340px]">
-                When disabled, the "Schedule Visit" calendar booking option will be completely hidden from the public property details screen.
-              </p>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between bg-slate-50 border border-charcoal/5 p-4 rounded-2xl">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs font-bold text-ink">Desktop Hero Banner Visibility</span>
+                <p className="text-[9.5px] text-slate leading-normal max-w-[340px]">
+                  {enableHomeHeroBanner
+                    ? "Hero banner is currently visible on the desktop homepage."
+                    : "Hero banner is currently hidden on the desktop homepage."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleHomeHeroBanner}
+                disabled={saving}
+                className={`px-4 py-2 rounded-xl text-[10px] font-bold font-display cursor-pointer transition-all ${
+                  enableHomeHeroBanner
+                    ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                    : "bg-slate-100 text-slate hover:bg-slate-200"
+                }`}
+              >
+                {enableHomeHeroBanner ? "Enabled" : "Disabled"}
+              </button>
             </div>
-            
-            <button
-              onClick={handleToggleScheduleVisit}
-              disabled={saving}
-              className={`px-4 py-2 rounded-xl text-[10px] font-bold font-display cursor-pointer transition-all ${
-                enableScheduleVisit 
-                  ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" 
-                  : "bg-slate-100 text-slate hover:bg-slate-200"
-              }`}
-            >
-              {enableScheduleVisit ? "Enabled" : "Disabled"}
-            </button>
+
+            <div className="flex items-center justify-between bg-slate-50 border border-charcoal/5 p-4 rounded-2xl">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs font-bold text-ink">Schedule Tour / Visit Option</span>
+                <p className="text-[9.5px] text-slate leading-normal max-w-[340px]">
+                  When disabled, the "Schedule Visit" calendar booking option will be completely hidden from the public property details screen.
+                </p>
+              </div>
+              
+              <button
+                onClick={handleToggleScheduleVisit}
+                disabled={saving}
+                className={`px-4 py-2 rounded-xl text-[10px] font-bold font-display cursor-pointer transition-all ${
+                  enableScheduleVisit 
+                    ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" 
+                    : "bg-slate-100 text-slate hover:bg-slate-200"
+                }`}
+              >
+                {enableScheduleVisit ? "Enabled" : "Disabled"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
