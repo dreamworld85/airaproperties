@@ -259,37 +259,66 @@ export default function PushNotificationModal({ forceOpen = false, onClose }: Pu
           )}
 
           {status === "error" && errorMessage && (
-            <div className="w-full mt-3 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-center justify-center gap-2 animate-in fade-in">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-              <span className="truncate">{errorMessage}</span>
+            <div className="w-full mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs text-left animate-in fade-in space-y-1.5">
+              <div className="flex items-center gap-2 font-semibold text-rose-700">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{errorMessage.toLowerCase().includes("denied") ? "Notifications are Blocked in Browser" : "Subscription Failed"}</span>
+              </div>
+              {errorMessage.toLowerCase().includes("denied") ? (
+                <div className="text-[11px] text-rose-800 leading-relaxed space-y-1">
+                  <p>
+                    Your browser has notifications set to <strong>Blocked</strong> for this site.
+                  </p>
+                  <div className="p-2 bg-white/80 rounded-lg border border-rose-200/80 font-normal">
+                    <strong>How to unblock:</strong>
+                    <ol className="list-decimal list-inside mt-0.5 space-y-0.5 text-gray-700">
+                      <li>Click the <strong>lock or settings icon (🔒)</strong> in your address bar</li>
+                      <li>Change <strong>Notifications</strong> to <strong>Allow</strong></li>
+                      <li>Click <strong>Reload Page</strong> below</li>
+                    </ol>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[11px] text-rose-800">{errorMessage}</p>
+              )}
             </div>
           )}
 
           {/* Action Buttons */}
           <div className="w-full mt-5 flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={handleEnable}
-              disabled={loading || status === "success"}
-              className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold text-sm rounded-xl shadow-md shadow-emerald-600/25 transition active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Connecting Device...</span>
-                </>
-              ) : status === "success" ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Subscribed!</span>
-                </>
-              ) : (
-                <>
-                  <Bell className="w-4 h-4" />
-                  <span>Enable Push Notifications</span>
-                </>
-              )}
-            </button>
+            {status === "error" && errorMessage?.toLowerCase().includes("denied") ? (
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold text-sm rounded-xl shadow-md shadow-emerald-600/25 transition active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+              >
+                Reload Page After Allowing
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleEnable}
+                disabled={loading || status === "success"}
+                className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold text-sm rounded-xl shadow-md shadow-emerald-600/25 transition active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Connecting Device...</span>
+                  </>
+                ) : status === "success" ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Subscribed!</span>
+                  </>
+                ) : (
+                  <>
+                    <Bell className="w-4 h-4" />
+                    <span>Enable Push Notifications</span>
+                  </>
+                )}
+              </button>
+            )}
 
             <button
               type="button"
