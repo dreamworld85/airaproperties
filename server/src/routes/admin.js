@@ -3,6 +3,18 @@ import { pool } from "../db.js";
 import { upload, optimizeImages } from "../middleware/upload.js";
 import { deleteUploadedFile } from "../utils/fileHelper.js";
 import { deleteUserCompletely } from "../utils/userCleanup.js";
+import {
+  requireAdmin,
+  isAdminRequest,
+  isSecretSettingKey,
+  settingsForRequest,
+  isAdminAuthConfigured,
+  verifyAdminCredentials,
+  issueAdminToken,
+  loginRetryAfter,
+  recordFailedLogin,
+  clearFailedLogins,
+} from "../middleware/adminAuth.js";
 import { 
   sendNotificationToTopic, 
   sendAdminPushNotification,
@@ -18,25 +30,31 @@ import { spawn } from "child_process";
 
 const router = Router();
 
-// Middleware to verify admin login session
-function checkAdminSession(req, res, next) {
-  // Simple session check for admin.
-  // In a real application we would use signed cookies or JWT,
-  // but for local sandbox verification we can check headers or simple auth query/header
-  const isAdmin = req.headers["x-admin-auth"] === "KeralaRealtyAdminSecretToken2026";
-  if (!isAdmin) {
-    return res.status(401).json({ message: "Unauthorized admin access." });
-  }
-  next();
-}
+// Admin routes are protected by the shared signed-token check (middleware/adminAuth.js).
+const checkAdminSession = requireAdmin;
 
 // POST /api/admin/login
-router.post("/login", (req, res) => {
-  const { username, password } = req.body;
-  if (username === "admin" && password === "Welcome_2026@") {
-    return res.json({ token: "KeralaRealtyAdminSecretToken2026" });
+router.post("/login", async (req, res) => {
+  if (!isAdminAuthConfigured()) {
+    console.error("Admin login attempted but ADMIN_PASSWORD_HASH / ADMIN_JWT_SECRET are not set.");
+    return res.status(503).json({ message: "Admin login is not configured on the server." });
   }
-  return res.status(400).json({ message: "Invalid admin credentials." });
+
+  const retryAfter = loginRetryAfter(req);
+  if (retryAfter > 0) {
+    res.set("Retry-After", String(retryAfter));
+    return res.status(429).json({ message: "Too many failed attempts. Please try again later." });
+  }
+
+  const { username, password } = req.body || {};
+  const ok = await verifyAdminCredentials(username, password);
+  if (!ok) {
+    recordFailedLogin(req);
+    return res.status(400).json({ message: "Invalid admin credentials." });
+  }
+
+  clearFailedLogins(req);
+  return res.json({ token: issueAdminToken() });
 });
 
 // GET /api/admin/settings (Public batch settings reader)
@@ -47,16 +65,19 @@ router.get("/settings", async (req, res) => {
     for (const r of rows) {
       settingsMap[r.key] = r.value;
     }
-    res.json(settingsMap);
+    res.json(settingsForRequest(req, settingsMap));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/admin/settings/:key (Public settings reader)
+// GET /api/admin/settings/:key (Public settings reader; secret keys need an admin token)
 router.get("/settings/:key", async (req, res) => {
   try {
     const { key } = req.params;
+    if (isSecretSettingKey(key) && !isAdminRequest(req)) {
+      return res.status(401).json({ message: "Unauthorized admin access." });
+    }
     const [[row]] = await pool.query("SELECT `value` FROM settings WHERE `key` = ?", [key]);
     if (!row) {
       if (key === "razorpay_key_id") {
@@ -142,6 +163,11 @@ router.get("/top-locations", async (req, res) => {
 
 // Apply admin protection check to all subsequent routes
 router.use(checkAdminSession);
+
+// GET /api/admin/session: lets the admin panel check that its token is still valid
+router.get("/session", (req, res) => {
+  res.json({ ok: true, username: req.admin?.username || "admin", expiresAt: req.admin?.expiresAt || null });
+});
 
 // GET /api/admin/activity-logs (Admin Protected)
 router.get("/activity-logs", async (req, res) => {

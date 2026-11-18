@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { pool } from "../db.js";
+import { isAdminRequest } from "../middleware/adminAuth.js";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
 import { upload, optimizeImages } from "../middleware/upload.js";
 import { checkUserAccess } from "../utils/access.js";
@@ -88,14 +89,18 @@ router.get("/", optionalAuth, async (req, res) => {
     const clauses = [];
     const params = [];
 
+    // Older listings marked Sold before the status column allowed 'Sold' were stored with an
+    // empty status (''); they are treated as Sold everywhere on the public site.
     if (status === "All") {
       // no status filter
+    } else if (status === "Sold") {
+      clauses.push("(p.status = 'Sold' OR p.status = '')");
     } else if (status && status !== "Active") {
       clauses.push("p.status = ?");
       params.push(status);
     } else {
       // Default public browse includes both Active and Sold listings
-      clauses.push("p.status IN ('Active', 'Sold')");
+      clauses.push("p.status IN ('Active', 'Sold', '')");
     }
 
     const searchDigits = search ? String(search).trim().replace(/\D/g, "") : "";
@@ -363,13 +368,14 @@ router.get("/:id", optionalAuth, async (req, res) => {
     );
     if (rows.length === 0) return res.status(404).json({ error: "Property not found" });
 
-    const isAdmin = req.headers["x-admin-auth"] === "KeralaRealtyAdminSecretToken2026";
+    const isAdmin = isAdminRequest(req);
     const visitorId = req.userId || null;
     const isOwnerViewing = visitorId && visitorId === rows[0].owner_id;
 
     // "rejected then not show to frontent that property any user"
     // Hide non-active (Rejected, Pending, Inactive) listings from any user who is not the uploader or admin.
     // Active and Sold listings are viewable on frontend.
+    if (rows[0].status === "") rows[0].status = "Sold"; // legacy sold listings (see list route)
     if (rows[0].status !== "Active" && rows[0].status !== "Sold" && !isOwnerViewing && !isAdmin) {
       return res.status(404).json({ error: "Property is currently not available or under review." });
     }

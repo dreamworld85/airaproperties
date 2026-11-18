@@ -121,6 +121,16 @@ export interface AdminAnalytics {
 }
 
 export const adminApi = {
+  /** False only when the server says the admin token is missing, invalid or expired. */
+  async checkSession(): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/session`, { headers: getAdminHeaders() });
+      return res.status !== 401;
+    } catch {
+      return true; // network problem: don't log the admin out
+    }
+  },
+
   async login(password: string): Promise<string> {
     const res = await fetch(`${API_URL}/api/admin/login`, {
       method: "POST",

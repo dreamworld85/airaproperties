@@ -1,6 +1,7 @@
 import { Router } from "express";
 import crypto from "crypto";
 import { pool } from "../db.js";
+import { isAdminRequest } from "../middleware/adminAuth.js";
 
 const router = Router();
 
@@ -8,9 +9,7 @@ const GRAPH_VERSION = "v20.0";
 const DEFAULT_VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN || "aira_meta_webhook_2026";
 
 function isAuthorizedAdmin(req) {
-  const adminToken = req.headers["x-admin-auth"] || req.headers["authorization"];
-  const expected = process.env.ADMIN_SECRET_TOKEN || "KeralaRealtyAdminSecretToken2026";
-  return adminToken === expected || adminToken === `Bearer ${expected}`;
+  return isAdminRequest(req);
 }
 
 async function getSettingValue(key, fallback = "") {

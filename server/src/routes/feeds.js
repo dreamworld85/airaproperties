@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { pool } from "../db.js";
+import { isAdminRequest } from "../middleware/adminAuth.js";
 
 const router = Router();
 
@@ -396,9 +397,7 @@ router.get("/status", async (req, res) => {
  */
 router.post("/toggle-auto-sync", async (req, res) => {
   try {
-    const adminToken = req.headers["x-admin-auth"] || req.headers["authorization"];
-    const expected = process.env.ADMIN_SECRET_TOKEN || "KeralaRealtyAdminSecretToken2026";
-    if (adminToken !== expected && adminToken !== `Bearer ${expected}`) {
+    if (!isAdminRequest(req)) {
       return res.status(401).json({ error: "Unauthorized admin" });
     }
 

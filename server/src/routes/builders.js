@@ -1,16 +1,10 @@
 import { Router } from "express";
 import { pool } from "../db.js";
+import { requireAdmin } from "../middleware/adminAuth.js";
 
 const router = Router();
 
-// Middleware to check admin authorization
-function requireAdmin(req, res, next) {
-  const adminToken = req.headers["x-admin-auth"] || req.headers["authorization"];
-  if (!adminToken) {
-    return res.status(401).json({ error: "Admin authentication required." });
-  }
-  next();
-}
+// Admin authorization: shared signed-token check (middleware/adminAuth.js)
 
 // ==========================================
 // PUBLIC BUILDER INQUIRY & MICROSITE ROUTES

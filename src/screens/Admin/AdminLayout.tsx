@@ -82,6 +82,22 @@ export default function AdminLayout() {
     }
   }, [token]);
 
+  // Admin tokens expire; when the server rejects ours, go back to the login page.
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    adminApi.checkSession().then((valid) => {
+      if (!valid && !cancelled) {
+        localStorage.removeItem("kerala_realty_admin_token");
+        navigate("/admin/login", { replace: true, state: { from: location } });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, location.pathname]);
+
   const toggleNotifications = () => {
     const nextVal = !showNotifications;
     setShowNotifications(nextVal);

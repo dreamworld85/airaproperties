@@ -1,17 +1,12 @@
 import { Router } from "express";
 import { pool } from "../db.js";
+import { requireAdmin } from "../middleware/adminAuth.js";
 import { sendPropertyRequestEmail } from "../utils/mailer.js";
 
 const router = Router();
 
-// Middleware to verify admin login session
-function checkAdminSession(req, res, next) {
-  const isAdmin = req.headers["x-admin-auth"] === "KeralaRealtyAdminSecretToken2026";
-  if (!isAdmin) {
-    return res.status(401).json({ message: "Unauthorized admin access." });
-  }
-  next();
-}
+// Admin routes use the shared signed-token check (middleware/adminAuth.js)
+const checkAdminSession = requireAdmin;
 
 // POST /api/property-requests - Submit a new property request (Public: guests or authenticated users)
 router.post("/", async (req, res) => {

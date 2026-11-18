@@ -44,6 +44,7 @@ import propertyRequestRoutes from "./routes/propertyRequests.js";
 import feedRoutes from "./routes/feeds.js";
 import metaWebhookRoutes, { verifyWebhookAndRenewToken } from "./routes/metaWebhook.js";
 import { subscribeTokenToTopic, districtToTopic } from "./utils/firebaseAdmin.js";
+import { isAdminRequest, isSecretSettingKey, settingsForRequest, isAdminAuthConfigured } from "./middleware/adminAuth.js";
 
 // Auto-migrate database table columns for subscription offers
 async function checkDbMigration() {
@@ -1933,14 +1934,15 @@ app.get("/api/property-types", async (_req, res) => {
 });
 
 // GET /api/settings (Public batch settings getter)
-app.get("/api/settings", async (_req, res) => {
+app.get("/api/settings", async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT `key`, `value` FROM settings");
     const settingsMap = {};
     for (const r of rows) {
       settingsMap[r.key] = r.value;
     }
-    res.json(settingsMap);
+    // Secret keys (payment, Facebook, Firebase credentials) are only returned to admins.
+    res.json(settingsForRequest(req, settingsMap));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1950,6 +1952,9 @@ app.get("/api/settings", async (_req, res) => {
 app.get("/api/settings/:key", async (req, res) => {
   try {
     const { key } = req.params;
+    if (isSecretSettingKey(key) && !isAdminRequest(req)) {
+      return res.status(401).json({ error: "Unauthorized admin access." });
+    }
     const [rows] = await pool.query("SELECT `value` FROM settings WHERE `key` = ?", [key]);
     if (rows.length === 0) {
       return res.json({ key, value: null });
@@ -2030,14 +2035,15 @@ app.post("/api/service-enquiries", async (req, res) => {
 });
 
 // Public Settings API (Used by BrandContext, App, and Landing)
-app.get("/api/settings", async (_req, res) => {
+app.get("/api/settings", async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT `key`, `value` FROM settings");
     const settingsMap = {};
     for (const r of rows) {
       settingsMap[r.key] = r.value;
     }
-    res.json(settingsMap);
+    // Secret keys (payment, Facebook, Firebase credentials) are only returned to admins.
+    res.json(settingsForRequest(req, settingsMap));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2046,6 +2052,9 @@ app.get("/api/settings", async (_req, res) => {
 app.get("/api/settings/:key", async (req, res) => {
   try {
     const { key } = req.params;
+    if (isSecretSettingKey(key) && !isAdminRequest(req)) {
+      return res.status(401).json({ error: "Unauthorized admin access." });
+    }
     const [[row]] = await pool.query("SELECT `value` FROM settings WHERE `key` = ?", [key]);
     res.json({ key, value: row ? row.value : null });
   } catch (err) {
@@ -2075,8 +2084,9 @@ const handleRegisterToken = async (req, res) => {
     const token = rawBody?.token || req.query?.token;
     const userId = rawBody?.userId || req.query?.userId || null;
     const district = rawBody?.district || req.query?.district || null;
-    const isAdminHeader = req.headers["x-admin-auth"] === "KeralaRealtyAdminSecretToken2026";
-    let isAdminFlag = Boolean(rawBody?.isAdmin === true || rawBody?.isAdmin === "true" || req.query?.isAdmin === "true" || isAdminHeader);
+    // Only a verified admin token (or an admin user account, checked below) marks a device as admin.
+    // The request body's isAdmin flag is no longer trusted on its own.
+    let isAdminFlag = isAdminRequest(req);
 
     if (!token) {
       return res.status(400).json({ error: "FCM token is required" });
@@ -2343,6 +2353,12 @@ app.use((err, _req, res, _next) => {
 const port = process.env.PORT || 4000;
 app.listen(port, () => {
   console.log(`Kerala Realty API listening on http://localhost:${port}`);
+  if (!isAdminAuthConfigured()) {
+    console.warn(
+      "WARNING: admin login is disabled. Set ADMIN_PASSWORD_HASH and ADMIN_JWT_SECRET (32+ chars) in .env; " +
+      "run `node scripts/hash-admin-password.js` to create them."
+    );
+  }
   // Auto-verify Meta webhook subscription & renew token on startup and every 12 hours
   setTimeout(() => {
     verifyWebhookAndRenewToken().catch((err) =>
