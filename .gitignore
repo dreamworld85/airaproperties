@@ -3,6 +3,7 @@ dist/
 server/node_modules/
 server/dist/
 *.zip
+/*.apk
 *.log
 *.tmp
 hostinger_import.sql
@@ -30,5 +31,9 @@ serviceAccount.json
 !apk/*.apk
 !apk/*.aab
 !apk/release.keystore
-!server/src/uploads/*.apk
+!server/src/uploads/
+uploads/
+server/uploads/*.apk
 src/uploads/
+uploads/
+server/uploads/

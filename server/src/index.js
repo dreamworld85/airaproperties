@@ -2326,6 +2326,48 @@ if (fs.existsSync(hostingerFrontendDir)) {
   injectCustomCodeIntoIndexHtml();
 }
 
+// Dynamic route for brand logos: always serve current active logo from settings
+app.get(["/brand_logo.png", "/brand_logo-web.png"], async (req, res, next) => {
+  try {
+    const isWeb = req.path.includes("brand_logo-web");
+    const priorityKey = isWeb ? "desktop_logo_url" : "mobile_logo_url";
+    const fallbackKey = isWeb ? "mobile_logo_url" : "desktop_logo_url";
+    const [rows] = await pool.query(
+      "SELECT `key`, `value` FROM settings WHERE `key` IN (?, ?, 'brand_logo_url') AND `value` IS NOT NULL AND `value` != ''",
+      [priorityKey, fallbackKey]
+    );
+    let logoValue = null;
+    if (rows && rows.length > 0) {
+      const matchPriority = rows.find(r => r.key === priorityKey);
+      const matchFallback = rows.find(r => r.key === fallbackKey);
+      const matchBrand = rows.find(r => r.key === "brand_logo_url");
+      logoValue = (matchPriority || matchFallback || matchBrand)?.value;
+    }
+    if (logoValue) {
+      const logoFilename = String(logoValue).replace(/^\/?uploads\//, "");
+      const searchPaths = [
+        path.join(serverUploadsDir, logoFilename),
+        path.join(__dirname, "uploads", logoFilename),
+        path.join(process.cwd(), "server", "src", "uploads", logoFilename),
+        path.join(process.cwd(), "server", "uploads", logoFilename),
+        path.join(process.cwd(), "uploads", logoFilename),
+        path.join(hostingerUploadsDir, logoFilename),
+        path.join(process.cwd(), "public", path.basename(req.path)),
+      ];
+      for (const p of searchPaths) {
+        if (fs.existsSync(p)) {
+          res.setHeader("Cache-Control", "public, max-age=3600");
+          res.setHeader("Content-Type", "image/png");
+          return res.sendFile(p);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Error serving dynamic brand logo:", err);
+  }
+  next();
+});
+
 if (activeDistDir) {
   console.log(`Serving static frontend build from: ${activeDistDir}`);
   app.use(express.static(activeDistDir));

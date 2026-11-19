@@ -27,6 +27,7 @@ interface BrandContextType {
   homeHeroBannerUrl: string;
   isHomeHeroBannerEnabled: boolean;
   isPopularLocationsEnabled: boolean;
+  isWelcomeBannerEnabled: boolean;
   isDesktop: boolean;
   refreshLogos: () => Promise<void>;
   refreshBanners: () => Promise<void>;
@@ -44,6 +45,7 @@ const BrandContext = createContext<BrandContextType>({
   homeHeroBannerUrl: DEFAULT_HOME_HERO_BANNER,
   isHomeHeroBannerEnabled: true,
   isPopularLocationsEnabled: true,
+  isWelcomeBannerEnabled: true,
   isDesktop: typeof window !== "undefined" ? window.innerWidth >= 1000 : true,
   refreshLogos: async () => {},
   refreshBanners: async () => {},
@@ -84,6 +86,10 @@ export function BrandProvider({ children }: { children: ReactNode }) {
   });
   const [isPopularLocationsEnabled, setIsPopularLocationsEnabled] = useState<boolean>(() => {
     const val = localStorage.getItem("sparrow_enable_popular_locations");
+    return val !== "false";
+  });
+  const [isWelcomeBannerEnabled, setIsWelcomeBannerEnabled] = useState<boolean>(() => {
+    const val = localStorage.getItem("sparrow_enable_welcome_banner");
     return val !== "false";
   });
   const [isDesktop, setIsDesktop] = useState<boolean>(() => {
@@ -147,6 +153,11 @@ export function BrandProvider({ children }: { children: ReactNode }) {
           setIsPopularLocationsEnabled(isEnabled);
           localStorage.setItem("sparrow_enable_popular_locations", String(isEnabled));
         }
+        if (data.enable_welcome_banner !== undefined) {
+          const isEnabled = data.enable_welcome_banner === "true" || data.enable_welcome_banner === true || data.enable_welcome_banner === "1";
+          setIsWelcomeBannerEnabled(isEnabled);
+          localStorage.setItem("sparrow_enable_welcome_banner", String(isEnabled));
+        }
       }
     } catch {
       try {
@@ -188,6 +199,8 @@ export function BrandProvider({ children }: { children: ReactNode }) {
       if (savedHeroEnabled !== null) setIsHomeHeroBannerEnabled(savedHeroEnabled !== "false");
       const savedPopLocations = localStorage.getItem("sparrow_enable_popular_locations");
       if (savedPopLocations !== null) setIsPopularLocationsEnabled(savedPopLocations !== "false");
+      const savedWelcomeEnabled = localStorage.getItem("sparrow_enable_welcome_banner");
+      if (savedWelcomeEnabled !== null) setIsWelcomeBannerEnabled(savedWelcomeEnabled !== "false");
       loadSettings();
     };
     window.addEventListener("sparrow-logos-updated", handleCustomUpdate);
@@ -221,6 +234,7 @@ export function BrandProvider({ children }: { children: ReactNode }) {
         homeHeroBannerUrl: resolvedHomeHeroBanner,
         isHomeHeroBannerEnabled,
         isPopularLocationsEnabled,
+        isWelcomeBannerEnabled,
         isDesktop,
         refreshLogos: loadSettings,
         refreshBanners: loadSettings,

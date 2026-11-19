@@ -41,7 +41,7 @@ function matchesPhoneQuery(target?: string | null, searchDigits?: string): boole
 
 export default function Home() {
   const { user } = useAuth();
-  const { mobileLogoUrl, welcomeBannerUrl, isPopularLocationsEnabled } = useBrand();
+  const { mobileLogoUrl, welcomeBannerUrl, isPopularLocationsEnabled, isWelcomeBannerEnabled } = useBrand();
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1000);
 
   useEffect(() => {
@@ -60,8 +60,16 @@ export default function Home() {
   const [bannerUrl, setBannerUrl] = useState(() => {
     return localStorage.getItem("sparrow_welcome_banner") || "/kerala_house_banner.jpg";
   });
-  const [bannerTitle, setBannerTitle] = useState("Find homes, villas, lands & escapes");
-  const [bannerSubtitle, setBannerSubtitle] = useState("Discover unique properties that match your lifestyle.");
+  const [bannerTitle, setBannerTitle] = useState(() => {
+    return localStorage.getItem("sparrow_welcome_banner_title") || "Find homes, villas, lands & escapes";
+  });
+  const [bannerSubtitle, setBannerSubtitle] = useState(() => {
+    return localStorage.getItem("sparrow_welcome_banner_subtitle") || "Discover unique properties that match your lifestyle.";
+  });
+  const [enableWelcomeBanner, setEnableWelcomeBanner] = useState<boolean>(() => {
+    const val = localStorage.getItem("sparrow_enable_welcome_banner");
+    return val !== "false";
+  });
   const isVideoBanner = (url: string) => {
     const ext = url.split('.').pop()?.toLowerCase();
     return ["mp4", "webm", "ogg", "mov", "m4v"].includes(ext || "");
@@ -97,6 +105,7 @@ export default function Home() {
       .then((data) => {
         if (data && data.value) {
           setBannerTitle(data.value);
+          localStorage.setItem("sparrow_welcome_banner_title", data.value);
         }
       })
       .catch((err) => console.error("Failed to load banner title setting:", err));
@@ -105,15 +114,32 @@ export default function Home() {
       .then((data) => {
         if (data && data.value) {
           setBannerSubtitle(data.value);
+          localStorage.setItem("sparrow_welcome_banner_subtitle", data.value);
         }
       })
       .catch((err) => console.error("Failed to load banner subtitle setting:", err));
+
+    api.fetchSetting("enable_welcome_banner")
+      .then((data) => {
+        if (data && data.value !== null && data.value !== undefined) {
+          const isEnabled = String(data.value) === "true" || String(data.value) === "1";
+          setEnableWelcomeBanner(isEnabled);
+          localStorage.setItem("sparrow_enable_welcome_banner", String(isEnabled));
+        }
+      })
+      .catch((err) => console.error("Failed to load banner enable setting:", err));
   }, []);
 
   useEffect(() => {
     const handleBannersUpdated = () => {
       const savedWelcome = localStorage.getItem("sparrow_welcome_banner");
       if (savedWelcome) setBannerUrl(savedWelcome);
+      const savedTitle = localStorage.getItem("sparrow_welcome_banner_title");
+      if (savedTitle) setBannerTitle(savedTitle);
+      const savedSub = localStorage.getItem("sparrow_welcome_banner_subtitle");
+      if (savedSub) setBannerSubtitle(savedSub);
+      const savedEnabled = localStorage.getItem("sparrow_enable_welcome_banner");
+      if (savedEnabled !== null) setEnableWelcomeBanner(savedEnabled !== "false");
     };
     window.addEventListener("sparrow-banners-updated", handleBannersUpdated);
     return () => window.removeEventListener("sparrow-banners-updated", handleBannersUpdated);
@@ -419,7 +445,7 @@ export default function Home() {
           )}
 
           {/* Welcome Banner */}
-          {activeCategory === "All" && (welcomeBannerUrl || bannerUrl) && (
+          {enableWelcomeBanner && isWelcomeBannerEnabled && activeCategory === "All" && (welcomeBannerUrl || bannerUrl) && (
             <div className="px-5 mt-6 select-none">
               <div className="relative h-[11rem] rounded-2xl overflow-hidden border border-charcoal/5 shadow-sm bg-slate-100 flex items-center">
                 {isVideoBanner(welcomeBannerUrl || bannerUrl) ? (

@@ -70,6 +70,29 @@ export default function Settings() {
   const [currentBanner, setCurrentBanner] = useState<string>(() => {
     return localStorage.getItem("sparrow_welcome_banner") || "/kerala_house_banner.jpg";
   });
+  // Mobile Welcome Banner (Find homes, villas, lands & escapes)
+  const [welcomeBannerTitle, setWelcomeBannerTitle] = useState<string>(() => {
+    return localStorage.getItem("sparrow_welcome_banner_title") || "Find homes, villas, lands & escapes";
+  });
+  const [welcomeBannerSubtitle, setWelcomeBannerSubtitle] = useState<string>(() => {
+    return localStorage.getItem("sparrow_welcome_banner_subtitle") || "Discover unique properties that match your lifestyle.";
+  });
+  const [enableWelcomeBanner, setEnableWelcomeBanner] = useState<boolean>(() => {
+    const val = localStorage.getItem("sparrow_enable_welcome_banner");
+    return val !== "false";
+  });
+  const [togglingWelcomeBanner, setTogglingWelcomeBanner] = useState(false);
+  const [welcomeBannerFile, setWelcomeBannerFile] = useState<File | null>(null);
+  const [welcomeBannerPreview, setWelcomeBannerPreview] = useState<string | null>(null);
+  const [savingWelcomeBanner, setSavingWelcomeBanner] = useState(false);
+  const [welcomeBannerMessage, setWelcomeBannerMessage] = useState<string | null>(null);
+
+  const isVideoBanner = (url?: string | null) => {
+    if (!url) return false;
+    const cleanUrl = url.split("?")[0];
+    const ext = cleanUrl.split(".").pop()?.toLowerCase();
+    return ["mp4", "webm", "ogg", "mov", "m4v"].includes(ext || "");
+  };
   const [currentLoginBanner, setCurrentLoginBanner] = useState<string>(() => {
     const val = localStorage.getItem("sparrow_login_banner");
     if (!val || val === "/app_background.jpg") return "/kerala_house_login.jpg";
@@ -97,8 +120,12 @@ export default function Settings() {
   const [savingLoadingLogo, setSavingLoadingLogo] = useState(false);
 
   // Brand Logo States
-  const [currentDesktopLogo, setCurrentDesktopLogo] = useState("/brand_logo-web.png");
-  const [currentMobileLogo, setCurrentMobileLogo] = useState("/brand_logo.png");
+  const [currentDesktopLogo, setCurrentDesktopLogo] = useState(
+    () => localStorage.getItem("sparrow_desktop_logo") || "/brand_logo-web.png"
+  );
+  const [currentMobileLogo, setCurrentMobileLogo] = useState(
+    () => localStorage.getItem("sparrow_mobile_logo") || "/brand_logo.png"
+  );
   const [desktopLogoFile, setDesktopLogoFile] = useState<File | null>(null);
   const [desktopLogoPreview, setDesktopLogoPreview] = useState<string | null>(null);
   const [mobileLogoFile, setMobileLogoFile] = useState<File | null>(null);
@@ -651,6 +678,7 @@ export default function Settings() {
       .then(data => {
         if (data && data.value) {
           setCurrentDesktopLogo(data.value);
+          localStorage.setItem("sparrow_desktop_logo", data.value);
         }
       })
       .catch(err => console.error("Error loading desktop logo:", err));
@@ -661,6 +689,7 @@ export default function Settings() {
       .then(data => {
         if (data && data.value) {
           setCurrentMobileLogo(data.value);
+          localStorage.setItem("sparrow_mobile_logo", data.value);
         }
       })
       .catch(err => console.error("Error loading mobile logo:", err));
@@ -686,6 +715,40 @@ export default function Settings() {
         }
       })
       .catch(err => console.error("Error loading welcome banner:", err));
+
+    // Fetch welcome banner title setting
+    fetch(`${getApiUrl()}/api/admin/settings/welcome_banner_title`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.value) {
+          setWelcomeBannerTitle(data.value);
+          localStorage.setItem("sparrow_welcome_banner_title", data.value);
+        }
+      })
+      .catch(err => console.error("Error loading welcome banner title:", err));
+
+    // Fetch welcome banner subtitle setting
+    fetch(`${getApiUrl()}/api/admin/settings/welcome_banner_subtitle`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.value) {
+          setWelcomeBannerSubtitle(data.value);
+          localStorage.setItem("sparrow_welcome_banner_subtitle", data.value);
+        }
+      })
+      .catch(err => console.error("Error loading welcome banner subtitle:", err));
+
+    // Fetch enable_welcome_banner setting
+    fetch(`${getApiUrl()}/api/admin/settings/enable_welcome_banner`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.value !== null && data.value !== undefined) {
+          const isEnabled = data.value === "true" || data.value === true || data.value === "1";
+          setEnableWelcomeBanner(isEnabled);
+          localStorage.setItem("sparrow_enable_welcome_banner", String(isEnabled));
+        }
+      })
+      .catch(err => console.error("Error loading enable_welcome_banner:", err));
 
     // Fetch login banner setting
     fetch(`${getApiUrl()}/api/admin/settings/login_banner_url`)
@@ -933,6 +996,7 @@ export default function Settings() {
     try {
       const data = await adminApi.updateSetting("desktop_logo_url", desktopLogoFile);
       setCurrentDesktopLogo(data.value);
+      localStorage.setItem("sparrow_desktop_logo", data.value);
       setDesktopLogoFile(null);
       setDesktopLogoPreview(null);
       window.dispatchEvent(new Event("sparrow-logos-updated"));
@@ -950,6 +1014,7 @@ export default function Settings() {
     try {
       await adminApi.updateSetting("desktop_logo_url", "/brand_logo-web.png");
       setCurrentDesktopLogo("/brand_logo-web.png");
+      localStorage.setItem("sparrow_desktop_logo", "/brand_logo-web.png");
       setDesktopLogoFile(null);
       setDesktopLogoPreview(null);
       window.dispatchEvent(new Event("sparrow-logos-updated"));
@@ -967,6 +1032,7 @@ export default function Settings() {
     try {
       const data = await adminApi.updateSetting("mobile_logo_url", mobileLogoFile);
       setCurrentMobileLogo(data.value);
+      localStorage.setItem("sparrow_mobile_logo", data.value);
       setMobileLogoFile(null);
       setMobileLogoPreview(null);
       window.dispatchEvent(new Event("sparrow-logos-updated"));
@@ -984,6 +1050,7 @@ export default function Settings() {
     try {
       await adminApi.updateSetting("mobile_logo_url", "/brand_logo.png");
       setCurrentMobileLogo("/brand_logo.png");
+      localStorage.setItem("sparrow_mobile_logo", "/brand_logo.png");
       setMobileLogoFile(null);
       setMobileLogoPreview(null);
       window.dispatchEvent(new Event("sparrow-logos-updated"));
@@ -1047,6 +1114,84 @@ export default function Settings() {
       alert(err.message || "Failed to reset banner.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleToggleWelcomeBanner() {
+    setTogglingWelcomeBanner(true);
+    const nextVal = !enableWelcomeBanner;
+    try {
+      await adminApi.updateSetting("enable_welcome_banner", String(nextVal));
+      setEnableWelcomeBanner(nextVal);
+      localStorage.setItem("sparrow_enable_welcome_banner", String(nextVal));
+      window.dispatchEvent(new Event("sparrow-banners-updated"));
+      setWelcomeBannerMessage(nextVal ? "Welcome Banner enabled on mobile home!" : "Welcome Banner hidden from mobile home.");
+      setTimeout(() => setWelcomeBannerMessage(null), 3500);
+    } catch (err: any) {
+      alert(err.message || "Failed to update banner visibility.");
+    } finally {
+      setTogglingWelcomeBanner(false);
+    }
+  }
+
+  async function handleSaveWelcomeBanner(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingWelcomeBanner(true);
+    try {
+      if (welcomeBannerFile) {
+        const data = await adminApi.updateSetting("welcome_banner_url", welcomeBannerFile);
+        if (data && data.value) {
+          setCurrentBanner(data.value);
+          localStorage.setItem("sparrow_welcome_banner", data.value);
+        }
+      }
+      await adminApi.updateSetting("welcome_banner_title", welcomeBannerTitle.trim());
+      localStorage.setItem("sparrow_welcome_banner_title", welcomeBannerTitle.trim());
+
+      await adminApi.updateSetting("welcome_banner_subtitle", welcomeBannerSubtitle.trim());
+      localStorage.setItem("sparrow_welcome_banner_subtitle", welcomeBannerSubtitle.trim());
+
+      window.dispatchEvent(new Event("sparrow-banners-updated"));
+      setWelcomeBannerFile(null);
+      setWelcomeBannerPreview(null);
+      setWelcomeBannerMessage("Mobile Welcome Banner updated successfully!");
+      setTimeout(() => setWelcomeBannerMessage(null), 4000);
+    } catch (err: any) {
+      alert(err.message || "Failed to update welcome banner.");
+    } finally {
+      setSavingWelcomeBanner(false);
+    }
+  }
+
+  async function handleResetWelcomeBanner() {
+    if (!window.confirm("Reset Mobile Welcome Banner to default asset and text?")) return;
+    setSavingWelcomeBanner(true);
+    try {
+      const defaultImg = "/kerala_house_banner.jpg";
+      const defaultTitle = "Find homes, villas, lands & escapes";
+      const defaultSub = "Discover unique properties that match your lifestyle.";
+
+      await adminApi.updateSetting("welcome_banner_url", defaultImg);
+      setCurrentBanner(defaultImg);
+      localStorage.setItem("sparrow_welcome_banner", defaultImg);
+
+      await adminApi.updateSetting("welcome_banner_title", defaultTitle);
+      setWelcomeBannerTitle(defaultTitle);
+      localStorage.setItem("sparrow_welcome_banner_title", defaultTitle);
+
+      await adminApi.updateSetting("welcome_banner_subtitle", defaultSub);
+      setWelcomeBannerSubtitle(defaultSub);
+      localStorage.setItem("sparrow_welcome_banner_subtitle", defaultSub);
+
+      setWelcomeBannerFile(null);
+      setWelcomeBannerPreview(null);
+      window.dispatchEvent(new Event("sparrow-banners-updated"));
+      setWelcomeBannerMessage("Welcome banner reset to defaults!");
+      setTimeout(() => setWelcomeBannerMessage(null), 4000);
+    } catch (err: any) {
+      alert(err.message || "Failed to reset welcome banner.");
+    } finally {
+      setSavingWelcomeBanner(false);
     }
   }
 
@@ -1153,7 +1298,7 @@ export default function Settings() {
   }
 
   useEffect(() => {
-    if (activeTab === "locations") {
+    if (activeTab === "locations" || activeTab === "site") {
       loadLocations();
     } else if (activeTab === "property-types") {
       loadPropertyTypes();
@@ -2725,9 +2870,198 @@ export default function Settings() {
     );
   }
 
+  function renderMobileWelcomeBannerCard() {
+    const isVideo = isVideoBanner(welcomeBannerPreview || currentBanner);
+
+    return (
+      <div className="bg-white border border-charcoal/5 rounded-3xl p-5 sm:p-6 shadow-sm text-left flex flex-col gap-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-charcoal/5 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center shadow-xs shrink-0">
+              <Smartphone size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-display font-extrabold text-base text-black">Mobile Welcome Banner</h2>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  enableWelcomeBanner ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                }`}>
+                  {enableWelcomeBanner ? "Active on Home" : "Hidden"}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate mt-0.5">
+                Upload a cover image/video, edit the title & description displayed above Top Locations on the mobile welcome page.
+              </p>
+            </div>
+          </div>
+
+          {/* Enable / Disable Switch Toggle Button */}
+          <div className="flex items-center gap-3 bg-slate-50 border border-charcoal/10 px-3.5 py-2 rounded-2xl shrink-0 self-start sm:self-auto">
+            <span className="text-xs font-bold text-ink">Visibility:</span>
+            <button
+              type="button"
+              onClick={handleToggleWelcomeBanner}
+              disabled={togglingWelcomeBanner}
+              className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold font-display cursor-pointer transition-all flex items-center gap-1.5 ${
+                enableWelcomeBanner 
+                  ? "bg-emerald-600 text-white shadow-xs hover:bg-emerald-500" 
+                  : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+              }`}
+            >
+              {togglingWelcomeBanner ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  <span>Updating...</span>
+                </>
+              ) : enableWelcomeBanner ? (
+                <>
+                  <CheckCircle2 size={13} />
+                  <span>Enabled</span>
+                </>
+              ) : (
+                <>
+                  <EyeOff size={13} />
+                  <span>Disabled</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Live Mobile Banner Preview */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-bold text-slate uppercase tracking-wider">
+              Live Mobile Preview (Exact mobile view)
+            </span>
+            <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+              Real-time
+            </span>
+          </div>
+
+          <div className="w-full max-w-md mx-auto bg-slate-50/80 p-3 sm:p-4 rounded-2xl border border-charcoal/10">
+            <div className="relative h-[11rem] rounded-2xl overflow-hidden border border-charcoal/5 shadow-sm bg-slate-100 flex items-center">
+              {isVideo ? (
+                <video 
+                  src={welcomeBannerPreview || mediaUrl(currentBanner)} 
+                  autoPlay 
+                  loop 
+                  muted 
+                  playsInline 
+                  className="absolute inset-0 w-full h-full object-cover brightness-[0.7]"
+                />
+              ) : (
+                <img 
+                  src={welcomeBannerPreview || mediaUrl(currentBanner)} 
+                  alt="Welcome Banner Preview" 
+                  className="absolute inset-0 w-full h-full object-cover brightness-[0.7]"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/kerala_house_banner.jpg";
+                  }}
+                />
+              )}
+              <div className="absolute inset-0 flex flex-col justify-end p-5 bg-gradient-to-t from-black/80 via-black/30 to-transparent">
+                <h3 className="font-display font-extrabold text-[15px] text-white leading-tight">
+                  {welcomeBannerTitle || "Find homes, villas, lands & escapes"}
+                </h3>
+                <p className="text-white/80 text-[10px] mt-1 leading-snug">
+                  {welcomeBannerSubtitle || "Discover unique properties that match your lifestyle."}
+                </p>
+              </div>
+            </div>
+            {!enableWelcomeBanner && (
+              <div className="mt-2 text-center">
+                <span className="text-[10px] text-rose-600 font-bold bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg inline-block">
+                  ✕ Banner is currently Disabled — it will not be shown on the mobile welcome page.
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Form Inputs */}
+        <form onSubmit={handleSaveWelcomeBanner} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-ink">
+              Upload Cover Image / Video
+            </label>
+            <p className="text-[10px] text-slate">
+              Supports SVG, PNG, JPG, JPEG, WebP, MP4, WebM. Recommended: 800x400 or 16:9 ratio.
+            </p>
+            <input 
+              type="file" 
+              accept="image/*,video/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setWelcomeBannerFile(file);
+                  setWelcomeBannerPreview(URL.createObjectURL(file));
+                }
+              }}
+              className="text-xs text-slate border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none w-full"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-ink">Banner Title</label>
+            <input 
+              type="text"
+              required
+              value={welcomeBannerTitle}
+              onChange={(e) => setWelcomeBannerTitle(e.target.value)}
+              placeholder="e.g. Find homes, villas, lands & escapes"
+              className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-forest/40 focus:bg-white transition-all w-full font-semibold font-display"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-ink">Banner Subtitle / Description</label>
+            <textarea 
+              rows={2}
+              required
+              value={welcomeBannerSubtitle}
+              onChange={(e) => setWelcomeBannerSubtitle(e.target.value)}
+              placeholder="e.g. Discover unique properties that match your lifestyle."
+              className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-forest/40 focus:bg-white transition-all w-full font-semibold"
+            />
+          </div>
+
+          {welcomeBannerMessage && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold flex items-center gap-2">
+              <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+              <span>{welcomeBannerMessage}</span>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-2 pt-2">
+            <button
+              type="submit"
+              disabled={savingWelcomeBanner}
+              className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer text-center"
+            >
+              <Upload size={14} />
+              <span>{savingWelcomeBanner ? "Saving..." : "Save Welcome Banner"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleResetWelcomeBanner}
+              disabled={savingWelcomeBanner}
+              title="Reset banner image, title and description to defaults"
+              className="px-4 py-3 bg-slate-100 text-charcoal hover:bg-slate-200 rounded-2xl text-xs font-bold font-display transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <RotateCcw size={14} />
+              <span>Reset to Default</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
   function renderSiteTab() {
     return (
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-6">
         <div className="flex items-center gap-2 lg:hidden px-1">
           <button 
             onClick={() => {
@@ -2743,7 +3077,13 @@ export default function Settings() {
           <h3 className="font-display font-bold text-sm text-ink">Back to Menu</h3>
         </div>
 
-        {/* Brand Logos Management Section */}
+        {/* 1. Mobile Welcome Banner (Find homes, villas, lands & escapes) */}
+        {renderMobileWelcomeBannerCard()}
+
+        {/* 2. Mobile Top Locations Management (Directly below Welcome Banner) */}
+        {renderTopLocationsSection()}
+
+        {/* 3. Brand Logos Management Section */}
         {renderBrandLogosCard()}
 
         {/* Facebook Page Auto-Post Integration Card */}
@@ -3061,29 +3401,16 @@ export default function Settings() {
     );
   }
 
-  function renderLocationsTab() {
+  function renderTopLocationsSection() {
     return (
-      <div className="flex flex-col gap-4">
-        {/* Back button for mobile view */}
-        <div className="flex items-center gap-2 lg:hidden px-1 text-left">
-          <button 
-            onClick={() => {
-              setActiveTab("menu");
-              setNewLocationFile(null);
-              setNewLocationPreview(null);
-            }}
-            className="p-1 hover:bg-slate-100 rounded-full transition-all text-slate cursor-pointer"
-            aria-label="Back"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <h3 className="font-display font-bold text-sm text-ink">Back to Menu</h3>
-        </div>
-
+      <div className="flex flex-col gap-6">
         {/* Add Location Form Card */}
         <form onSubmit={handleAddLocation} className="bg-white border border-charcoal/5 rounded-3xl p-5 shadow-sm text-left flex flex-col gap-4">
           <div>
-            <h2 className="font-display font-extrabold text-base text-black">Add New Top Location</h2>
+            <div className="flex items-center gap-2">
+              <MapPin size={18} className="text-emerald-700" />
+              <h2 className="font-display font-extrabold text-base text-black">Add New Top Location</h2>
+            </div>
             <p className="text-[10px] text-slate mt-0.5">Upload a cover image and name a new popular location to show on the mobile welcome page.</p>
           </div>
 
@@ -3117,7 +3444,7 @@ export default function Settings() {
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-ink">Cover Image</label>
             <input 
-              type="file"
+              type="file" 
               accept="image/*"
               required
               onChange={(e) => {
@@ -3153,8 +3480,8 @@ export default function Settings() {
         <div className="bg-white border border-charcoal/5 rounded-3xl p-5 shadow-sm text-left">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-charcoal/5 pb-4 mb-4">
             <div>
-            <h2 className="font-display font-extrabold text-base text-black">Current Top Locations</h2>
-            <p className="text-[10px] text-slate mt-0.5">Manage existing locations listed on the popular locations slider.</p>
+              <h2 className="font-display font-extrabold text-base text-black">Current Top Locations</h2>
+              <p className="text-[10px] text-slate mt-0.5">Manage existing locations listed on the popular locations slider.</p>
             </div>
 
             {/* Enable/Disable Entire Popular Locations Section */}
@@ -3169,7 +3496,7 @@ export default function Settings() {
                 />
                 <div className="flex flex-col">
                   <span className="text-[11px] font-bold text-ink">Popular Locations Slider</span>
-                  <span className={`text-[9px] font-bold ${enablePopularLocations ? "text-emerald-700" : "text-rose-600"}`}>
+                  <span className={"text-[9px] font-bold " + (enablePopularLocations ? "text-emerald-700" : "text-rose-600")}>
                     {togglingPopularLocations ? "Updating..." : enablePopularLocations ? "✓ Enabled (Visible on Home)" : "✕ Disabled (Hidden on Home)"}
                   </span>
                 </div>
@@ -3229,6 +3556,52 @@ export default function Settings() {
             Manage Property Types →
           </button>
         </div>
+      </div>
+    );
+  }
+
+  function renderLocationsTab() {
+    return (
+      <div className="flex flex-col gap-4">
+        {/* Back button for mobile view */}
+        <div className="flex items-center gap-2 lg:hidden px-1 text-left">
+          <button 
+            onClick={() => {
+              setActiveTab("menu");
+              setNewLocationFile(null);
+              setNewLocationPreview(null);
+            }}
+            className="p-1 hover:bg-slate-100 rounded-full transition-all text-slate cursor-pointer"
+            aria-label="Back"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <h3 className="font-display font-bold text-sm text-ink">Back to Menu</h3>
+        </div>
+
+        {/* Quick link banner to Mobile Welcome Banner */}
+        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-3xl p-5 shadow-sm text-left flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <Smartphone size={20} />
+            </div>
+            <div>
+              <h3 className="font-display font-extrabold text-sm text-ink">Mobile Welcome Banner</h3>
+              <p className="text-[11px] text-slate mt-0.5">
+                Edit the header cover image, title ("Find homes, villas..."), and description displayed directly above these locations on mobile.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab("site")}
+            className="py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-xs font-bold font-display shadow-xs transition-all active:scale-[0.98] shrink-0 cursor-pointer"
+          >
+            Edit Welcome Banner →
+          </button>
+        </div>
+
+        {renderTopLocationsSection()}
       </div>
     );
   }

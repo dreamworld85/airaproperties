@@ -424,6 +424,49 @@ router.put("/settings/:key", upload.any(), async (req, res) => {
       }
     }
 
+    // Auto-sync brand logos to static file assets
+    if (["desktop_logo_url", "mobile_logo_url", "brand_logo_url"].includes(key) && value) {
+      try {
+        const logoFilename = String(value).replace(/^\/?uploads\//, "");
+        const uploadCandidatePaths = [
+          path.resolve(process.cwd(), "uploads", logoFilename),
+          path.resolve(process.cwd(), "server", "src", "uploads", logoFilename),
+          path.resolve(process.cwd(), "server", "uploads", logoFilename),
+          path.resolve(process.env.UPLOADS_DIR || "", logoFilename),
+          path.resolve("/home/u859202671/domains/api.airaproperties.in/uploads", logoFilename)
+        ];
+        let foundSrc = null;
+        for (const p of uploadCandidatePaths) {
+          if (p && fs.existsSync(p)) {
+            foundSrc = p;
+            break;
+          }
+        }
+        if (foundSrc) {
+          const targets = [
+            path.resolve(process.cwd(), "public", "brand_logo.png"),
+            path.resolve(process.cwd(), "public", "brand_logo-web.png"),
+            path.resolve(process.cwd(), "dist", "brand_logo.png"),
+            path.resolve(process.cwd(), "dist", "brand_logo-web.png"),
+            path.resolve(process.cwd(), "server", "dist", "brand_logo.png"),
+            path.resolve(process.cwd(), "server", "dist", "brand_logo-web.png"),
+            "/home/u859202671/domains/airaproperties.in/public_html/brand_logo.png",
+            "/home/u859202671/domains/airaproperties.in/public_html/brand_logo-web.png",
+          ];
+          for (const target of targets) {
+            try {
+              const targetDir = path.dirname(target);
+              if (fs.existsSync(targetDir)) {
+                fs.copyFileSync(foundSrc, target);
+              }
+            } catch (_err) {}
+          }
+        }
+      } catch (syncLogoErr) {
+        console.warn("Could not sync brand logo to static assets:", syncLogoErr.message);
+      }
+    }
+
     res.json({ message: "Setting updated successfully.", key, value });
   } catch (err) {
     res.status(500).json({ error: err.message });
