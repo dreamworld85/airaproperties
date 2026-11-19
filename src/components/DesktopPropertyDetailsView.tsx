@@ -38,6 +38,7 @@ import { useAuth } from "@/lib/AuthContext";
 import DesktopHeader from "./DesktopHeader";
 import DesktopFooter from "./DesktopFooter";
 import SubscriptionPaywallModal from "./SubscriptionPaywallModal";
+import PropertyDetailPhoto from "./PropertyDetailPhoto";
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80";
 
@@ -441,14 +442,11 @@ export default function DesktopPropertyDetailsView({
           </div>
         ) : (
           /* 3. Image Card */
-          <div className="relative w-full h-full overflow-hidden">
-            <img
-              src={item.url}
-              alt={`${property.title} - photo`}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-          </div>
+          <PropertyDetailPhoto
+            src={item.url}
+            alt={`${property.title} - photo`}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
         )}
 
         {/* View All Photos Button (Bottom-left of Main Card, exactly like attached screen) */}

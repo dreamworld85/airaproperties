@@ -415,8 +415,8 @@ export default function Home() {
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-3.5">
-                {filteredProperties.map((p) => (
-                  <PropertyCard key={p.id} property={p} compact={true} />
+                {filteredProperties.map((p, idx) => (
+                  <PropertyCard key={p.id} property={p} compact={true} index={idx} />
                 ))}
               </div>
             </section>
@@ -524,8 +524,8 @@ export default function Home() {
               </button>
             </div>
             <div className="grid grid-cols-2 gap-3.5">
-              {filteredProperties.map((p) => (
-                <PropertyCard key={p.id} property={p} compact={true} />
+              {filteredProperties.map((p, idx) => (
+                <PropertyCard key={p.id} property={p} compact={true} index={idx} />
               ))}
             </div>
           </section>

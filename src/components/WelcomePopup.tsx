@@ -1,18 +1,44 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { getApiUrl } from "@/lib/api";
+import { getApiUrl, mediaUrl } from "@/lib/api";
+import { useBrand } from "@/lib/BrandContext";
 
 interface WelcomePopupProps {
   forceOpen?: boolean;
   onClose?: () => void;
+  customBgUrl?: string | null;
+  customTitle?: string;
+  customDescription?: string;
 }
 
 const DISMISSED_KEY = "aira_welcome_popup_dismissed_at";
 const ONE_DAY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-export default function WelcomePopup({ forceOpen = false, onClose }: WelcomePopupProps) {
+export default function WelcomePopup({ 
+  forceOpen = false, 
+  onClose,
+  customBgUrl,
+  customTitle,
+  customDescription
+}: WelcomePopupProps) {
+  const { activeLogoUrl } = useBrand();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(!forceOpen);
+  const [title, setTitle] = useState(customTitle || "Welcome to Aira Properties");
+  const [description, setDescription] = useState(customDescription || "Connecting Buyers & Sellers Globally.");
+  const [bgUrl, setBgUrl] = useState<string | null>(customBgUrl !== undefined ? customBgUrl : null);
+
+  useEffect(() => {
+    if (customTitle !== undefined) setTitle(customTitle);
+  }, [customTitle]);
+
+  useEffect(() => {
+    if (customDescription !== undefined) setDescription(customDescription);
+  }, [customDescription]);
+
+  useEffect(() => {
+    if (customBgUrl !== undefined) setBgUrl(customBgUrl);
+  }, [customBgUrl]);
 
   useEffect(() => {
     if (forceOpen) {
@@ -31,38 +57,43 @@ export default function WelcomePopup({ forceOpen = false, onClose }: WelcomePopu
       }
     }
 
-    // 2. Check if admin enabled welcome popup
-    async function checkAdminSetting() {
+    // 2. Fetch admin settings
+    async function checkAdminSettings() {
       try {
-        const res = await fetch(`${getApiUrl()}/api/admin/settings/welcome_popup_enabled`);
-        if (res.ok) {
-          const data = await res.json();
-          // Show only when explicitly enabled ("true" or "1")
-          if (data && (data.value === "true" || data.value === "1")) {
-            setIsOpen(true);
-            setIsLoading(false);
-            return;
-          } else {
-            setIsOpen(false);
-            setIsLoading(false);
-            return;
-          }
+        const [enableRes, titleRes, descRes, bgRes] = await Promise.all([
+          fetch(`${getApiUrl()}/api/admin/settings/welcome_popup_enabled`).then(r => r.json()).catch(() => null),
+          fetch(`${getApiUrl()}/api/admin/settings/welcome_popup_title`).then(r => r.json()).catch(() => null),
+          fetch(`${getApiUrl()}/api/admin/settings/welcome_popup_description`).then(r => r.json()).catch(() => null),
+          fetch(`${getApiUrl()}/api/admin/settings/welcome_popup_bg_url`).then(r => r.json()).catch(() => null),
+        ]);
+
+        if (titleRes?.value) setTitle(titleRes.value);
+        if (descRes?.value) setDescription(descRes.value);
+        if (bgRes?.value) setBgUrl(bgRes.value);
+
+        if (enableRes && (enableRes.value === "true" || enableRes.value === "1")) {
+          setIsOpen(true);
+        } else {
+          setIsOpen(false);
         }
       } catch (err) {
         console.warn("Could not check welcome popup setting from server:", err);
         const localSetting = localStorage.getItem("aira_admin_welcome_popup_enabled");
-        if (localSetting === "true") {
-          setIsOpen(true);
-          setIsLoading(false);
-          return;
-        }
-      }
+        const localTitle = localStorage.getItem("sparrow_welcome_popup_title");
+        const localDesc = localStorage.getItem("sparrow_welcome_popup_description");
+        const localBg = localStorage.getItem("sparrow_welcome_popup_bg");
 
-      setIsOpen(false);
-      setIsLoading(false);
+        if (localTitle) setTitle(localTitle);
+        if (localDesc) setDescription(localDesc);
+        if (localBg) setBgUrl(localBg);
+
+        setIsOpen(localSetting === "true");
+      } finally {
+        setIsLoading(false);
+      }
     }
 
-    checkAdminSetting();
+    checkAdminSettings();
   }, [forceOpen]);
 
   const handleClose = () => {
@@ -88,8 +119,20 @@ export default function WelcomePopup({ forceOpen = false, onClose }: WelcomePopu
       {/* Modal Card */}
       <div className="relative w-full max-w-[460px] sm:max-w-[490px] bg-white rounded-[32px] sm:rounded-[38px] shadow-2xl shadow-emerald-950/20 overflow-hidden border border-emerald-50 text-center animate-in zoom-in-95 duration-300">
         
-        {/* Ambient soft green radial glow in upper background matching user reference image */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[220px] bg-emerald-100/40 rounded-full blur-3xl pointer-events-none" />
+        {/* Custom Uploaded Background Image or Default Ambient Glow */}
+        {bgUrl ? (
+          <>
+            <img
+              src={mediaUrl(bgUrl)}
+              alt="Welcome Popup Background"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            {/* Soft overlay so text and logo remain crisp and readable */}
+            <div className="absolute inset-0 bg-white/85 backdrop-blur-[1px]" />
+          </>
+        ) : (
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[220px] bg-emerald-100/40 rounded-full blur-3xl pointer-events-none" />
+        )}
 
         {/* Top-right Circular Close Button */}
         <button
@@ -103,40 +146,44 @@ export default function WelcomePopup({ forceOpen = false, onClose }: WelcomePopu
 
         {/* Top Content: Logo, Title, Divider, Subtitle */}
         <div className="pt-10 sm:pt-12 px-6 sm:px-8 relative z-10 flex flex-col items-center">
-          {/* Aira Main Logo on top */}
+          {/* Logo on top */}
           <img
-            src="/images/aira-main-logo.png"
+            src={activeLogoUrl || "/images/aira-main-logo.png"}
             alt="Aira Properties"
             onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = "/images/aira-main-logo.webp";
+              (e.currentTarget as HTMLImageElement).src = "/images/aira-main-logo.png";
             }}
-            className="w-[190px] sm:w-[220px] h-auto object-contain mx-auto"
+            className="w-[190px] sm:w-[220px] max-h-16 h-auto object-contain mx-auto"
           />
 
-          {/* Title: Welcome to Aira Properties */}
+          {/* Title */}
           <h2 className="mt-8 sm:mt-10 text-2xl sm:text-[28px] font-display font-extrabold text-[#449348] tracking-tight text-center leading-snug">
-            Welcome to Aira Properties
+            {title || "Welcome to Aira Properties"}
           </h2>
 
           {/* Short green pill divider bar */}
           <div className="w-12 h-1 bg-[#4FA857] rounded-full mx-auto my-3 sm:my-3.5" />
 
-          {/* Subtitle */}
+          {/* Subtitle / Description */}
           <p className="text-sm sm:text-[15px] font-medium text-slate-600 text-center leading-relaxed max-w-sm">
-            Connecting Buyers & Sellers Globally.
+            {description || "Connecting Buyers & Sellers Globally."}
           </p>
         </div>
 
-        {/* Bottom Cityscape Skyline Illustration matching user mockup */}
-        <div 
-          className="w-full h-16 sm:h-20 mt-8 sm:mt-10 opacity-75 select-none pointer-events-none"
-          style={{
-            backgroundImage: "url('/images/footer-image.png')",
-            backgroundRepeat: "repeat-x",
-            backgroundPosition: "bottom center",
-            backgroundSize: "auto 72px"
-          }}
-        />
+        {/* Bottom Cityscape Skyline Illustration when no full bg image */}
+        {!bgUrl ? (
+          <div 
+            className="w-full h-16 sm:h-20 mt-8 sm:mt-10 opacity-75 select-none pointer-events-none relative z-10"
+            style={{
+              backgroundImage: "url('/images/footer-image.png')",
+              backgroundRepeat: "repeat-x",
+              backgroundPosition: "bottom center",
+              backgroundSize: "auto 72px"
+            }}
+          />
+        ) : (
+          <div className="h-10" />
+        )}
       </div>
     </div>
   );

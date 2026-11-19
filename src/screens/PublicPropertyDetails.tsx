@@ -10,6 +10,7 @@ import SubscriptionPaywallModal from "@/components/SubscriptionPaywallModal";
 import DesktopPropertyDetailsView from "@/components/DesktopPropertyDetailsView";
 import AppDownloadInterstitial from "./AppDownloadInterstitial";
 import PageLoader from "@/components/PageLoader";
+import PropertyDetailPhoto from "@/components/PropertyDetailPhoto";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80";
@@ -728,7 +729,7 @@ View Details: ${window.location.origin}/property/${property.id}`;
                       className="w-full h-full flex-shrink-0 snap-start cursor-pointer"
                       onClick={() => setLightboxIdx(idx)}
                     >
-                      <img
+                      <PropertyDetailPhoto
                         src={m.url}
                         alt={`${property.title} - ${idx + 1}`}
                         className="w-full h-full object-cover"

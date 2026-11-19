@@ -134,6 +134,14 @@ export default function Settings() {
   const [savingMobileLogo, setSavingMobileLogo] = useState(false);
   const [logoPreviewBg, setLogoPreviewBg] = useState<"checker" | "light" | "dark">("checker");
   const [activeSimulationTab, setActiveSimulationTab] = useState<"desktop" | "mobile">("desktop");
+
+  // Property Loading Icon States
+  const [currentPropertyLoadingIcon, setCurrentPropertyLoadingIcon] = useState<string>(
+    () => localStorage.getItem("sparrow_property_loading_icon") || "/images/property_img.svg"
+  );
+  const [propertyLoadingIconFile, setPropertyLoadingIconFile] = useState<File | null>(null);
+  const [propertyLoadingIconPreview, setPropertyLoadingIconPreview] = useState<string | null>(null);
+  const [savingPropertyLoadingIcon, setSavingPropertyLoadingIcon] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [plans, setPlans] = useState<{ role: string; price: number; description?: string; discount?: number; duration_months?: number }[]>([]);
@@ -694,6 +702,17 @@ export default function Settings() {
       })
       .catch(err => console.error("Error loading mobile logo:", err));
 
+    // Fetch property loading icon setting
+    fetch(`${getApiUrl()}/api/admin/settings/property_loading_icon`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.value) {
+          setCurrentPropertyLoadingIcon(data.value);
+          localStorage.setItem("sparrow_property_loading_icon", data.value);
+        }
+      })
+      .catch(err => console.error("Error loading property loading icon:", err));
+
     // Fetch home hero banner setting
     fetch(`${getApiUrl()}/api/admin/settings/home_hero_banner_url`)
       .then(res => res.json())
@@ -1059,6 +1078,42 @@ export default function Settings() {
       alert(err.message || "Failed to reset app screen logo.");
     } finally {
       setSavingMobileLogo(false);
+    }
+  }
+
+  async function handleUploadPropertyLoadingIcon() {
+    if (!propertyLoadingIconFile) return;
+    setSavingPropertyLoadingIcon(true);
+    try {
+      const data = await adminApi.updateSetting("property_loading_icon", propertyLoadingIconFile);
+      setCurrentPropertyLoadingIcon(data.value);
+      localStorage.setItem("sparrow_property_loading_icon", data.value);
+      setPropertyLoadingIconFile(null);
+      setPropertyLoadingIconPreview(null);
+      window.dispatchEvent(new Event("sparrow-logos-updated"));
+      alert("Property loading icon updated and saved successfully!");
+    } catch (err: any) {
+      alert(err.message || "Failed to update property loading icon.");
+    } finally {
+      setSavingPropertyLoadingIcon(false);
+    }
+  }
+
+  async function handleResetPropertyLoadingIcon() {
+    if (!confirm("Are you sure you want to reset the property loading icon to the default icon?")) return;
+    setSavingPropertyLoadingIcon(true);
+    try {
+      await adminApi.updateSetting("property_loading_icon", "/images/property_img.svg");
+      setCurrentPropertyLoadingIcon("/images/property_img.svg");
+      localStorage.setItem("sparrow_property_loading_icon", "/images/property_img.svg");
+      setPropertyLoadingIconFile(null);
+      setPropertyLoadingIconPreview(null);
+      window.dispatchEvent(new Event("sparrow-logos-updated"));
+      alert("Property loading icon reset to default (images/property_img.svg)!");
+    } catch (err: any) {
+      alert(err.message || "Failed to reset property loading icon.");
+    } finally {
+      setSavingPropertyLoadingIcon(false);
     }
   }
 
@@ -2778,74 +2833,89 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Live Simulation Preview Showcase */}
-        <div className="mt-6 bg-slate-50 border border-charcoal/5 rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-1.5">
-              <Eye size={14} className="text-emerald-700" />
-              <span className="text-xs font-bold text-ink">Live Header Simulation</span>
+        {/* Property Loading Icon Section */}
+        <div className="mt-6 bg-slate-50 border border-charcoal/5 rounded-2xl p-4 sm:p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-charcoal/5">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-emerald-100/70 text-emerald-800 flex items-center justify-center shrink-0">
+                <Sparkles size={16} />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-ink">Property Loading Icon</h4>
+                <p className="text-[10px] text-slate font-medium">
+                  Displays placeholder animation while property images load across Home, Search, and Property Details pages.
+                </p>
+              </div>
             </div>
-            <div className="flex gap-1 p-0.5 bg-slate-200/80 rounded-lg">
+            {currentPropertyLoadingIcon !== "/images/property_img.svg" && (
               <button
                 type="button"
-                onClick={() => setActiveSimulationTab("desktop")}
-                className={`px-2.5 py-1 text-[9.5px] font-bold rounded-md transition-all cursor-pointer ${activeSimulationTab === "desktop" ? "bg-white text-ink shadow-xs" : "text-slate hover:text-ink"}`}
+                onClick={handleResetPropertyLoadingIcon}
+                disabled={savingPropertyLoadingIcon}
+                className="px-2.5 py-1 text-[10px] font-bold text-slate hover:text-ink bg-white border border-charcoal/10 rounded-lg shadow-2xs hover:bg-slate-50 transition cursor-pointer flex items-center gap-1 self-start sm:self-auto"
               >
-                Desktop Header (≥1000px)
+                <RotateCcw size={12} />
+                <span>Reset to Default</span>
               </button>
-              <button
-                type="button"
-                onClick={() => setActiveSimulationTab("mobile")}
-                className={`px-2.5 py-1 text-[9.5px] font-bold rounded-md transition-all cursor-pointer ${activeSimulationTab === "mobile" ? "bg-white text-ink shadow-xs" : "text-slate hover:text-ink"}`}
-              >
-                Mobile / App Header (&lt;1000px)
-              </button>
-            </div>
+            )}
           </div>
 
-          {activeSimulationTab === "desktop" ? (
-            <div className="bg-white border border-charcoal/10 rounded-xl p-3 shadow-xs flex items-center justify-between overflow-x-auto">
-              <div className="flex items-center gap-4">
-                <img 
-                  src={mediaUrl(desktopLogoPreview || currentDesktopLogo)} 
-                  alt="Desktop Preview" 
-                  className="h-9 w-auto object-contain"
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+            {/* Live Interactive Property Card Preview */}
+            <div className="md:col-span-5 flex flex-col items-center">
+              <span className="text-[10px] font-bold text-slate/70 mb-1.5 uppercase tracking-wider">Preview in Property Card</span>
+              <div className="relative aspect-[4/3] w-full max-w-[260px] rounded-2xl overflow-hidden bg-slate-100 border border-charcoal/10 shadow-xs flex flex-col items-center justify-center p-4">
+                <img
+                  src={mediaUrl(propertyLoadingIconPreview || currentPropertyLoadingIcon)}
+                  alt="Property Loading Icon Preview"
+                  className="w-14 h-14 object-contain drop-shadow-xs"
                   onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = "/brand_logo-web.png";
+                    (e.currentTarget as HTMLImageElement).src = "/images/property_img.svg";
                   }}
                 />
-                <div className="hidden sm:flex items-center gap-2 text-[10px] text-slate font-medium">
-                  <span className="bg-slate-100 px-2 py-1 rounded-md">All Properties</span>
-                  <span className="bg-slate-100 px-2 py-1 rounded-md">Villa</span>
-                  <span className="bg-slate-100 px-2 py-1 rounded-md">Apartment</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-7 px-3 bg-slate-100 rounded-full text-[10px] text-slate flex items-center">Search properties...</div>
-                <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">+</div>
+                <span className="text-[10px] text-slate/60 font-semibold mt-2.5">
+                  Loading property photo...
+                </span>
+                <span className="absolute bottom-2 right-2 text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-black/60 text-white backdrop-blur-xs">
+                  {propertyLoadingIconPreview ? "New Preview" : currentPropertyLoadingIcon === "/images/property_img.svg" ? "images/property_img.svg" : "Custom Upload"}
+                </span>
               </div>
             </div>
-          ) : (
-            <div className="w-full max-w-[340px] mx-auto bg-cream border border-charcoal/10 rounded-2xl overflow-hidden shadow-xs relative">
-              <div className="absolute top-0 left-0 w-[55%] h-[80px] bg-[#60A963] rounded-br-[50px] z-0 pointer-events-none" />
-              <div className="relative z-10 px-4 py-2.5 flex items-center justify-between">
-                <img 
-                  src={mediaUrl(mobileLogoPreview || currentMobileLogo)} 
-                  alt="Mobile Preview" 
-                  className="h-9 w-auto object-contain"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = "/brand_logo.png";
+
+            {/* Upload Controls */}
+            <div className="md:col-span-7 flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-ink">Upload Custom Loading Icon</label>
+                <input
+                  type="file"
+                  accept="image/svg+xml,image/png,image/gif,image/webp,image/jpeg"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setPropertyLoadingIconFile(file);
+                      setPropertyLoadingIconPreview(URL.createObjectURL(file));
+                    }
                   }}
+                  className="text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-[11px] file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 text-slate cursor-pointer"
                 />
-                <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-xs text-ink text-[11px] font-bold">
-                  🔔
-                </div>
+                <p className="text-[9.5px] text-slate/70">
+                  Recommended: SVG (animated or static), GIF, or transparent PNG. Default is <code className="font-mono text-emerald-800 bg-emerald-50 px-1 py-0.5 rounded">images/property_img.svg</code>.
+                </p>
               </div>
-              <div className="px-4 pb-3 pt-1 relative z-10">
-                <div className="h-6 bg-white/90 rounded-lg text-[9px] text-slate flex items-center px-2">Search location, district...</div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={handleUploadPropertyLoadingIcon}
+                  disabled={savingPropertyLoadingIcon || !propertyLoadingIconFile}
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold font-display shadow-xs transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Upload size={13} />
+                  <span>{savingPropertyLoadingIcon ? "Saving to Database..." : "Update Property Loading Icon"}</span>
+                </button>
               </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
     );

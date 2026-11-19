@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Heart, Star } from "lucide-react";
 import { ApiProperty, mediaUrl, thumbnailUrl, api } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
+import { useBrand } from "@/lib/BrandContext";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&q=80";
@@ -39,18 +40,57 @@ export default function PropertyCard({
   property,
   onToggleSave,
   compact = false,
-  onClick
+  onClick,
+  index
 }: { 
   property: ApiProperty;
   onToggleSave?: (id: number, isSaved: boolean) => void;
   compact?: boolean;
   onClick?: () => void;
+  index?: number;
 }) {
   const navigate = useNavigate();
   const { user, token } = useAuth();
+  const { propertyLoadingIconUrl } = useBrand();
   const [saved, setSaved] = useState(property.isSaved || false);
   const [busy, setBusy] = useState(false);
+  const [isInView, setIsInView] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
   const isOwner = user && user.id === property.ownerId;
+
+  // Viewport intersection observer for lazy loading and staggered entry
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+
+    if (typeof IntersectionObserver === "undefined") {
+      setIsInView(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsInView(true);
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      {
+        root: null,
+        rootMargin: "200px 0px", // Pre-load shortly before appearing in viewport
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(el);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     setSaved(property.isSaved || false);
@@ -73,8 +113,13 @@ export default function PropertyCard({
     }
   }
 
+  // Escalating staggered delay based on card sequence index
+  const delayMs = index !== undefined ? Math.min((index % 8) * 60, 480) : 0;
+
+  // Optimized thumbnail resolution for cards to reduce payload by up to 70%
+  const thumbWidth = compact ? 360 : 440;
   const firstImg = property.images && property.images[0] ? property.images[0] : null;
-  const image = firstImg ? thumbnailUrl(firstImg, 600) : FALLBACK_IMAGE;
+  const image = firstImg ? thumbnailUrl(firstImg, thumbWidth, 80) : FALLBACK_IMAGE;
 
   const rating = property.avgRating !== undefined && property.avgRating > 0 ? property.avgRating : 5.0;
 
@@ -96,6 +141,14 @@ export default function PropertyCard({
 
   return (
     <div
+      ref={cardRef}
+      style={{
+        opacity: isInView ? 1 : 0,
+        transform: isInView ? "translateY(0px)" : "translateY(16px)",
+        transition: "opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)",
+        transitionDelay: `${delayMs}ms`,
+        willChange: isInView ? "auto" : "opacity, transform",
+      }}
       onClick={() => {
         if (onClick) {
           onClick();
@@ -106,18 +159,41 @@ export default function PropertyCard({
           navigate(isOwner ? `/my-properties/${property.id}` : `/property/${property.id}`);
         }
       }}
-      className="group bg-transparent transition-all duration-300 cursor-pointer flex flex-col text-left select-none w-full"
+      className="group bg-transparent cursor-pointer flex flex-col text-left select-none w-full"
     >
       {/* Property Image Container */}
       <div className="relative aspect-[4/3.1] w-full overflow-hidden rounded-2xl bg-gray-100 shadow-xs">
-        <img
-          src={image}
-          alt={property.title}
-          loading="lazy"
-          decoding="async"
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
-        />
+        {/* Property Loading Icon while image is loading */}
+        {!imgLoaded && (
+          <div className="absolute inset-0 bg-slate-50 flex items-center justify-center p-3 z-0">
+            <img
+              src={propertyLoadingIconUrl || "/images/property_img.svg"}
+              alt="Loading"
+              className="w-10 h-10 object-contain select-none"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = "/images/property_img.svg";
+              }}
+            />
+          </div>
+        )}
+
+        {/* Asynchronously loaded image with smooth fade-in */}
+        {isInView && (
+          <img
+            src={image}
+            alt={property.title}
+            loading="lazy"
+            decoding="async"
+            onLoad={() => setImgLoaded(true)}
+            onError={(e) => {
+              setImgLoaded(true);
+              (e.target as HTMLImageElement).src = FALLBACK_IMAGE;
+            }}
+            className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-500 ${
+              imgLoaded ? "opacity-100 scale-100" : "opacity-0 scale-[1.02]"
+            }`}
+          />
+        )}
 
         {/* Top Left Overlay Tag (Sold Out / Sales / For Rent) */}
         <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-10">

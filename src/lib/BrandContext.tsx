@@ -10,6 +10,7 @@ export const DEFAULT_HOME_HERO_BANNER = "/images/home-hero.png";
 export const DEFAULT_LOGIN_BANNER = "/kerala_house_login.jpg";
 export const DEFAULT_LOADING_BANNER = "";
 export const DEFAULT_LOADING_BG_COLOR = "#0D2436";
+export const DEFAULT_PROPERTY_LOADING_ICON = "/images/property_img.svg";
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 const cleanColor = (val: string | null | undefined) => (val && HEX_COLOR.test(val) ? val : DEFAULT_LOADING_BG_COLOR);
 
@@ -25,6 +26,7 @@ interface BrandContextType {
   loginBannerUrl: string;
   welcomeBannerUrl: string;
   homeHeroBannerUrl: string;
+  propertyLoadingIconUrl: string;
   isHomeHeroBannerEnabled: boolean;
   isPopularLocationsEnabled: boolean;
   isWelcomeBannerEnabled: boolean;
@@ -43,6 +45,7 @@ const BrandContext = createContext<BrandContextType>({
   loginBannerUrl: DEFAULT_LOGIN_BANNER,
   welcomeBannerUrl: DEFAULT_WELCOME_BANNER,
   homeHeroBannerUrl: DEFAULT_HOME_HERO_BANNER,
+  propertyLoadingIconUrl: DEFAULT_PROPERTY_LOADING_ICON,
   isHomeHeroBannerEnabled: true,
   isPopularLocationsEnabled: true,
   isWelcomeBannerEnabled: true,
@@ -79,6 +82,9 @@ export function BrandProvider({ children }: { children: ReactNode }) {
   });
   const [homeHeroBanner, setHomeHeroBanner] = useState<string>(() => {
     return localStorage.getItem("sparrow_home_hero_banner") || DEFAULT_HOME_HERO_BANNER;
+  });
+  const [propertyLoadingIcon, setPropertyLoadingIcon] = useState<string>(() => {
+    return localStorage.getItem("sparrow_property_loading_icon") || DEFAULT_PROPERTY_LOADING_ICON;
   });
   const [isHomeHeroBannerEnabled, setIsHomeHeroBannerEnabled] = useState<boolean>(() => {
     const val = localStorage.getItem("sparrow_enable_home_hero_banner");
@@ -143,6 +149,10 @@ export function BrandProvider({ children }: { children: ReactNode }) {
           setHomeHeroBanner(data.home_hero_banner_url);
           localStorage.setItem("sparrow_home_hero_banner", data.home_hero_banner_url);
         }
+        if (data.property_loading_icon) {
+          setPropertyLoadingIcon(data.property_loading_icon);
+          localStorage.setItem("sparrow_property_loading_icon", data.property_loading_icon);
+        }
         if (data.enable_home_hero_banner !== undefined) {
           const isEnabled = data.enable_home_hero_banner === "true" || data.enable_home_hero_banner === true || data.enable_home_hero_banner === "1";
           setIsHomeHeroBannerEnabled(isEnabled);
@@ -195,6 +205,8 @@ export function BrandProvider({ children }: { children: ReactNode }) {
       if (savedWelcome) setWelcomeBanner(savedWelcome);
       const savedHero = localStorage.getItem("sparrow_home_hero_banner");
       if (savedHero) setHomeHeroBanner(savedHero);
+      const savedPropLoading = localStorage.getItem("sparrow_property_loading_icon");
+      if (savedPropLoading) setPropertyLoadingIcon(savedPropLoading);
       const savedHeroEnabled = localStorage.getItem("sparrow_enable_home_hero_banner");
       if (savedHeroEnabled !== null) setIsHomeHeroBannerEnabled(savedHeroEnabled !== "false");
       const savedPopLocations = localStorage.getItem("sparrow_enable_popular_locations");
@@ -219,6 +231,7 @@ export function BrandProvider({ children }: { children: ReactNode }) {
   const resolvedLoginBanner = loginBanner ? mediaUrl(loginBanner) : DEFAULT_LOGIN_BANNER;
   const resolvedWelcomeBanner = welcomeBanner ? mediaUrl(welcomeBanner) : DEFAULT_WELCOME_BANNER;
   const resolvedHomeHeroBanner = homeHeroBanner ? mediaUrl(homeHeroBanner) : DEFAULT_HOME_HERO_BANNER;
+  const resolvedPropertyLoadingIcon = propertyLoadingIcon ? mediaUrl(propertyLoadingIcon) : DEFAULT_PROPERTY_LOADING_ICON;
 
   return (
     <BrandContext.Provider
@@ -232,6 +245,7 @@ export function BrandProvider({ children }: { children: ReactNode }) {
         loginBannerUrl: resolvedLoginBanner,
         welcomeBannerUrl: resolvedWelcomeBanner,
         homeHeroBannerUrl: resolvedHomeHeroBanner,
+        propertyLoadingIconUrl: resolvedPropertyLoadingIcon,
         isHomeHeroBannerEnabled,
         isPopularLocationsEnabled,
         isWelcomeBannerEnabled,

@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Heart, Star, MapPin } from "lucide-react";
 import { ApiProperty, mediaUrl, thumbnailUrl, api } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
+import { useBrand } from "@/lib/BrandContext";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&q=80";
@@ -38,17 +39,56 @@ function formatPostedDate(dateStr?: string | null): string {
 export default function PropertyListCard({
   property,
   onToggleSave,
-  onClick
+  onClick,
+  index
 }: {
   property: ApiProperty;
   onToggleSave?: (id: number, isSaved: boolean) => void;
   onClick?: () => void;
+  index?: number;
 }) {
   const navigate = useNavigate();
   const { user, token } = useAuth();
+  const { propertyLoadingIconUrl } = useBrand();
   const [saved, setSaved] = useState(property.isSaved || false);
   const [busy, setBusy] = useState(false);
+  const [isInView, setIsInView] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
   const isOwner = user && user.id === property.ownerId;
+
+  // Viewport intersection observer for lazy loading and staggered entry
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+
+    if (typeof IntersectionObserver === "undefined") {
+      setIsInView(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsInView(true);
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      {
+        root: null,
+        rootMargin: "200px 0px",
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(el);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     setSaved(property.isSaved || false);
@@ -71,8 +111,12 @@ export default function PropertyListCard({
     }
   }
 
+  // Escalating staggered delay based on card sequence index
+  const delayMs = index !== undefined ? Math.min((index % 8) * 60, 480) : 0;
+
+  // Compact image thumbnail resolution (approx 320px) to drastically reduce byte transfer
   const firstImg = property.images && property.images[0] ? property.images[0] : null;
-  const image = firstImg ? thumbnailUrl(firstImg, 600) : FALLBACK_IMAGE;
+  const image = firstImg ? thumbnailUrl(firstImg, 320, 80) : FALLBACK_IMAGE;
 
   const rating = property.avgRating !== undefined && property.avgRating > 0 ? property.avgRating : 5.0;
 
@@ -94,6 +138,7 @@ export default function PropertyListCard({
 
   return (
     <div
+      ref={cardRef}
       onClick={() => {
         if (onClick) {
           onClick();
@@ -104,23 +149,51 @@ export default function PropertyListCard({
           navigate(isOwner ? `/my-properties/${property.id}` : `/property/${property.id}`);
         }
       }}
-      className="group bg-white p-2.5 flex flex-row items-center gap-3 transition-shadow hover:shadow-md cursor-pointer select-none w-full text-left border"
+      className="group bg-white p-2.5 flex flex-row items-center gap-3 hover:shadow-md cursor-pointer select-none w-full text-left border"
       style={{
         borderRadius: "10px",
         boxShadow: "rgba(0, 0, 0, 0.04) 0px 3px 5px",
         borderColor: "rgb(215 234 221)",
+        opacity: isInView ? 1 : 0,
+        transform: isInView ? "translateY(0px)" : "translateY(16px)",
+        transition: "opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)",
+        transitionDelay: `${delayMs}ms`,
+        willChange: isInView ? "auto" : "opacity, transform",
       }}
     >
       {/* Left side: Image */}
       <div className="relative w-36 h-28 sm:w-40 sm:h-28 shrink-0 overflow-hidden rounded-md bg-gray-100">
-        <img
-          src={image}
-          alt={displayTitle}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = FALLBACK_IMAGE;
-          }}
-        />
+        {/* Property Loading Icon while image is loading */}
+        {!imgLoaded && (
+          <div className="absolute inset-0 bg-slate-50 flex items-center justify-center p-2 z-0">
+            <img
+              src={propertyLoadingIconUrl || "/images/property_img.svg"}
+              alt="Loading"
+              className="w-8 h-8 object-contain select-none"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = "/images/property_img.svg";
+              }}
+            />
+          </div>
+        )}
+
+        {/* Asynchronously loaded image with smooth fade-in */}
+        {isInView && (
+          <img
+            src={image}
+            alt={displayTitle}
+            loading="lazy"
+            decoding="async"
+            onLoad={() => setImgLoaded(true)}
+            onError={(e) => {
+              setImgLoaded(true);
+              (e.target as HTMLImageElement).src = FALLBACK_IMAGE;
+            }}
+            className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-300 ${
+              imgLoaded ? "opacity-100 scale-100" : "opacity-0 scale-[1.02]"
+            }`}
+          />
+        )}
 
         {/* Top-Left Badge */}
         {isSold ? (

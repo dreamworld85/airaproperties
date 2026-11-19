@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Star, ChevronRight } from "lucide-react";
 import { ApiProperty, mediaUrl, thumbnailUrl } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
+import { useBrand } from "@/lib/BrandContext";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&q=80";
@@ -19,10 +21,12 @@ function formatPrice(price: number): string {
 export default function FeaturedPropertyCard({ property }: { property: ApiProperty }) {
   const navigate = useNavigate();
   const { user, token } = useAuth();
+  const { propertyLoadingIconUrl } = useBrand();
+  const [imgLoaded, setImgLoaded] = useState(false);
   const isOwner = user && user.id === property.ownerId;
   const isSold = property.status === "Sold" || (property.status as string) === "";
 
-  const image = property.images[0] ? thumbnailUrl(property.images[0], 800) : FALLBACK_IMAGE;
+  const image = property.images[0] ? thumbnailUrl(property.images[0], 550, 80) : FALLBACK_IMAGE;
   const rating = property.avgRating !== undefined && property.avgRating > 0 ? property.avgRating : 4.5;
 
   return (
@@ -37,14 +41,35 @@ export default function FeaturedPropertyCard({ property }: { property: ApiProper
       }}
       className="relative w-full aspect-[16/10] rounded-[16px] overflow-hidden group hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 shadow-md text-left cursor-pointer border border-charcoal/5 bg-slate-100 select-none"
     >
+      {/* Property Loading Icon while loading */}
+      {!imgLoaded && (
+        <div className="absolute inset-0 bg-slate-900 flex items-center justify-center p-4 z-0">
+          <img
+            src={propertyLoadingIconUrl || "/images/property_img.svg"}
+            alt="Loading"
+            className="w-12 h-12 object-contain select-none"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "/images/property_img.svg";
+            }}
+          />
+        </div>
+      )}
+
       {/* Background Image */}
       <img
         src={image}
         alt={property.title}
         loading="lazy"
         decoding="async"
+        onLoad={() => setImgLoaded(true)}
+        onError={(e) => {
+          setImgLoaded(true);
+          (e.target as HTMLImageElement).src = FALLBACK_IMAGE;
+        }}
         style={{ objectFit: "cover" }}
-        className="absolute inset-0 w-full h-full scale-[1.28] group-hover:scale-[1.33] transition-transform duration-500"
+        className={`absolute inset-0 w-full h-full scale-[1.28] group-hover:scale-[1.33] transition-all duration-500 ${
+          imgLoaded ? "opacity-100" : "opacity-0"
+        }`}
       />
 
       {/* Vignette Gradient Overlay */}

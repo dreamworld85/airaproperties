@@ -427,9 +427,15 @@ export default function DesktopPropertyListing({
               </div>
 
               {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 animate-pulse">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <div key={i} className="h-56 bg-gray-200 rounded-2xl"></div>
+                    <div key={i} className="flex flex-col gap-2 rounded-2xl bg-white p-2.5 shadow-xs border border-gray-100/80 animate-pulse">
+                      <div className="aspect-[4/3.1] w-full bg-gray-200/90 rounded-xl" />
+                      <div className="flex-1 flex flex-col gap-1.5 py-1">
+                        <div className="h-3.5 bg-gray-200 rounded-md w-3/4" />
+                        <div className="h-3 bg-gray-200/70 rounded-md w-1/2" />
+                      </div>
+                    </div>
                   ))}
                 </div>
               ) : sortedVisibleMapProperties.length === 0 ? (
@@ -440,15 +446,16 @@ export default function DesktopPropertyListing({
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {sortedVisibleMapProperties.map((prop) => (
+                  {sortedVisibleMapProperties.map((prop, idx) => (
                     <div
                       key={prop.id}
                       id={`property-card-${prop.id}`}
                       onMouseEnter={() => setSelectedProperty(prop)}
-                      className="rounded-2xl transition-all duration-200 cursor-pointer"
+                      className="rounded-2xl cursor-pointer"
                     >
                       <PropertyCard
                         property={prop}
+                        index={idx}
                         onToggleSave={(id, isSaved) => {
                           setProperties((prev) =>
                             prev.map((p) => (p.id === id ? { ...p, isSaved } : p))
@@ -590,11 +597,24 @@ export default function DesktopPropertyListing({
           {loading ? (
             <div className={
               viewMode === "grid"
-                ? "property-responsive-grid animate-pulse"
-                : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse"
+                ? "property-responsive-grid"
+                : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
             }>
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
-                <div key={i} className={viewMode === "grid" ? "h-60 bg-gray-200 rounded-2xl" : "h-32 bg-gray-200"}></div>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map((i) => (
+                <div
+                  key={i}
+                  className={
+                    viewMode === "grid"
+                      ? "flex flex-col gap-2 rounded-2xl bg-white p-2.5 shadow-xs border border-gray-100/80 animate-pulse"
+                      : "h-32 bg-white rounded-xl p-3 border border-gray-100 animate-pulse flex items-center gap-3"
+                  }
+                >
+                  <div className={viewMode === "grid" ? "aspect-[4/3.1] w-full bg-gray-200/90 rounded-xl" : "w-36 h-28 bg-gray-200/90 rounded-md shrink-0"} />
+                  <div className="flex-1 flex flex-col gap-1.5 py-1">
+                    <div className="h-3.5 bg-gray-200 rounded-md w-3/4" />
+                    <div className="h-3 bg-gray-200/70 rounded-md w-1/2" />
+                  </div>
+                </div>
               ))}
             </div>
           ) : sortedProperties.length === 0 ? (
@@ -609,16 +629,17 @@ export default function DesktopPropertyListing({
                 ? "property-responsive-grid"
                 : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 xl:gap-5"
             }>
-              {sortedProperties.map((prop) => (
+              {sortedProperties.map((prop, idx) => (
                 <div
                   key={prop.id}
                   id={`property-card-${prop.id}`}
                   onMouseEnter={() => setSelectedProperty(prop)}
-                  className={viewMode === "grid" ? "rounded-2xl transition-all duration-200" : ""}
+                  className={viewMode === "grid" ? "rounded-2xl" : ""}
                 >
                   {viewMode === "grid" ? (
                     <PropertyCard
                       property={prop}
+                      index={idx}
                       onToggleSave={(id, isSaved) => {
                         setProperties((prev) =>
                           prev.map((p) => (p.id === id ? { ...p, isSaved } : p))
@@ -631,6 +652,7 @@ export default function DesktopPropertyListing({
                   ) : (
                     <PropertyListCard
                       property={prop}
+                      index={idx}
                       onToggleSave={(id, isSaved) => {
                         setProperties((prev) =>
                           prev.map((p) => (p.id === id ? { ...p, isSaved } : p))
