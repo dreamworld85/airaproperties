@@ -87,7 +87,10 @@ export default function PropertyCard({
     : `${property.title} in ${property.district}`;
 
   const priceFormatted = formatPrice(property.price, property.purpose);
-  const roleFormatted = property.purpose === "For Rent" ? "" : (property.listingRole || "Broker");
+  const rawRole = property.listingRole || (property as any).listing_role;
+  const roleFormatted = rawRole
+    ? rawRole.charAt(0).toUpperCase() + rawRole.slice(1).toLowerCase()
+    : "Owner";
   const postedDate = formatPostedDate(property.createdAt || (property as any).created_at);
   const isSold = property.status === "Sold" || (property.status as string) === "";
 
@@ -139,12 +142,19 @@ export default function PropertyCard({
           <Heart size={15} className={saved ? "fill-rose-500 text-rose-500" : "text-white"} />
         </button>
 
-        {/* Bottom Overlay: White gradient with Posted Date */}
-        {postedDate && (
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-white/90 via-white/50 to-transparent pt-[0.5rem] pb-[0.2rem] px-3 z-10 pointer-events-none flex items-end">
-            <span className="text-gray-900 font-normal italic text-[10px] sm:text-[11px] tracking-tight select-none">
-              Posted: {postedDate}
-            </span>
+        {/* Bottom Overlay: White gradient with Posted Date on left and User Type on right */}
+        {(postedDate || roleFormatted) && (
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-white/90 via-white/50 to-transparent pt-3 pb-1 px-2.5 z-10 pointer-events-none flex items-center justify-between">
+            {postedDate ? (
+              <span className="text-gray-900 font-normal italic text-[10px] sm:text-[11px] tracking-tight select-none">
+                Posted: {postedDate}
+              </span>
+            ) : <span />}
+            {roleFormatted && (
+              <span className="px-1.5 py-0.5 bg-white/95 text-gray-800 font-medium text-[9.5px] sm:text-[10px] rounded-[3px] shadow-xs select-none tracking-tight leading-tight border border-black/5">
+                {roleFormatted}
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -156,9 +166,9 @@ export default function PropertyCard({
           {displayTitle}
         </h3>
 
-        {/* Line 2: Price + Agent/Broker/Owner + Rating Number */}
+        {/* Line 2: Price + Rating Number */}
         <p className="text-xs text-gray-600 font-medium mt-1 truncate flex items-center gap-1">
-          <span>{priceFormatted} {roleFormatted}</span>
+          <span>{priceFormatted}</span>
           <span className="text-gray-400">·</span>
           <span className="flex items-center gap-0.5 text-gray-800 font-semibold">
             <Star size={12} className="fill-amber-400 text-amber-400 inline" />
