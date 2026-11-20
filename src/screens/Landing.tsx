@@ -629,12 +629,6 @@ export default function Landing() {
                 <MapPin size={14} className="text-[#60A963] shrink-0 mt-0.5" />
                 <span>Aira Properties, Infopark Phase II, Kochi, Kerala</span>
               </div>
-              <span 
-                onClick={() => navigate("/contact-us")} 
-                className="text-[#60A963] font-bold hover:underline transition-colors cursor-pointer w-fit mt-1"
-              >
-                Contact Us
-              </span>
             </div>
           </div>
         </div>

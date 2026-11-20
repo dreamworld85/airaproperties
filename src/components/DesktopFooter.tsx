@@ -153,14 +153,8 @@ export default function DesktopFooter() {
                 <span className="whitespace-pre-line leading-relaxed">{address}</span>
               </div>
               <span 
-                onClick={() => navigate("/contact-us")} 
-                className="text-[#60A963] font-bold hover:underline transition-colors cursor-pointer w-fit mt-1"
-              >
-                Contact Us
-              </span>
-              <span 
                 onClick={() => window.dispatchEvent(new CustomEvent("open-request-property-modal"))} 
-                className="text-[#60A963] font-bold hover:underline transition-colors cursor-pointer w-fit"
+                className="text-[#60A963] font-bold hover:underline transition-colors cursor-pointer w-fit mt-1"
               >
                 Request a Property
               </span>
