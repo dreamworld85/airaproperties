@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { User, ShieldAlert, Trash2, Ban, ShieldCheck, ChevronLeft, Edit3, Check, X, ChevronDown } from "lucide-react";
+import { User, ShieldAlert, Trash2, Ban, ShieldCheck, ChevronLeft, Edit3, Check, X, ChevronDown, AlertTriangle, Loader2 } from "lucide-react";
 import { adminApi, AdminUser } from "@/lib/adminApi";
 import { mediaUrl } from "@/lib/api";
 import { INDIAN_STATES, STATE_DISTRICTS_MAP } from "@/lib/indiaLocationData";
@@ -13,6 +13,10 @@ export default function UserDetails() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  // Delete modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [isFreeGranted, setIsFreeGranted] = useState(false);
   const [customTrialExpiry, setCustomTrialExpiry] = useState("");
@@ -116,18 +120,21 @@ export default function UserDetails() {
     }
   }
 
-  async function handleDeleteUser() {
+  function handleDeleteUser() {
     if (!user || !id) return;
-    const confirmDelete = window.confirm(`Are you absolutely sure you want to delete user "${user.name}"? This action is permanent!`);
-    if (!confirmDelete) return;
+    setShowDeleteModal(true);
+  }
 
-    setBusy(true);
+  async function handleConfirmDelete() {
+    if (!user || !id) return;
+    setIsDeleting(true);
     try {
       await adminApi.deleteUser(id);
-      navigate("/admin/users");
-    } catch (err) {
-      alert("Failed to delete user account.");
-      setBusy(false);
+      setShowDeleteModal(false);
+      navigate("/admin/users", { replace: true });
+    } catch (err: any) {
+      alert(err.message || "Failed to delete user account.");
+      setIsDeleting(false);
     }
   }
 
@@ -514,9 +521,9 @@ export default function UserDetails() {
           </button>
           
           <button
-            disabled={busy}
+            disabled={busy || isDeleting}
             onClick={handleDeleteUser}
-            className="w-full py-4 rounded-xl flex items-center justify-between px-5 bg-rose-50 border border-rose-200 text-rose-700 font-semibold text-xs hover:bg-rose-100 transition-all active:scale-[0.99]"
+            className="w-full py-4 rounded-xl flex items-center justify-between px-5 bg-rose-50 border border-rose-200 text-rose-700 font-semibold text-xs hover:bg-rose-100 transition-all active:scale-[0.99] disabled:opacity-50"
           >
             <span className="flex items-center gap-2">
               <Trash2 size={16} />
@@ -526,6 +533,91 @@ export default function UserDetails() {
           </button>
         </div>
       </div>
+
+      {/* PERMANENT DELETE CONFIRMATION MODAL */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => !isDeleting && setShowDeleteModal(false)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 text-center animate-in zoom-in-95 duration-200 border border-charcoal/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-14 h-14 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto shadow-inner">
+              <AlertTriangle size={28} />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <h3 className="font-display font-extrabold text-base text-slate-900">
+                Delete Account Permanently?
+              </h3>
+              <p className="text-xs text-slate-600">
+                You are about to permanently delete user account:
+              </p>
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-left my-1 flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-900">{user.name}</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-200 text-slate-700">
+                    {user.role || "User"}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-500 flex flex-col gap-0.5">
+                  {user.phone && <span>📞 Phone: {user.phone}</span>}
+                  {user.email && <span>✉️ Email: {user.email}</span>}
+                  <span>🏠 Properties: {user.listings || 0} listings</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Clear Warning of What Gets Purged */}
+            <div className="text-left bg-rose-50/70 border border-rose-200/80 rounded-2xl p-3.5 flex flex-col gap-2 text-[11px] text-rose-900 font-medium">
+              <span className="font-bold text-rose-800 uppercase tracking-wide text-[10px] flex items-center gap-1.5">
+                <Trash2 size={13} className="shrink-0 text-rose-600" />
+                This permanent deletion will immediately:
+              </span>
+              <ul className="list-disc list-inside space-y-1 text-rose-800/90 text-[11px] leading-relaxed">
+                <li>Permanently wipe this user account from the database.</li>
+                <li>Delete <strong>all {user.listings || 0} property listings</strong> uploaded by this user.</li>
+                <li>Purge <strong>all uploaded images, videos & thumbnails</strong> from the server disk.</li>
+                <li>Remove all associated enquiries, reviews, views, and credit tokens.</li>
+              </ul>
+              <p className="text-[10px] text-rose-600 font-bold mt-0.5">
+                ⚠️ This action is irreversible and cannot be undone.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setShowDeleteModal(false)}
+                className="w-full py-3 rounded-xl border border-slate-200 font-bold text-xs text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                className="w-full py-3 rounded-xl bg-rose-600 text-white font-bold text-xs hover:bg-rose-700 transition-colors shadow-md shadow-rose-600/20 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Purging data...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    <span>Delete Permanently</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

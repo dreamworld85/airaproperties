@@ -81,115 +81,197 @@ export async function deleteUserCompletely(conn, userId, options = {}) {
   // 5. DATABASE DELETIONS
 
   // A. Delete user tokens & token transactions
-  await conn.query("DELETE FROM credit_transactions WHERE user_id = ?", [numericUserId]);
+  try {
+    await conn.query("DELETE FROM credit_transactions WHERE user_id = ?", [numericUserId]);
+  } catch (e) {
+    console.warn("[DELETE USER] Failed to clean credit_transactions for user:", e.message);
+  }
 
   // B. Delete user activity logs
-  await conn.query("DELETE FROM activity_logs WHERE user_id = ?", [numericUserId]);
+  try {
+    await conn.query("DELETE FROM activity_logs WHERE user_id = ?", [numericUserId]);
+  } catch (e) {
+    console.warn("[DELETE USER] Failed to clean activity_logs for user:", e.message);
+  }
 
   // C. Delete notifications referencing user or user's properties
-  await conn.query("DELETE FROM notifications WHERE user_id = ? OR sender_id = ?", [numericUserId, numericUserId]);
-  if (propIds.length > 0) {
-    await conn.query(
-      `DELETE FROM notifications WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
-      propIds
-    );
+  try {
+    await conn.query("DELETE FROM notifications WHERE user_id = ? OR sender_id = ?", [numericUserId, numericUserId]);
+    if (propIds.length > 0) {
+      await conn.query(
+        `DELETE FROM notifications WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
+        propIds
+      );
+    }
+  } catch (e) {
+    console.warn("[DELETE USER] Failed to clean notifications:", e.message);
   }
 
-  // D. Delete role switch requests
-  await conn.query("DELETE FROM role_switch_requests WHERE user_id = ?", [numericUserId]);
-
-  // E. Delete enquiries (as visitor OR received on user's uploaded properties)
-  await conn.query("DELETE FROM enquiries WHERE visitor_id = ?", [numericUserId]);
-  if (propIds.length > 0) {
-    await conn.query(
-      `DELETE FROM enquiries WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
-      propIds
-    );
+  // D. Delete user FCM push notification tokens
+  try {
+    await conn.query("DELETE FROM user_fcm_tokens WHERE user_id = ?", [numericUserId]);
+  } catch (e) {
+    console.warn("[DELETE USER] Failed to clean user_fcm_tokens:", e.message);
   }
 
-  // F. Delete saved properties (user's saved properties OR other users saving user's properties)
-  await conn.query("DELETE FROM saved_properties WHERE user_id = ?", [numericUserId]);
-  if (propIds.length > 0) {
+  // E. Decouple admin push notifications sent by this user
+  try {
+    await conn.query("UPDATE push_notifications SET sent_by = NULL WHERE sent_by = ?", [numericUserId]);
+  } catch (e) {}
+
+  // F. Delete customer reviews (received by this user OR submitted by this user)
+  try {
     await conn.query(
-      `DELETE FROM saved_properties WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
-      propIds
+      "DELETE FROM customer_reviews WHERE target_user_id = ? OR reviewer_id = ?",
+      [numericUserId, numericUserId]
     );
+  } catch (e) {
+    console.warn("[DELETE USER] Failed to clean customer_reviews:", e.message);
   }
 
-  // G. Delete contact clicks (by user OR received on user's properties)
-  await conn.query("DELETE FROM contact_clicks WHERE user_id = ?", [numericUserId]);
-  if (propIds.length > 0) {
-    await conn.query(
-      `DELETE FROM contact_clicks WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
-      propIds
-    );
+  // G. Delete role switch requests
+  try {
+    await conn.query("DELETE FROM role_switch_requests WHERE user_id = ?", [numericUserId]);
+  } catch (e) {}
+
+  // H. Delete enquiries (as visitor OR received on user's uploaded properties)
+  try {
+    await conn.query("DELETE FROM enquiries WHERE visitor_id = ?", [numericUserId]);
+    if (propIds.length > 0) {
+      await conn.query(
+        `DELETE FROM enquiries WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
+        propIds
+      );
+    }
+  } catch (e) {
+    console.warn("[DELETE USER] Failed to clean enquiries:", e.message);
   }
 
-  // H. Delete property reviews (written by user OR received on user's properties)
-  await conn.query("DELETE FROM property_reviews WHERE user_id = ?", [numericUserId]);
-  if (propIds.length > 0) {
-    await conn.query(
-      `DELETE FROM property_reviews WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
-      propIds
-    );
+  // I. Delete saved properties (user's saved properties OR other users saving user's properties)
+  try {
+    await conn.query("DELETE FROM saved_properties WHERE user_id = ?", [numericUserId]);
+    if (propIds.length > 0) {
+      await conn.query(
+        `DELETE FROM saved_properties WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
+        propIds
+      );
+    }
+  } catch (e) {
+    console.warn("[DELETE USER] Failed to clean saved_properties:", e.message);
   }
 
-  // I. Delete property views (by user OR received on user's properties)
-  await conn.query("DELETE FROM property_views WHERE visitor_id = ?", [numericUserId]);
-  if (propIds.length > 0) {
-    await conn.query(
-      `DELETE FROM property_views WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
-      propIds
-    );
+  // J. Delete contact clicks (by user OR received on user's properties)
+  try {
+    await conn.query("DELETE FROM contact_clicks WHERE user_id = ?", [numericUserId]);
+    if (propIds.length > 0) {
+      await conn.query(
+        `DELETE FROM contact_clicks WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
+        propIds
+      );
+    }
+  } catch (e) {
+    console.warn("[DELETE USER] Failed to clean contact_clicks:", e.message);
   }
 
-  // J. Delete reported listings (reported by user OR against user's properties)
-  await conn.query("DELETE FROM reported_listings WHERE reporter_id = ?", [numericUserId]);
-  if (propIds.length > 0) {
-    await conn.query(
-      `DELETE FROM reported_listings WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
-      propIds
-    );
+  // K. Delete property reviews (written by user OR received on user's properties)
+  try {
+    await conn.query("DELETE FROM property_reviews WHERE user_id = ?", [numericUserId]);
+    if (propIds.length > 0) {
+      await conn.query(
+        `DELETE FROM property_reviews WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
+        propIds
+      );
+    }
+  } catch (e) {
+    console.warn("[DELETE USER] Failed to clean property_reviews:", e.message);
   }
 
-  // K. Delete property requests & service enquiries made by this user
-  await conn.query("DELETE FROM property_requests WHERE user_id = ?", [numericUserId]);
-  await conn.query("DELETE FROM service_enquiries WHERE user_id = ?", [numericUserId]);
+  // L. Delete property views (by user OR received on user's properties)
+  try {
+    await conn.query("DELETE FROM property_views WHERE visitor_id = ?", [numericUserId]);
+    if (propIds.length > 0) {
+      await conn.query(
+        `DELETE FROM property_views WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
+        propIds
+      );
+    }
+  } catch (e) {
+    console.warn("[DELETE USER] Failed to clean property_views:", e.message);
+  }
 
-  // L. Delete social accounts
-  await conn.query("DELETE FROM social_accounts WHERE user_id = ?", [numericUserId]);
+  // M. Delete reported listings (reported by user OR against user's properties)
+  try {
+    await conn.query("DELETE FROM reported_listings WHERE reporter_id = ?", [numericUserId]);
+    if (propIds.length > 0) {
+      await conn.query(
+        `DELETE FROM reported_listings WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
+        propIds
+      );
+    }
+  } catch (e) {
+    console.warn("[DELETE USER] Failed to clean reported_listings:", e.message);
+  }
 
-  // M. Delete phone OTPs
+  // N. Delete property requests & service enquiries made by this user
+  try {
+    await conn.query("DELETE FROM property_requests WHERE user_id = ?", [numericUserId]);
+  } catch (e) {}
+  try {
+    await conn.query("DELETE FROM service_enquiries WHERE user_id = ?", [numericUserId]);
+  } catch (e) {}
+
+  // O. Delete social accounts
+  try {
+    await conn.query("DELETE FROM social_accounts WHERE user_id = ?", [numericUserId]);
+  } catch (e) {}
+
+  // P. Delete phone OTPs
   if (user.phone) {
-    await conn.query("DELETE FROM phone_otps WHERE phone = ?", [user.phone]);
+    try {
+      await conn.query("DELETE FROM phone_otps WHERE phone = ?", [user.phone]);
+    } catch (e) {}
   }
 
-  // N. Delete builder leads / inquiries if matching user phone or email
+  // Q. Delete builder leads / inquiries if matching user phone or email
   if (user.phone || user.email) {
-    const conditions = [];
-    const params = [];
-    if (user.phone) {
-      conditions.push("phone = ?");
-      params.push(user.phone);
-    }
-    if (user.email) {
-      conditions.push("email = ?");
-      params.push(user.email);
-    }
-    const whereClause = conditions.join(" OR ");
-    await conn.query(`DELETE FROM builder_leads WHERE ${whereClause}`, params);
-    await conn.query(`DELETE FROM builder_inquiries WHERE ${whereClause}`, params);
+    try {
+      const conditions = [];
+      const params = [];
+      if (user.phone) {
+        conditions.push("phone = ?");
+        params.push(user.phone);
+      }
+      if (user.email) {
+        conditions.push("email = ?");
+        params.push(user.email);
+      }
+      const whereClause = conditions.join(" OR ");
+      await conn.query(`DELETE FROM builder_leads WHERE ${whereClause}`, params);
+      await conn.query(`DELETE FROM builder_inquiries WHERE ${whereClause}`, params);
+    } catch (e) {}
   }
 
-  // Defensively decouple any external credit transactions referencing these properties
+  // R. Decouple fb_conversations referencing user's properties
   if (propIds.length > 0) {
-    await conn.query(
-      `UPDATE credit_transactions SET property_id = NULL WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
-      propIds
-    );
+    try {
+      await conn.query(
+        `UPDATE fb_conversations SET property_id = NULL WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
+        propIds
+      );
+    } catch (e) {}
   }
 
-  // O. Delete all uploaded properties and their property_media rows
+  // S. Defensively decouple any external credit transactions referencing these properties
+  if (propIds.length > 0) {
+    try {
+      await conn.query(
+        `UPDATE credit_transactions SET property_id = NULL WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
+        propIds
+      );
+    } catch (e) {}
+  }
+
+  // T. Delete all uploaded properties and their property_media rows
   if (propIds.length > 0) {
     await conn.query(
       `DELETE FROM property_media WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
@@ -198,17 +280,19 @@ export async function deleteUserCompletely(conn, userId, options = {}) {
     await conn.query("DELETE FROM properties WHERE owner_id = ?", [numericUserId]);
   }
 
-  // P. Finally, delete the user row from users table
+  // U. Finally, delete the user row from users table
   await conn.query("DELETE FROM users WHERE id = ?", [numericUserId]);
 
-  // 6. Record persistent audit log of the deletion (with user_id null so it persists)
+  // V. Record persistent audit log of the deletion (with user_id null so it persists)
   const isSelf = options.deletedBy === "Self";
   const actionLog = isSelf
-    ? `User "${user.name}" (ID #${numericUserId}, Email: ${user.email || 'N/A'}, Phone: ${user.phone || 'N/A'}) self-deleted their account along with all ${properties.length} uploaded properties, token balances, and logs.`
-    : `User "${user.name}" (ID #${numericUserId}, Email: ${user.email || 'N/A'}, Phone: ${user.phone || 'N/A'}) and all ${properties.length} uploaded properties, token balances, and logs permanently deleted by Admin.`;
-  await conn.query("INSERT INTO activity_logs (user_id, action, category) VALUES (null, ?, 'Users')", [actionLog]);
+    ? `User "${user.name}" (ID #${numericUserId}, Email: ${user.email || 'N/A'}, Phone: ${user.phone || 'N/A'}) self-deleted their account along with all ${properties.length} uploaded properties, token balances, and media files.`
+    : `User "${user.name}" (ID #${numericUserId}, Email: ${user.email || 'N/A'}, Phone: ${user.phone || 'N/A'}) and all ${properties.length} uploaded properties, token balances, and media files permanently deleted by Admin.`;
+  try {
+    await conn.query("INSERT INTO activity_logs (user_id, action, category) VALUES (null, ?, 'Users')", [actionLog]);
+  } catch (e) {}
 
-  // 7. Delete physical files from disk
+  // W. Delete physical files from disk
   for (const relativePath of pathsToDelete) {
     if (relativePath) {
       try {

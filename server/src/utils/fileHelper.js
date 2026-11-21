@@ -53,7 +53,9 @@ export async function deleteUploadedFile(urlPath) {
     "D:\\sparrow\\airaproperties\\server\\uploads",
     // Hostinger production paths
     "/home/u859202671/domains/api.airaproperties.in/uploads",
-    "/home/u859202671/domains/airaproperties.in/public_html/uploads"
+    "/home/u859202671/domains/api.airaproperties.in/public_html/uploads",
+    "/home/u859202671/domains/airaproperties.in/public_html/uploads",
+    "/home/u859202671/domains/airaproperties.in/uploads"
   ].filter(Boolean);
 
   // Remove duplicates
@@ -82,7 +84,6 @@ export async function deleteUploadedFile(urlPath) {
     // 1. Delete exact file
     const exactFilePath = path.join(dir, filename);
     try {
-      await fs.access(exactFilePath);
       await fs.unlink(exactFilePath);
       console.log(`[DELETE UPLOAD] Successfully deleted file: ${exactFilePath}`);
       deletedCount++;
@@ -90,24 +91,87 @@ export async function deleteUploadedFile(urlPath) {
       // File not present here, ignore
     }
 
-    // 2. If it was an image, also check for any sibling files with the same basename (e.g. original vs webp)
-    if ([".webp", ".jpg", ".jpeg", ".png"].includes(ext)) {
-      for (const otherExt of potentialExtensions) {
-        if (otherExt === ext) continue;
-        const siblingPath = path.join(dir, `${baseNameWithoutExt}${otherExt}`);
-        try {
-          await fs.access(siblingPath);
-          await fs.unlink(siblingPath);
-          console.log(`[DELETE UPLOAD] Successfully deleted sibling file: ${siblingPath}`);
-          deletedCount++;
-        } catch {
-          // Ignore
+    // 2. Check for sibling files with companion extensions
+    for (const otherExt of potentialExtensions) {
+      if (otherExt === ext) continue;
+      const siblingPath = path.join(dir, `${baseNameWithoutExt}${otherExt}`);
+      try {
+        await fs.unlink(siblingPath);
+        console.log(`[DELETE UPLOAD] Successfully deleted sibling file: ${siblingPath}`);
+        deletedCount++;
+      } catch {
+        // Ignore
+      }
+    }
+
+    // 3. Scan directory for any files containing baseNameWithoutExt (e.g. opt_... or prefix/suffix)
+    if (baseNameWithoutExt && baseNameWithoutExt.length >= 6) {
+      try {
+        const dirEntries = await fs.readdir(dir);
+        for (const entry of dirEntries) {
+          if (entry !== filename && entry.includes(baseNameWithoutExt)) {
+            const extraPath = path.join(dir, entry);
+            try {
+              const stat = await fs.stat(extraPath);
+              if (stat.isFile()) {
+                await fs.unlink(extraPath);
+                console.log(`[DELETE UPLOAD] Successfully deleted variant file: ${extraPath}`);
+                deletedCount++;
+              }
+            } catch {}
+          }
         }
+      } catch {}
+    }
+
+    // 4. Delete thumbnails in "thumbs" subdirectory
+    const thumbsDir = path.join(dir, "thumbs");
+    if (fsSync.existsSync(thumbsDir)) {
+      // Direct thumb path
+      const thumbDirect = path.join(thumbsDir, filename);
+      try {
+        await fs.unlink(thumbDirect);
+        console.log(`[DELETE UPLOAD] Successfully deleted thumbnail: ${thumbDirect}`);
+        deletedCount++;
+      } catch {}
+
+      // Common width prefixed thumbnails: 400_..., 600_..., 800_...
+      for (const w of ["400", "600", "800", "1200"]) {
+        for (const e of potentialExtensions) {
+          const wThumb = path.join(thumbsDir, `${w}_${baseNameWithoutExt}${e}`);
+          try {
+            await fs.unlink(wThumb);
+            console.log(`[DELETE UPLOAD] Successfully deleted width thumbnail: ${wThumb}`);
+            deletedCount++;
+          } catch {}
+        }
+      }
+
+      // Check all thumb directory files if matching baseNameWithoutExt
+      if (baseNameWithoutExt && baseNameWithoutExt.length >= 6) {
+        try {
+          const thumbEntries = await fs.readdir(thumbsDir);
+          for (const tEntry of thumbEntries) {
+            if (tEntry.includes(baseNameWithoutExt)) {
+              const fullTPath = path.join(thumbsDir, tEntry);
+              try {
+                const stat = await fs.stat(fullTPath);
+                if (stat.isFile()) {
+                  await fs.unlink(fullTPath);
+                  console.log(`[DELETE UPLOAD] Successfully deleted thumbnail entry: ${fullTPath}`);
+                  deletedCount++;
+                }
+              } catch {}
+            }
+          }
+        } catch {}
       }
     }
   }
 
   if (deletedCount === 0) {
     console.log(`[DELETE UPLOAD] File "${filename}" not found in any upload directories.`);
+  } else {
+    console.log(`[DELETE UPLOAD] Successfully removed ${deletedCount} file(s) for "${filename}"`);
   }
 }

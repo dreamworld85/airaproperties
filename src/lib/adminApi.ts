@@ -185,12 +185,16 @@ export const adminApi = {
     if (!res.ok) throw new Error("Failed to update user status.");
   },
 
-  async deleteUser(id: number | string): Promise<void> {
+  async deleteUser(id: number | string): Promise<{ success: boolean; message?: string; propertiesDeleted?: number; mediaFilesDeleted?: number; filesRemovedFromDisk?: number }> {
     const res = await fetch(`${API_URL}/api/admin/users/${id}`, {
       method: "DELETE",
       headers: getAdminHeaders(),
     });
-    if (!res.ok) throw new Error("Failed to delete user.");
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Failed to delete user.");
+    }
+    return res.json().catch(() => ({ success: true }));
   },
 
   async getProperties(
