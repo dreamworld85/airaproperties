@@ -812,7 +812,7 @@ router.delete("/users/:id", async (req, res) => {
 // GET /api/admin/properties
 router.get("/properties", async (req, res) => {
   try {
-    const { search = "", status = "All" } = req.query;
+    const { search = "", status = "All", date = "", phone = "", startDate = "", endDate = "" } = req.query;
     let query = `
       SELECT p.*, 
              u.name as uploader_name,
@@ -830,14 +830,51 @@ router.get("/properties", async (req, res) => {
       const searchDigits = String(search).trim().replace(/\D/g, "");
       let phoneClause = "";
       const phoneParams = [];
-      if (searchDigits.length >= 6) {
+      if (searchDigits.length >= 3) {
         const last10 = searchDigits.length > 10 ? searchDigits.slice(-10) : searchDigits;
-        phoneClause = " OR u.phone LIKE ? OR u.whatsapp_number LIKE ? OR p.contact_number LIKE ? OR p.whatsapp_number LIKE ?";
-        phoneParams.push(`%${last10}%`, `%${last10}%`, `%${last10}%`, `%${last10}%`);
+        phoneClause = " OR u.phone LIKE ? OR u.whatsapp_number LIKE ? OR p.contact_number LIKE ? OR p.whatsapp_number LIKE ? OR REPLACE(REPLACE(REPLACE(u.phone, '+', ''), ' ', ''), '-', '') LIKE ? OR REPLACE(REPLACE(REPLACE(p.contact_number, '+', ''), ' ', ''), '-', '') LIKE ?";
+        const pWild = `%${last10}%`;
+        phoneParams.push(pWild, pWild, pWild, pWild, `%${searchDigits}%`, `%${searchDigits}%`);
       }
       query += ` AND (p.title LIKE ? OR p.address LIKE ? OR p.district LIKE ? OR p.state LIKE ? OR u.name LIKE ? OR u.phone LIKE ? OR u.whatsapp_number LIKE ? OR p.contact_number LIKE ? OR p.whatsapp_number LIKE ?${phoneClause})`;
       const wild = `%${search}%`;
       params.push(wild, wild, wild, wild, wild, wild, wild, wild, wild, ...phoneParams);
+    }
+
+    if (phone) {
+      const cleanPhone = String(phone).trim().replace(/\D/g, "");
+      if (cleanPhone.length > 0) {
+        const last10 = cleanPhone.length > 10 ? cleanPhone.slice(-10) : cleanPhone;
+        const pWild = `%${last10}%`;
+        query += ` AND (
+          u.phone LIKE ? OR 
+          u.phone LIKE ? OR 
+          u.whatsapp_number LIKE ? OR 
+          p.contact_number LIKE ? OR 
+          p.whatsapp_number LIKE ? OR
+          REPLACE(REPLACE(REPLACE(u.phone, '+', ''), ' ', ''), '-', '') LIKE ? OR
+          REPLACE(REPLACE(REPLACE(p.contact_number, '+', ''), ' ', ''), '-', '') LIKE ?
+        )`;
+        params.push(pWild, `%${cleanPhone}%`, pWild, pWild, pWild, pWild, pWild);
+      } else {
+        const rawWild = `%${String(phone).trim()}%`;
+        query += ` AND (u.phone LIKE ? OR u.whatsapp_number LIKE ? OR p.contact_number LIKE ? OR p.whatsapp_number LIKE ?)`;
+        params.push(rawWild, rawWild, rawWild, rawWild);
+      }
+    }
+
+    if (date) {
+      query += " AND DATE(p.created_at) = ?";
+      params.push(date);
+    } else {
+      if (startDate) {
+        query += " AND DATE(p.created_at) >= ?";
+        params.push(startDate);
+      }
+      if (endDate) {
+        query += " AND DATE(p.created_at) <= ?";
+        params.push(endDate);
+      }
     }
 
     if (status !== "All") {
@@ -849,6 +886,8 @@ router.get("/properties", async (req, res) => {
         params.push(status);
       }
     }
+
+    query += " ORDER BY p.created_at DESC, p.id DESC";
 
     const [rows] = await pool.query(query, params);
 

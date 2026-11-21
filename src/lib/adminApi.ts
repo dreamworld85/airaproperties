@@ -193,9 +193,27 @@ export const adminApi = {
     if (!res.ok) throw new Error("Failed to delete user.");
   },
 
-  async getProperties(search = "", status = "All"): Promise<AdminProperty[]> {
-    const params = new URLSearchParams({ search, status });
-    const res = await fetch(`${API_URL}/api/admin/properties?${params}`, { headers: getAdminHeaders() });
+  async getProperties(
+    filterOrSearch: string | { search?: string; status?: string; date?: string; phone?: string; startDate?: string; endDate?: string } = "",
+    status = "All",
+    date = "",
+    phone = ""
+  ): Promise<AdminProperty[]> {
+    const params = new URLSearchParams();
+    if (typeof filterOrSearch === "object" && filterOrSearch !== null) {
+      if (filterOrSearch.search) params.append("search", filterOrSearch.search);
+      if (filterOrSearch.status && filterOrSearch.status !== "All") params.append("status", filterOrSearch.status);
+      if (filterOrSearch.date) params.append("date", filterOrSearch.date);
+      if (filterOrSearch.phone) params.append("phone", filterOrSearch.phone);
+      if (filterOrSearch.startDate) params.append("startDate", filterOrSearch.startDate);
+      if (filterOrSearch.endDate) params.append("endDate", filterOrSearch.endDate);
+    } else {
+      if (filterOrSearch) params.append("search", filterOrSearch);
+      if (status && status !== "All") params.append("status", status);
+      if (date) params.append("date", date);
+      if (phone) params.append("phone", phone);
+    }
+    const res = await fetch(`${API_URL}/api/admin/properties?${params.toString()}`, { headers: getAdminHeaders() });
     if (!res.ok) throw new Error("Failed to load properties list.");
     return res.json();
   },

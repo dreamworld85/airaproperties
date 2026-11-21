@@ -8,6 +8,7 @@ import {
   List,
   MapPin,
   Calendar,
+  Phone,
   MoreVertical,
   Eye,
   Edit,
@@ -141,6 +142,8 @@ export default function PropertyList() {
 
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState("");
+  const [phoneSearchTerm, setPhoneSearchTerm] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
@@ -189,11 +192,50 @@ export default function PropertyList() {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [isLoadingEditDetails, setIsLoadingEditDetails] = useState(false);
 
+  const getTodayString = () => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const getYesterdayString = () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const handleQuickDate = (preset: "today" | "yesterday" | "clear") => {
+    if (preset === "clear") {
+      setSelectedDate("");
+    } else if (preset === "today") {
+      setSelectedDate(getTodayString());
+    } else if (preset === "yesterday") {
+      setSelectedDate(getYesterdayString());
+    }
+  };
+
   async function loadData() {
     setLoading(true);
     setError(null);
     try {
-      const data = await adminApi.getProperties(searchTerm, selectedStatus);
+      const data = await adminApi.getProperties({
+        search: searchTerm,
+        status: selectedStatus,
+        date: selectedDate,
+        phone: phoneSearchTerm,
+      });
+      // Sort with user last uploaded property first (newest created_at, then highest id)
+      data.sort((a, b) => {
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        if (timeB !== timeA) return timeB - timeA;
+        return (Number(b.id) || 0) - (Number(a.id) || 0);
+      });
       setProperties(data);
     } catch (err: any) {
       console.error("Error fetching properties:", err);
@@ -230,7 +272,7 @@ export default function PropertyList() {
       setCurrentPage(1);
     }, 250);
     return () => clearTimeout(timer);
-  }, [searchTerm, selectedStatus]);
+  }, [searchTerm, phoneSearchTerm, selectedDate, selectedStatus]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -715,93 +757,209 @@ export default function PropertyList() {
         </Link>
       </div>
 
-      {/* Control Bar: Search, Status Filter & View Toggle */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-3 sm:p-4 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        {/* Search Input */}
-        <div className="relative flex-1 max-w-md">
-          <input
-            type="text"
-            placeholder="Search properties..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-full pl-4 pr-10 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
-          />
-          <Search
-            size={16}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-          />
+      {/* Control Bar: Search, Phone Search, Date Filter, Status Filter & View Toggle */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-3 sm:p-4 shadow-xs flex flex-col gap-3">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          {/* Left search tools: Main Search & Phone Search */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 max-w-2xl">
+            {/* General Search Input */}
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Search properties (title, district, owner)..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-full pl-4 pr-9 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
+              />
+              {searchTerm ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-0.5"
+                >
+                  <X size={14} />
+                </button>
+              ) : (
+                <Search
+                  size={15}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                />
+              )}
+            </div>
+
+            {/* Dedicated Phone Number Search */}
+            <div className="relative sm:w-60">
+              <input
+                type="text"
+                placeholder="Search by phone number..."
+                value={phoneSearchTerm}
+                onChange={(e) => setPhoneSearchTerm(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-full pl-8 pr-8 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
+              />
+              <Phone
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 pointer-events-none"
+              />
+              {phoneSearchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setPhoneSearchTerm("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-0.5"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Right Tools: Date Picker, Status Dropdown & View Mode */}
+          <div className="flex flex-wrap items-center justify-between lg:justify-end gap-2.5">
+            {/* Date Filter Picker */}
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-full px-3 py-1.5 focus-within:border-emerald-500 focus-within:bg-white transition-all">
+              <Calendar size={14} className="text-emerald-600 shrink-0" />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="bg-transparent text-xs text-slate-700 font-medium outline-none cursor-pointer"
+                title="Filter by upload date"
+              />
+              {selectedDate && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate("")}
+                  title="Clear date filter"
+                  className="p-0.5 hover:bg-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+
+            {/* Status Dropdown */}
+            <div className="relative" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                className="inline-flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-3.5 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer"
+              >
+                <Tag size={13} className="text-slate-500" />
+                <span>{selectedStatus === "All" ? "Status" : selectedStatus}</span>
+                <ChevronRight
+                  size={13}
+                  className={`transition-transform duration-200 ${
+                    isStatusDropdownOpen ? "rotate-90" : "rotate-0"
+                  }`}
+                />
+              </button>
+
+              {isStatusDropdownOpen && (
+                <div className="absolute right-0 top-full mt-2 w-44 bg-white rounded-2xl border border-slate-100 shadow-xl py-2 z-40 animate-in fade-in zoom-in-95 duration-150">
+                  {statusOptions.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        setSelectedStatus(opt.value);
+                        setIsStatusDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-4 py-2 text-xs font-semibold text-left transition-colors cursor-pointer ${
+                        selectedStatus === opt.value
+                          ? "text-emerald-600 bg-emerald-50/60 font-bold"
+                          : "text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {selectedStatus === opt.value && <Check size={14} className="text-emerald-600" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* View Toggles (Grid / List) */}
+            <div className="flex items-center gap-1 bg-slate-100/90 border border-slate-200/80 p-1 rounded-full">
+              <button
+                type="button"
+                onClick={() => setViewMode("grid")}
+                title="Grid View"
+                className={`p-1.5 rounded-full transition-all cursor-pointer ${
+                  viewMode === "grid"
+                    ? "bg-[#5cb85c] text-white shadow-xs"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <LayoutGrid size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                title="List View"
+                className={`p-1.5 rounded-full transition-all cursor-pointer ${
+                  viewMode === "list"
+                    ? "bg-[#5cb85c] text-white shadow-xs"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <List size={15} />
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Right Tools: Status Dropdown & View Mode */}
-        <div className="flex items-center justify-between sm:justify-end gap-3">
-          {/* Status Dropdown */}
-          <div className="relative" onClick={(e) => e.stopPropagation()}>
+        {/* Quick Date Presets & Filter Active Badges */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 text-xs">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Quick Dates:</span>
             <button
               type="button"
-              onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-              className="inline-flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-4 py-2.5 rounded-full text-xs font-semibold transition-all cursor-pointer"
+              onClick={() => handleQuickDate("today")}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
+                selectedDate === getTodayString()
+                  ? "bg-emerald-600 text-white font-bold shadow-2xs"
+                  : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+              }`}
             >
-              <Tag size={14} className="text-slate-500" />
-              <span>{selectedStatus === "All" ? "Status" : selectedStatus}</span>
-              <ChevronRight
-                size={14}
-                className={`transition-transform duration-200 ${
-                  isStatusDropdownOpen ? "rotate-90" : "rotate-0"
-                }`}
-              />
+              Today
             </button>
-
-            {isStatusDropdownOpen && (
-              <div className="absolute right-0 top-full mt-2 w-44 bg-white rounded-2xl border border-slate-100 shadow-xl py-2 z-40 animate-in fade-in zoom-in-95 duration-150">
-                {statusOptions.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => {
-                      setSelectedStatus(opt.value);
-                      setIsStatusDropdownOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-4 py-2 text-xs font-semibold text-left transition-colors cursor-pointer ${
-                      selectedStatus === opt.value
-                        ? "text-emerald-600 bg-emerald-50/60 font-bold"
-                        : "text-slate-700 hover:bg-slate-50"
-                    }`}
-                  >
-                    <span>{opt.label}</span>
-                    {selectedStatus === opt.value && <Check size={14} className="text-emerald-600" />}
-                  </button>
-                ))}
-              </div>
+            <button
+              type="button"
+              onClick={() => handleQuickDate("yesterday")}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
+                selectedDate === getYesterdayString()
+                  ? "bg-emerald-600 text-white font-bold shadow-2xs"
+                  : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+              }`}
+            >
+              Yesterday
+            </button>
+            {selectedDate && (
+              <button
+                type="button"
+                onClick={() => setSelectedDate("")}
+                className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all cursor-pointer flex items-center gap-1"
+              >
+                <span>Clear Date ({selectedDate})</span>
+                <X size={11} />
+              </button>
             )}
           </div>
 
-          {/* View Toggles (Grid / List) */}
-          <div className="flex items-center gap-1 bg-slate-100/90 border border-slate-200/80 p-1 rounded-full">
+          {(searchTerm || phoneSearchTerm || selectedDate || selectedStatus !== "All") && (
             <button
               type="button"
-              onClick={() => setViewMode("grid")}
-              title="Grid View"
-              className={`p-2 rounded-full transition-all cursor-pointer ${
-                viewMode === "grid"
-                  ? "bg-[#5cb85c] text-white shadow-xs"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
+              onClick={() => {
+                setSearchTerm("");
+                setPhoneSearchTerm("");
+                setSelectedDate("");
+                setSelectedStatus("All");
+              }}
+              className="text-[11px] font-bold text-slate-500 hover:text-rose-600 transition-colors cursor-pointer flex items-center gap-1"
             >
-              <LayoutGrid size={16} />
+              <RefreshCw size={11} />
+              <span>Reset All Filters</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("list")}
-              title="List View"
-              className={`p-2 rounded-full transition-all cursor-pointer ${
-                viewMode === "list"
-                  ? "bg-[#5cb85c] text-white shadow-xs"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              <List size={16} />
-            </button>
-          </div>
+          )}
         </div>
       </div>
 
@@ -820,8 +978,8 @@ export default function PropertyList() {
           <Building2 size={40} className="text-slate-300" />
           <h3 className="text-sm font-bold text-slate-800 mt-2">No Properties Found</h3>
           <p className="text-xs text-slate-500 max-w-sm">
-            {searchTerm || selectedStatus !== "All"
-              ? "No property matches your search criteria or status filter. Try clearing filters."
+            {searchTerm || phoneSearchTerm || selectedDate || selectedStatus !== "All"
+              ? "No property matches your search criteria, phone number, date, or status filter. Try clearing filters."
               : "No property listings are currently present."}
           </p>
         </div>
@@ -936,8 +1094,8 @@ export default function PropertyList() {
                         </span>
                       </td>
 
-                      {/* User Type */}
-                      <td className="py-3.5 px-4 min-w-[150px]">
+                      {/* User Type & Phone */}
+                      <td className="py-3.5 px-4 min-w-[170px]">
                         <div className="flex items-center gap-2.5">
                           {p.uploader_avatar ? (
                             <img
@@ -954,19 +1112,32 @@ export default function PropertyList() {
                             <span className="font-semibold text-slate-800 block truncate text-xs">
                               {uploaderName}
                             </span>
-                            <span
-                              className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider ${
-                                userType.toLowerCase() === "broker"
-                                  ? "bg-purple-100 text-purple-700"
-                                  : userType.toLowerCase() === "agency"
-                                  ? "bg-indigo-100 text-indigo-700"
-                                  : userType.toLowerCase() === "builder"
-                                  ? "bg-amber-100 text-amber-800"
-                                  : "bg-emerald-100 text-emerald-700"
-                              }`}
-                            >
-                              {userType}
-                            </span>
+                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                              <span
+                                className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider ${
+                                  userType.toLowerCase() === "broker"
+                                    ? "bg-purple-100 text-purple-700"
+                                    : userType.toLowerCase() === "agency"
+                                    ? "bg-indigo-100 text-indigo-700"
+                                    : userType.toLowerCase() === "builder"
+                                    ? "bg-amber-100 text-amber-800"
+                                    : "bg-emerald-100 text-emerald-700"
+                                }`}
+                              >
+                                {userType}
+                              </span>
+                              {(p.uploader_phone || p.contact_number || p.whatsapp_number) && (
+                                <a
+                                  href={`tel:${p.uploader_phone || p.contact_number || p.whatsapp_number}`}
+                                  className="inline-flex items-center gap-0.5 text-[10.5px] font-medium text-slate-500 hover:text-emerald-600 transition-colors"
+                                  title="Call user"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Phone size={10} className="text-slate-400" />
+                                  <span>{p.uploader_phone || p.contact_number || p.whatsapp_number}</span>
+                                </a>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -1214,9 +1385,22 @@ export default function PropertyList() {
                           {initial}
                         </div>
                       )}
-                      <span className="text-[11px] font-semibold text-slate-700 truncate">
-                        {uploaderName}
-                      </span>
+                      <div className="min-w-0 flex flex-col">
+                        <span className="text-[11px] font-semibold text-slate-700 truncate">
+                          {uploaderName}
+                        </span>
+                        {(p.uploader_phone || p.contact_number || p.whatsapp_number) && (
+                          <a
+                            href={`tel:${p.uploader_phone || p.contact_number || p.whatsapp_number}`}
+                            className="inline-flex items-center gap-0.5 text-[9.5px] font-medium text-slate-500 hover:text-emerald-600 transition-colors truncate"
+                            title="Call user"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Phone size={9} className="text-slate-400 shrink-0" />
+                            <span className="truncate">{p.uploader_phone || p.contact_number || p.whatsapp_number}</span>
+                          </a>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-1.5 shrink-0">
