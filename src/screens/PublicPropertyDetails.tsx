@@ -1141,8 +1141,8 @@ View Details: ${window.location.origin}/property/${property.id}`;
                 </div>
               </div>
 
-              {/* Action Buttons: WhatsApp (Up) & Call (Down) matching Image */}
-              <div className="flex flex-col items-center justify-center gap-1.5 shrink-0 select-none">
+              {/* Action Buttons: WhatsApp (Up) & Call (Down) */}
+              <div className="flex flex-col items-center justify-center gap-1 shrink-0 select-none">
                 <button
                   type="button"
                   onClick={(e) => handleContactClick(e, "WhatsApp")}
@@ -1155,7 +1155,6 @@ View Details: ${window.location.origin}/property/${property.id}`;
                     className="w-full h-full object-contain drop-shadow-xs" 
                   />
                 </button>
-                <div className="w-[1px] h-3.5 bg-gray-200/90 shrink-0" />
                 <button
                   type="button"
                   onClick={(e) => handleContactClick(e, "Call")}
