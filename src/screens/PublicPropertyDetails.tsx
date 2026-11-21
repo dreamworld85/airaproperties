@@ -1191,28 +1191,8 @@ View Details: ${window.location.origin}/property/${property.id}`;
               </div>
             )}
 
-            {/* CTA action buttons Schedule & Enquire */}
+            {/* CTA action button */}
             <div className="flex gap-2 mt-1.5">
-              {enableScheduleVisit && (
-                <button
-                  onClick={() => {
-                    if (tourScheduled) {
-                      alert("You have already scheduled a visit for this property!");
-                    } else {
-                      setShowCalendarModal(true);
-                    }
-                  }}
-                  className={`flex-1 py-3 px-2.5 rounded-2xl border font-display font-extrabold text-[11px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer ${
-                    tourScheduled 
-                      ? "bg-[#3e9c83]/10 border-[#3e9c83] text-[#3e9c83]" 
-                      : "bg-white border-forest text-forest hover:bg-forest/5"
-                  }`}
-                >
-                  <Calendar size={13.5} />
-                  <span>{tourScheduled ? "Visit Scheduled" : "Schedule Visit"}</span>
-                </button>
-              )}
-              
               <button
                 onClick={() => {
                   if (hasAccess && (property.whatsappNumber || property.ownerPhone)) {
@@ -1221,7 +1201,7 @@ View Details: ${window.location.origin}/property/${property.id}`;
                     setShowContactModal(true);
                   }
                 }}
-                className="flex-1 py-3 px-2.5 rounded-2xl bg-forest hover:bg-forest/90 text-white font-display font-extrabold text-[11px] flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer"
+                className="w-full py-3.5 px-4 rounded-2xl bg-forest hover:bg-forest/90 text-white font-display font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer"
               >
                 <span>Enquire Now</span>
               </button>
