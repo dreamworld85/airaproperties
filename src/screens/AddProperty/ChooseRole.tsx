@@ -53,6 +53,8 @@ export default function ChooseRole() {
   const switchToastTimerRef = useRef<any>(null);
 
   const [attemptedSetupSubmit, setAttemptedSetupSubmit] = useState(false);
+  const [contactPhoneTouched, setContactPhoneTouched] = useState(false);
+  const [whatsappTouched, setWhatsappTouched] = useState(false);
 
   const showSwitchToast = (msg: string) => {
     setSwitchToast(msg);
@@ -194,8 +196,8 @@ export default function ChooseRole() {
   const hasAgencyAddressError = attemptedSetupSubmit && !isRoleAlreadyLocked && form.role === "Agency" && !form.agencyAddress?.trim();
   const hasAgencyDistrictError = attemptedSetupSubmit && !isRoleAlreadyLocked && form.role === "Agency" && !form.agencyDistrict;
   const hasAgencyLogoError = attemptedSetupSubmit && !isRoleAlreadyLocked && form.role === "Agency" && !form.agencyLogo;
-  const hasContactPhoneError = attemptedSetupSubmit && !validatePhone(form.contactPhone);
-  const hasWhatsappNumberError = attemptedSetupSubmit && !validatePhone(form.whatsappNumber);
+  const hasContactPhoneError = (attemptedSetupSubmit || contactPhoneTouched) && !validatePhone(form.contactPhone);
+  const hasWhatsappNumberError = (attemptedSetupSubmit || whatsappTouched) && !validatePhone(form.whatsappNumber);
 
   // Role Switch inline validation flags
   const hasSwitchRoleError = attemptedSwitchSubmit && !switchTargetRole;
@@ -737,14 +739,14 @@ export default function ChooseRole() {
                       Contact Number <span className="text-rose-500">*</span>
                     </label>
                     {hasContactPhoneError && (
-                      <span className="text-rose-500 font-bold text-[10px]">
-                        {!form.contactPhone ? "Required" : "Min 10 digits"}
+                      <span className="text-rose-500 font-bold text-[10px] animate-pulse">
+                        Mandatory for Buyers
                       </span>
                     )}
                   </div>
                   <div className={`flex items-center rounded-[8px] border px-3 py-0.5 transition-all shadow-sm ${
                     hasContactPhoneError
-                      ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-500"
+                      ? "border-rose-500 bg-rose-50/20 ring-2 ring-rose-500/20 animate-shake"
                       : "border-[#59AD63]/30 bg-white focus-within:border-black"
                   } disabled:bg-slate-100/50`}>
                     <div className="flex items-center gap-1 text-[13px] font-semibold text-charcoal pr-3 border-r border-[#59AD63]/30 cursor-pointer">
@@ -755,17 +757,27 @@ export default function ChooseRole() {
                       disabled={isRoleAlreadyLocked && !!user?.phone}
                       placeholder="Enter 10-digit contact number"
                       value={form.contactPhone}
-                      onChange={(e) => update({ contactPhone: e.target.value })}
+                      onBlur={() => setContactPhoneTouched(true)}
+                      onChange={(e) => {
+                        update({ contactPhone: e.target.value });
+                        if (form.sameAsContact) {
+                          update({ contactPhone: e.target.value, whatsappNumber: e.target.value });
+                        }
+                      }}
                       className="flex-1 bg-transparent text-[14px] px-3 py-3 outline-none text-charcoal placeholder:text-slate/40 font-medium disabled:text-slate/50"
                     />
                   </div>
                   {hasContactPhoneError && (
-                    <p className="text-[11px] font-semibold text-rose-500 flex items-center gap-1 mt-0.5">
-                      <AlertCircle size={12} className="shrink-0" />
-                      {!form.contactPhone.trim()
-                        ? "Contact number is mandatory to proceed."
-                        : "Please enter a valid 10-digit mobile number."}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1 px-3 py-2 bg-rose-50 border border-rose-200/90 rounded-[8px] text-rose-700 animate-in fade-in slide-in-from-top-1 duration-300 shadow-xs">
+                      <span className="relative flex h-2 w-2 shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
+                      </span>
+                      <AlertCircle size={15} className="shrink-0 text-rose-600 animate-bounce" />
+                      <span className="text-[12px] font-bold text-rose-700 tracking-tight">
+                        Your Phone number is mandatory for Buyers {!form.contactPhone.trim() ? "" : "(10 digits required)"}
+                      </span>
+                    </div>
                   )}
                 </div>
 
@@ -795,14 +807,14 @@ export default function ChooseRole() {
                       WhatsApp Number <span className="text-rose-500">*</span>
                     </label>
                     {hasWhatsappNumberError && (
-                      <span className="text-rose-500 font-bold text-[10px]">
-                        {!form.whatsappNumber ? "Required" : "Min 10 digits"}
+                      <span className="text-rose-500 font-bold text-[10px] animate-pulse">
+                        Mandatory for Buyers
                       </span>
                     )}
                   </div>
                   <div className={`flex items-center rounded-[8px] border px-3 py-0.5 transition-all shadow-sm ${
                     hasWhatsappNumberError
-                      ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-500"
+                      ? "border-rose-500 bg-rose-50/20 ring-2 ring-rose-500/20 animate-shake"
                       : (isRoleAlreadyLocked && !!user?.whatsappNumber) || form.sameAsContact 
                         ? "bg-slate-100/50 border-[#59AD63]/30 text-slate/50" 
                         : "bg-white border-[#59AD63]/30 focus-within:border-black"
@@ -814,18 +826,23 @@ export default function ChooseRole() {
                       type="tel"
                       placeholder="Enter 10-digit WhatsApp number"
                       value={form.whatsappNumber}
+                      onBlur={() => setWhatsappTouched(true)}
                       onChange={(e) => update({ whatsappNumber: e.target.value })}
                       disabled={(isRoleAlreadyLocked && !!user?.whatsappNumber) || form.sameAsContact}
                       className="flex-1 bg-transparent text-[14px] px-3 py-3 outline-none text-charcoal placeholder:text-slate/40 font-medium disabled:text-slate/50"
                     />
                   </div>
                   {hasWhatsappNumberError && (
-                    <p className="text-[11px] font-semibold text-rose-500 flex items-center gap-1 mt-0.5">
-                      <AlertCircle size={12} className="shrink-0" />
-                      {!form.whatsappNumber.trim()
-                        ? "WhatsApp number is mandatory to proceed."
-                        : "Please enter a valid 10-digit WhatsApp number."}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1 px-3 py-2 bg-rose-50 border border-rose-200/90 rounded-[8px] text-rose-700 animate-in fade-in slide-in-from-top-1 duration-300 shadow-xs">
+                      <span className="relative flex h-2 w-2 shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
+                      </span>
+                      <AlertCircle size={15} className="shrink-0 text-rose-600 animate-bounce" />
+                      <span className="text-[12px] font-bold text-rose-700 tracking-tight">
+                        WhatsApp number is mandatory for Buyers {!form.whatsappNumber.trim() ? "" : "(10 digits required)"}
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -848,6 +865,8 @@ export default function ChooseRole() {
               onClick={() => {
                 if (!isSetupValid) {
                   setAttemptedSetupSubmit(true);
+                  setContactPhoneTouched(true);
+                  setWhatsappTouched(true);
                   setTimeout(() => {
                     const firstError = document.querySelector(".border-rose-500, [id$='-field'] .border-rose-500, input:invalid");
                     if (firstError) {
