@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronLeft, Menu, Lock } from "lucide-react";
+import { ChevronDown, ChevronLeft, Lock } from "lucide-react";
 import { useAddProperty } from "@/lib/AddPropertyContext";
 import { useAuth } from "@/lib/AuthContext";
 import { ListingRole } from "@/lib/types";
@@ -163,10 +163,12 @@ export default function DetailsStep1() {
       <div className="flex justify-between items-center px-6 pt-5 pb-2 shrink-0 min-[1000px]:hidden">
         <button 
           type="button"
-          className="text-charcoal p-1.5 -ml-1.5 hover:bg-charcoal/5 rounded-full transition-all duration-200 cursor-pointer active:scale-95"
-          aria-label="Menu"
+          onClick={() => navigate("/add-property/role")}
+          className="flex items-center gap-1 text-[#091F40] hover:text-[#1877F2] py-1 px-1.5 -ml-1.5 hover:bg-charcoal/5 rounded-full transition-all duration-200 cursor-pointer active:scale-95 text-xs font-bold"
+          aria-label="Back to Profile"
         >
-          <Menu size={22} className="text-[#091F40]" />
+          <ChevronLeft size={20} className="text-[#091F40]" />
+          <span>Back to Profile</span>
         </button>
         <a 
           href={whatsappLink} 
@@ -187,7 +189,7 @@ export default function DetailsStep1() {
           className="hidden min-[1000px]:inline-flex items-center gap-1 text-xs font-semibold text-[#1877F2] hover:underline -mb-2 self-start cursor-pointer"
         >
           <ChevronLeft size={16} />
-          <span>Back to choose role</span>
+          <span>Back to Profile</span>
         </button>
 
         {/* Title & Subtitle */}

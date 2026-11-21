@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { api } from "@/lib/api";
 import { useBrand } from "@/lib/BrandContext";
 
 export default function AddPropertyDesktopHeader() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { desktopLogoUrl } = useBrand();
   const defaultHelpMsg = encodeURIComponent("Hello! I need help with posting a property on Aira Properties.");
   const [whatsappLink, setWhatsappLink] = useState(`https://wa.me/917012021221?text=${defaultHelpMsg}`);
@@ -22,13 +23,21 @@ export default function AddPropertyDesktopHeader() {
       .catch((err) => console.error("Error loading admin contact number:", err));
   }, []);
 
+  const handleBack = () => {
+    if (location.pathname.includes("/add-property/details")) {
+      navigate("/add-property/role");
+    } else {
+      navigate("/home");
+    }
+  };
+
   return (
     <header className="hidden min-[1000px]:flex items-center justify-between w-full bg-white border-b border-slate-200/80 px-6 py-3.5 shrink-0 select-none sticky top-0 z-30">
       {/* Left side: Back button & Logo */}
       <div className="flex items-center gap-3.5">
         <button
           type="button"
-          onClick={() => navigate("/home")}
+          onClick={handleBack}
           className="flex items-center gap-1.5 text-[#1877F2] hover:text-blue-700 font-semibold text-[14px] cursor-pointer transition-colors active:scale-95"
         >
           <ArrowLeft size={16} strokeWidth={2.2} />
