@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { X, User, Wrench, Building2, UploadCloud, ChevronLeft, CheckCircle2, ShieldAlert, Sparkles } from "lucide-react";
+import { X, User, Wrench, Building2, UploadCloud, ChevronLeft, CheckCircle2, ShieldAlert, Sparkles, AlertCircle, Phone } from "lucide-react";
 import { useAddProperty } from "@/lib/AddPropertyContext";
 import { useAuth } from "@/lib/AuthContext";
 import { ListingRole } from "@/lib/types";
@@ -43,9 +43,24 @@ export default function ChooseRole() {
 
   const [showSwitchModal, setShowSwitchModal] = useState(false);
   const [switchTargetRole, setSwitchTargetRole] = useState<string>("");
+  const [switchContactPhone, setSwitchContactPhone] = useState<string>("");
+  const [switchReason, setSwitchReason] = useState<string>("");
   const [switchSubmitting, setSwitchSubmitting] = useState(false);
   const [switchSuccessMessage, setSwitchSuccessMessage] = useState<string | null>(null);
   const [switchError, setSwitchError] = useState<string | null>(null);
+  const [attemptedSwitchSubmit, setAttemptedSwitchSubmit] = useState(false);
+  const [switchToast, setSwitchToast] = useState<string | null>(null);
+  const switchToastTimerRef = useRef<any>(null);
+
+  const [attemptedSetupSubmit, setAttemptedSetupSubmit] = useState(false);
+
+  const showSwitchToast = (msg: string) => {
+    setSwitchToast(msg);
+    if (switchToastTimerRef.current) clearTimeout(switchToastTimerRef.current);
+    switchToastTimerRef.current = setTimeout(() => {
+      setSwitchToast(null);
+    }, 4000);
+  };
 
   useEffect(() => {
     api.fetchSubscriptionPlans()
@@ -127,30 +142,78 @@ export default function ChooseRole() {
     "Kollam", "Thiruvananthapuram",
   ];
 
-  const validatePhone = (num: string) => num && num.trim().length >= 8;
+  const validatePhone = (num: string) => {
+    if (!num) return false;
+    const digits = String(num).replace(/\D/g, "");
+    return digits.length >= 10;
+  };
+
+  const isOwnerValid = Boolean(
+    form.ownerName.trim() &&
+    validatePhone(form.contactPhone) &&
+    validatePhone(form.whatsappNumber)
+  );
+
+  const isBrokerValid = Boolean(
+    form.brokerName.trim() &&
+    validatePhone(form.contactPhone) &&
+    validatePhone(form.whatsappNumber)
+  );
+
+  const isAgencyValid = Boolean(
+    form.agencyName.trim() &&
+    form.agencyAddress?.trim() &&
+    form.agencyDistrict &&
+    validatePhone(form.contactPhone) &&
+    validatePhone(form.whatsappNumber) &&
+    (isRoleAlreadyLocked ? true : Boolean(form.agencyLogo))
+  );
 
   const isSetupValid = (() => {
-    if (isRoleAlreadyLocked) return true;
     if (!form.role) return false;
-    const hasContact = validatePhone(form.contactPhone) && validatePhone(form.whatsappNumber);
-    if (!hasContact) return false;
-
+    if (isRoleAlreadyLocked) {
+      // Must have valid contact phone & WhatsApp number even when role is locked
+      return validatePhone(form.contactPhone) && validatePhone(form.whatsappNumber);
+    }
     if (form.role === "Owner") {
-      return !!form.ownerName.trim();
+      return isOwnerValid;
     }
     if (form.role === "Broker") {
-      return !!form.brokerName.trim();
+      return isBrokerValid;
     }
     if (form.role === "Agency") {
-      return !!form.agencyName.trim() && 
-             !!form.agencyAddress?.trim() && 
-             !!form.agencyDistrict && 
-             (isRoleAlreadyLocked ? true : !!form.agencyLogo);
+      return isAgencyValid;
     }
     return false;
   })();
 
+  // Setup inline validation flags
+  const hasOwnerNameError = attemptedSetupSubmit && !isRoleAlreadyLocked && form.role === "Owner" && !form.ownerName.trim();
+  const hasBrokerNameError = attemptedSetupSubmit && !isRoleAlreadyLocked && form.role === "Broker" && !form.brokerName.trim();
+  const hasAgencyNameError = attemptedSetupSubmit && !isRoleAlreadyLocked && form.role === "Agency" && !form.agencyName.trim();
+  const hasAgencyAddressError = attemptedSetupSubmit && !isRoleAlreadyLocked && form.role === "Agency" && !form.agencyAddress?.trim();
+  const hasAgencyDistrictError = attemptedSetupSubmit && !isRoleAlreadyLocked && form.role === "Agency" && !form.agencyDistrict;
+  const hasAgencyLogoError = attemptedSetupSubmit && !isRoleAlreadyLocked && form.role === "Agency" && !form.agencyLogo;
+  const hasContactPhoneError = attemptedSetupSubmit && !validatePhone(form.contactPhone);
+  const hasWhatsappNumberError = attemptedSetupSubmit && !validatePhone(form.whatsappNumber);
+
+  // Role Switch inline validation flags
+  const hasSwitchRoleError = attemptedSwitchSubmit && !switchTargetRole;
+  const hasSwitchPhoneError = attemptedSwitchSubmit && !validatePhone(switchContactPhone);
+  const isSwitchValid = Boolean(switchTargetRole && validatePhone(switchContactPhone));
+
   const handleConfirmRole = async () => {
+    setAttemptedSetupSubmit(true);
+    if (!isSetupValid) {
+      setTimeout(() => {
+        const firstError = document.querySelector(".border-rose-500, [id$='-field'] .border-rose-500, input:invalid");
+        if (firstError) {
+          firstError.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
+      return;
+    }
+
     if (isRoleAlreadyLocked) {
       setSubmitting(true);
       setSetupError(null);
@@ -406,6 +469,10 @@ export default function ChooseRole() {
                     setSwitchError(null);
                     setSwitchSuccessMessage(null);
                     setSwitchTargetRole("");
+                    setSwitchContactPhone(user?.phone || form.contactPhone || "");
+                    setSwitchReason("");
+                    setAttemptedSwitchSubmit(false);
+                    setSwitchToast(null);
                     setShowSwitchModal(true);
                   }}
                   className="text-[10px] font-extrabold text-[#0F5B5C] bg-[#EAF5F5] hover:bg-[#D5EDED] px-3 py-1.5 rounded-[2px] transition-all cursor-pointer shadow-sm border border-[#0F5B5C]/10"
@@ -432,52 +499,110 @@ export default function ChooseRole() {
             {!isRoleAlreadyLocked && (
               <div className="flex flex-col gap-5 text-left animate-fade-in">
                 {form.role === "Owner" && (
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate uppercase tracking-wider">Owner Name</label>
+                  <div className="flex flex-col gap-1.5" id="owner-name-field">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate uppercase tracking-wider">
+                        Owner Name <span className="text-rose-500">*</span>
+                      </label>
+                      {hasOwnerNameError && (
+                        <span className="text-rose-500 font-bold text-[10px]">Required</span>
+                      )}
+                    </div>
                     <input
                       type="text"
                       disabled={isRoleAlreadyLocked}
                       placeholder="Enter owner name"
                       value={form.ownerName}
                       onChange={(e) => update({ ownerName: e.target.value })}
-                      className="w-full rounded-[8px] border border-[#59AD63]/30 bg-white px-4 py-3 text-xs font-semibold text-charcoal focus:border-black outline-none transition-colors disabled:bg-slate-100/70 disabled:text-slate/60 shadow-sm"
+                      className={`w-full rounded-[8px] border px-4 py-3 text-xs font-semibold text-charcoal outline-none transition-all shadow-sm ${
+                        hasOwnerNameError
+                          ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-500"
+                          : "border-[#59AD63]/30 bg-white focus:border-black"
+                      } disabled:bg-slate-100/70 disabled:text-slate/60`}
                     />
+                    {hasOwnerNameError && (
+                      <p className="text-[11px] font-semibold text-rose-500 flex items-center gap-1 mt-0.5">
+                        <AlertCircle size={12} className="shrink-0" />
+                        Owner name is mandatory to proceed.
+                      </p>
+                    )}
                   </div>
                 )}
 
                 {form.role === "Broker" && (
                   <div className="flex flex-col gap-5">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-slate uppercase tracking-wider">Broker Name</label>
+                    <div className="flex flex-col gap-1.5" id="broker-name-field">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate uppercase tracking-wider">
+                          Broker Name <span className="text-rose-500">*</span>
+                        </label>
+                        {hasBrokerNameError && (
+                          <span className="text-rose-500 font-bold text-[10px]">Required</span>
+                        )}
+                      </div>
                       <input
                         type="text"
                         disabled={isRoleAlreadyLocked}
                         placeholder="Enter broker name"
                         value={form.brokerName}
                         onChange={(e) => update({ brokerName: e.target.value })}
-                        className="w-full rounded-[8px] border border-[#59AD63]/30 bg-white px-4 py-3 text-xs font-semibold text-charcoal focus:border-black outline-none transition-colors disabled:bg-slate-100/70 disabled:text-slate/60 shadow-sm"
+                        className={`w-full rounded-[8px] border px-4 py-3 text-xs font-semibold text-charcoal outline-none transition-all shadow-sm ${
+                          hasBrokerNameError
+                            ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-500"
+                            : "border-[#59AD63]/30 bg-white focus:border-black"
+                        } disabled:bg-slate-100/70 disabled:text-slate/60`}
                       />
+                      {hasBrokerNameError && (
+                        <p className="text-[11px] font-semibold text-rose-500 flex items-center gap-1 mt-0.5">
+                          <AlertCircle size={12} className="shrink-0" />
+                          Broker name is mandatory to proceed.
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
 
                 {form.role === "Agency" && (
                   <div className="flex flex-col gap-5">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-slate uppercase tracking-wider">Agency Name</label>
+                    <div className="flex flex-col gap-1.5" id="agency-name-field">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate uppercase tracking-wider">
+                          Agency Name <span className="text-rose-500">*</span>
+                        </label>
+                        {hasAgencyNameError && (
+                          <span className="text-rose-500 font-bold text-[10px]">Required</span>
+                        )}
+                      </div>
                       <input
                         type="text"
                         disabled={isRoleAlreadyLocked}
                         placeholder="Enter agency name"
                         value={form.agencyName}
                         onChange={(e) => update({ agencyName: e.target.value })}
-                        className="w-full rounded-[8px] border border-[#59AD63]/30 bg-white px-4 py-3 text-xs font-semibold text-charcoal focus:border-black outline-none transition-colors disabled:bg-slate-100/70 disabled:text-slate/60 shadow-sm"
+                        className={`w-full rounded-[8px] border px-4 py-3 text-xs font-semibold text-charcoal outline-none transition-all shadow-sm ${
+                          hasAgencyNameError
+                            ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-500"
+                            : "border-[#59AD63]/30 bg-white focus:border-black"
+                        } disabled:bg-slate-100/70 disabled:text-slate/60`}
                       />
+                      {hasAgencyNameError && (
+                        <p className="text-[11px] font-semibold text-rose-500 flex items-center gap-1 mt-0.5">
+                          <AlertCircle size={12} className="shrink-0" />
+                          Agency name is mandatory to proceed.
+                        </p>
+                      )}
                     </div>
 
                     {!isRoleAlreadyLocked && (
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate uppercase tracking-wider">Agency Logo</label>
+                      <div className="flex flex-col gap-1.5" id="agency-logo-field">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate uppercase tracking-wider">
+                            Agency Logo <span className="text-rose-500">*</span>
+                          </label>
+                          {hasAgencyLogoError && (
+                            <span className="text-rose-500 font-bold text-[10px]">Required</span>
+                          )}
+                        </div>
                         <input
                           ref={logoInputRef}
                           type="file"
@@ -508,38 +633,76 @@ export default function ChooseRole() {
                           <button
                             type="button"
                             onClick={() => logoInputRef.current?.click()}
-                            className="w-full py-5 border-2 border-dashed border-charcoal/15 hover:border-black rounded-[8px] flex flex-col items-center justify-center gap-1.5 transition-colors bg-white shadow-sm cursor-pointer"
+                            className={`w-full py-5 border-2 border-dashed rounded-[8px] flex flex-col items-center justify-center gap-1.5 transition-colors bg-white shadow-sm cursor-pointer ${
+                              hasAgencyLogoError
+                                ? "border-rose-500 bg-rose-50/20"
+                                : "border-charcoal/15 hover:border-black"
+                            }`}
                           >
-                            <UploadCloud size={20} className="text-slate/60" />
+                            <UploadCloud size={20} className={hasAgencyLogoError ? "text-rose-500" : "text-slate/60"} />
                             <span className="text-xs font-semibold text-charcoal">Upload Logo Image</span>
                             <span className="text-[10px] text-slate/50">PNG or JPEG format</span>
                           </button>
+                        )}
+                        {hasAgencyLogoError && (
+                          <p className="text-[11px] font-semibold text-rose-500 flex items-center gap-1 mt-0.5">
+                            <AlertCircle size={12} className="shrink-0" />
+                            Agency logo is mandatory to proceed.
+                          </p>
                         )}
                       </div>
                     )}
 
                     {/* Agency Address */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-slate uppercase tracking-wider">Agency Address</label>
+                    <div className="flex flex-col gap-1.5" id="agency-address-field">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate uppercase tracking-wider">
+                          Agency Address <span className="text-rose-500">*</span>
+                        </label>
+                        {hasAgencyAddressError && (
+                          <span className="text-rose-500 font-bold text-[10px]">Required</span>
+                        )}
+                      </div>
                       <textarea
                         disabled={isRoleAlreadyLocked}
                         placeholder="Enter agency address"
                         value={form.agencyAddress || ""}
                         onChange={(e) => update({ agencyAddress: e.target.value })}
                         rows={3}
-                        className="w-full rounded-[8px] border border-[#59AD63]/30 bg-white px-4 py-3 text-xs font-semibold text-charcoal focus:border-black outline-none transition-colors disabled:bg-slate-100/70 disabled:text-slate/60 shadow-sm resize-none"
+                        className={`w-full rounded-[8px] border px-4 py-3 text-xs font-semibold text-charcoal outline-none transition-all shadow-sm resize-none ${
+                          hasAgencyAddressError
+                            ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-500"
+                            : "border-[#59AD63]/30 bg-white focus:border-black"
+                        } disabled:bg-slate-100/70 disabled:text-slate/60`}
                       />
+                      {hasAgencyAddressError && (
+                        <p className="text-[11px] font-semibold text-rose-500 flex items-center gap-1 mt-0.5">
+                          <AlertCircle size={12} className="shrink-0" />
+                          Agency address is mandatory to proceed.
+                        </p>
+                      )}
                     </div>
 
                     {/* Agency District */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-slate uppercase tracking-wider">District</label>
+                    <div className="flex flex-col gap-1.5" id="agency-district-field">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate uppercase tracking-wider">
+                          District <span className="text-rose-500">*</span>
+                        </label>
+                        {hasAgencyDistrictError && (
+                          <span className="text-rose-500 font-bold text-[10px]">Required</span>
+                        )}
+                      </div>
                       <div className="relative">
                         <select
                           disabled={isRoleAlreadyLocked}
                           value={form.agencyDistrict || ""}
                           onChange={(e) => update({ agencyDistrict: e.target.value })}
-                          className="w-full rounded-[8px] border border-[#59AD63]/30 bg-white px-4 py-3 text-xs font-semibold text-charcoal focus:border-black outline-none transition-colors disabled:bg-slate-100/70 disabled:text-slate/60 shadow-sm appearance-none cursor-pointer"
+                          className={`w-full rounded-[8px] border px-4 py-3 text-xs font-semibold text-charcoal outline-none transition-all shadow-sm appearance-none cursor-pointer ${
+                            hasAgencyDistrictError
+                              ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-500"
+                              : "border-[#59AD63]/30 bg-white focus:border-black"
+                          } disabled:bg-slate-100/70 disabled:text-slate/60`}
                         >
                           <option value="">Select District</option>
                           {districts.map((d) => (
@@ -552,6 +715,12 @@ export default function ChooseRole() {
                           ▼
                         </div>
                       </div>
+                      {hasAgencyDistrictError && (
+                        <p className="text-[11px] font-semibold text-rose-500 flex items-center gap-1 mt-0.5">
+                          <AlertCircle size={12} className="shrink-0" />
+                          Please select a district to proceed.
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -562,21 +731,42 @@ export default function ChooseRole() {
             <div className="flex flex-col gap-5 text-left">
               <div className="flex flex-col gap-4 border-t border-[#59AD63]/30 pt-4 mt-1">
 
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate uppercase tracking-wider">Contact Number</label>
-                  <div className="flex items-center bg-white rounded-[8px] border border-[#59AD63]/30 px-3 py-0.5 focus-within:border-black transition-colors shadow-sm disabled:bg-slate-100/50">
+                <div className="flex flex-col gap-1.5" id="contact-phone-field">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate uppercase tracking-wider">
+                      Contact Number <span className="text-rose-500">*</span>
+                    </label>
+                    {hasContactPhoneError && (
+                      <span className="text-rose-500 font-bold text-[10px]">
+                        {!form.contactPhone ? "Required" : "Min 10 digits"}
+                      </span>
+                    )}
+                  </div>
+                  <div className={`flex items-center rounded-[8px] border px-3 py-0.5 transition-all shadow-sm ${
+                    hasContactPhoneError
+                      ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-500"
+                      : "border-[#59AD63]/30 bg-white focus-within:border-black"
+                  } disabled:bg-slate-100/50`}>
                     <div className="flex items-center gap-1 text-[13px] font-semibold text-charcoal pr-3 border-r border-[#59AD63]/30 cursor-pointer">
                       <span>+91</span>
                     </div>
                     <input
                       type="tel"
                       disabled={isRoleAlreadyLocked && !!user?.phone}
-                      placeholder="Enter contact number"
+                      placeholder="Enter 10-digit contact number"
                       value={form.contactPhone}
                       onChange={(e) => update({ contactPhone: e.target.value })}
                       className="flex-1 bg-transparent text-[14px] px-3 py-3 outline-none text-charcoal placeholder:text-slate/40 font-medium disabled:text-slate/50"
                     />
                   </div>
+                  {hasContactPhoneError && (
+                    <p className="text-[11px] font-semibold text-rose-500 flex items-center gap-1 mt-0.5">
+                      <AlertCircle size={12} className="shrink-0" />
+                      {!form.contactPhone.trim()
+                        ? "Contact number is mandatory to proceed."
+                        : "Please enter a valid 10-digit mobile number."}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 mt-1">
@@ -599,40 +789,88 @@ export default function ChooseRole() {
                   </label>
                 </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate uppercase tracking-wider">WhatsApp Number</label>
-                  <div className={`flex items-center rounded-[8px] border px-3 py-0.5 transition-colors shadow-sm ${
-                    (isRoleAlreadyLocked && !!user?.whatsappNumber) || form.sameAsContact 
-                      ? "bg-slate-100/50 border-[#59AD63]/30 text-slate/50" 
-                      : "bg-white border-[#59AD63]/30 focus-within:border-black"
+                <div className="flex flex-col gap-1.5" id="whatsapp-number-field">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate uppercase tracking-wider">
+                      WhatsApp Number <span className="text-rose-500">*</span>
+                    </label>
+                    {hasWhatsappNumberError && (
+                      <span className="text-rose-500 font-bold text-[10px]">
+                        {!form.whatsappNumber ? "Required" : "Min 10 digits"}
+                      </span>
+                    )}
+                  </div>
+                  <div className={`flex items-center rounded-[8px] border px-3 py-0.5 transition-all shadow-sm ${
+                    hasWhatsappNumberError
+                      ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-500"
+                      : (isRoleAlreadyLocked && !!user?.whatsappNumber) || form.sameAsContact 
+                        ? "bg-slate-100/50 border-[#59AD63]/30 text-slate/50" 
+                        : "bg-white border-[#59AD63]/30 focus-within:border-black"
                   }`}>
                     <div className="flex items-center gap-1 text-[13px] font-semibold pr-3 border-r border-[#59AD63]/30 cursor-pointer">
                       <span className={(isRoleAlreadyLocked && !!user?.whatsappNumber) || form.sameAsContact ? "text-slate/50" : "text-charcoal"}>+91</span>
                     </div>
                     <input
                       type="tel"
-                      placeholder="Enter WhatsApp number"
+                      placeholder="Enter 10-digit WhatsApp number"
                       value={form.whatsappNumber}
                       onChange={(e) => update({ whatsappNumber: e.target.value })}
                       disabled={(isRoleAlreadyLocked && !!user?.whatsappNumber) || form.sameAsContact}
                       className="flex-1 bg-transparent text-[14px] px-3 py-3 outline-none text-charcoal placeholder:text-slate/40 font-medium disabled:text-slate/50"
                     />
                   </div>
+                  {hasWhatsappNumberError && (
+                    <p className="text-[11px] font-semibold text-rose-500 flex items-center gap-1 mt-0.5">
+                      <AlertCircle size={12} className="shrink-0" />
+                      {!form.whatsappNumber.trim()
+                        ? "WhatsApp number is mandatory to proceed."
+                        : "Please enter a valid 10-digit WhatsApp number."}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
 
-            <button
-              disabled={submitting || !isSetupValid}
-              onClick={handleConfirmRole}
-              className={`w-full py-4 rounded-[2px] font-display font-bold text-[14px] transition-all shadow-md mt-auto active:scale-[0.99] bg-[#59AD63] text-white cursor-pointer ${
-                submitting || !isSetupValid 
-                  ? "opacity-50 cursor-not-allowed shadow-none" 
-                  : "hover:bg-[#3F8F4B]"
-              }`}
+            {/* Validation Error Banner */}
+            {attemptedSetupSubmit && !isSetupValid && (
+              <div className="p-3.5 bg-rose-50 text-rose-700 text-xs rounded-[8px] border border-rose-200 flex items-start gap-2.5 animate-in fade-in slide-in-from-top-2">
+                <ShieldAlert size={16} className="shrink-0 text-rose-600 mt-0.5" />
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-bold">Missing Required Details</span>
+                  <span className="text-[11px] text-rose-600 leading-relaxed">
+                    Essential fields like contact numbers and role profile details are mandatory to proceed. Missing fields are highlighted in red above.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div 
+              onClick={() => {
+                if (!isSetupValid) {
+                  setAttemptedSetupSubmit(true);
+                  setTimeout(() => {
+                    const firstError = document.querySelector(".border-rose-500, [id$='-field'] .border-rose-500, input:invalid");
+                    if (firstError) {
+                      firstError.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }
+                  }, 100);
+                }
+              }}
+              className="w-full mt-auto"
             >
-              {submitting ? "Locking Account Role..." : isRoleAlreadyLocked ? "Continue" : "Confirm & Lock Role"}
-            </button>
+              <button
+                type="button"
+                disabled={submitting || !isSetupValid}
+                onClick={handleConfirmRole}
+                className={`w-full py-4 rounded-[2px] font-display font-bold text-[14px] transition-all shadow-md active:scale-[0.99] bg-[#59AD63] text-white ${
+                  submitting || !isSetupValid 
+                    ? "opacity-50 cursor-not-allowed shadow-none" 
+                    : "hover:bg-[#3F8F4B] cursor-pointer"
+                }`}
+              >
+                {submitting ? "Locking Account Role..." : isRoleAlreadyLocked ? "Continue" : "Confirm & Lock Role"}
+              </button>
+            </div>
           </>
         )}
       </div>
@@ -656,6 +894,14 @@ export default function ChooseRole() {
           className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in"
           onClick={() => setShowSwitchModal(false)}
         >
+          {/* Subtle Floating Toast Notification for Role Switch */}
+          {switchToast && (
+            <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[70] bg-slate-900/95 text-white px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 text-xs font-semibold backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-200 border border-white/10 max-w-sm text-center">
+              <AlertCircle size={15} className="text-amber-400 shrink-0" />
+              <span>{switchToast}</span>
+            </div>
+          )}
+
           <div 
             className="bg-cream rounded-[8px] p-6 w-full max-w-[380px] border border-[#59AD63]/30 shadow-2xl relative flex flex-col gap-4 animate-slide-up font-display text-left"
             onClick={(e) => e.stopPropagation()}
@@ -672,7 +918,7 @@ export default function ChooseRole() {
             <div>
               <h3 className="font-extrabold text-lg text-ink">Request Role Switch</h3>
               <p className="text-xs text-slate mt-1 leading-relaxed">
-                Select the new listing role you wish to switch your account to. The Admin will review and approve your request.
+                Select the new listing role you wish to switch your account to and confirm your contact number. The Admin will review and approve your request.
               </p>
             </div>
 
@@ -693,24 +939,40 @@ export default function ChooseRole() {
                 </button>
               </div>
             ) : (
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3.5">
                 {switchError && (
-                  <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 text-xs rounded-xl">
-                    {switchError}
+                  <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 text-xs rounded-xl flex items-center gap-2">
+                    <AlertCircle size={15} className="shrink-0 text-rose-600" />
+                    <span>{switchError}</span>
                   </div>
                 )}
 
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold text-slate uppercase tracking-wider">Select New Role</label>
-                  <div className="flex flex-col gap-2">
+                {/* Select New Role with Inline Validation */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate uppercase tracking-wider">
+                      Select New Role <span className="text-rose-500">*</span>
+                    </label>
+                    {hasSwitchRoleError && (
+                      <span className="text-rose-500 font-bold text-[10px]">Required</span>
+                    )}
+                  </div>
+                  <div className={`flex flex-col gap-2 p-1 rounded-xl transition-all ${
+                    hasSwitchRoleError ? "border border-rose-500 bg-rose-50/20" : ""
+                  }`}>
                     {["Broker", "Agency"].filter(r => r.toLowerCase() !== (user?.role || "").toLowerCase()).map((r) => {
                       const selected = switchTargetRole === r;
                       return (
                         <button
                           key={r}
                           type="button"
-                          onClick={() => setSwitchTargetRole(r)}
-                          className={`p-3.5 rounded-[8px] border flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                          onClick={() => {
+                            setSwitchTargetRole(r);
+                            if (switchToast && switchToast.includes("role")) {
+                              setSwitchToast(null);
+                            }
+                          }}
+                          className={`p-3 rounded-[8px] border flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
                             selected 
                               ? "border-black bg-white shadow-sm ring-1 ring-black text-ink" 
                               : "border-[#59AD63]/30 bg-white hover:bg-slate-50 text-charcoal"
@@ -726,17 +988,92 @@ export default function ChooseRole() {
                       );
                     })}
                   </div>
+                  {hasSwitchRoleError && (
+                    <p className="text-[11px] font-semibold text-rose-500 flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0" />
+                      Please choose a target role to proceed.
+                    </p>
+                  )}
                 </div>
 
-                <div className="flex flex-col gap-2 mt-2">
+                {/* Contact Number with Inline Validation */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate uppercase tracking-wider">
+                      Contact Number <span className="text-rose-500">*</span>
+                    </label>
+                    {hasSwitchPhoneError && (
+                      <span className="text-rose-500 font-bold text-[10px]">
+                        {!switchContactPhone.trim() ? "Required" : "Min 10 digits"}
+                      </span>
+                    )}
+                  </div>
+                  <div className={`flex items-center rounded-[8px] border px-3 py-0.5 transition-all shadow-sm ${
+                    hasSwitchPhoneError
+                      ? "border-rose-500 bg-rose-50/25 ring-1 ring-rose-500"
+                      : "border-[#59AD63]/30 bg-white focus-within:border-black"
+                  }`}>
+                    <div className="flex items-center gap-1 text-[13px] font-semibold text-charcoal pr-2.5 border-r border-[#59AD63]/30">
+                      <span>+91</span>
+                    </div>
+                    <input
+                      type="tel"
+                      placeholder="Enter 10-digit contact number"
+                      value={switchContactPhone}
+                      onChange={(e) => {
+                        setSwitchContactPhone(e.target.value);
+                        if (attemptedSwitchSubmit && validatePhone(e.target.value)) {
+                          if (switchToast && switchToast.includes("contact")) {
+                            setSwitchToast(null);
+                          }
+                        }
+                      }}
+                      className="flex-1 bg-transparent text-[13px] px-2.5 py-2.5 outline-none text-charcoal placeholder:text-slate/40 font-medium"
+                    />
+                  </div>
+                  {hasSwitchPhoneError && (
+                    <p className="text-[11px] font-semibold text-rose-500 flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0" />
+                      {!switchContactPhone.trim() 
+                        ? "Contact number is mandatory to proceed with role switch."
+                        : "Please enter a valid 10-digit contact number."}
+                    </p>
+                  )}
+                </div>
+
+                {/* Reason / Notes (Optional) */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate uppercase tracking-wider">
+                    Reason / Notes (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Upgrading to manage client listings"
+                    value={switchReason}
+                    onChange={(e) => setSwitchReason(e.target.value)}
+                    className="w-full rounded-[8px] border border-[#59AD63]/30 bg-white px-3 py-2 text-xs font-medium text-charcoal outline-none focus:border-black transition-colors"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2 mt-1">
                   <button
-                    disabled={!switchTargetRole || switchSubmitting}
+                    disabled={switchSubmitting}
                     onClick={async () => {
-                      if (!switchTargetRole) return;
+                      setAttemptedSwitchSubmit(true);
+                      if (!isSwitchValid) {
+                        if (!switchTargetRole && !validatePhone(switchContactPhone)) {
+                          showSwitchToast("Please select a new role and provide your contact number to proceed.");
+                        } else if (!switchTargetRole) {
+                          showSwitchToast("Please select the new role you wish to switch your account to.");
+                        } else if (!validatePhone(switchContactPhone)) {
+                          showSwitchToast("A valid 10-digit contact number is mandatory to proceed.");
+                        }
+                        return;
+                      }
                       setSwitchSubmitting(true);
                       setSwitchError(null);
                       try {
-                        const res = await api.requestRoleSwitch(switchTargetRole);
+                        const res = await api.requestRoleSwitch(switchTargetRole, switchContactPhone, switchReason);
                         setSwitchSuccessMessage(res.message || "Your switch request has been sent to the Admin for approval.");
                       } catch (err: any) {
                         setSwitchError(err.message || "Failed to submit role switch request.");
@@ -745,7 +1082,7 @@ export default function ChooseRole() {
                       }
                     }}
                     className={`w-full py-3.5 bg-ink text-cream rounded-[2px] text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all ${
-                      !switchTargetRole || switchSubmitting
+                      switchSubmitting
                         ? "opacity-50 cursor-not-allowed"
                         : "hover:bg-black cursor-pointer active:scale-95"
                     }`}

@@ -631,10 +631,17 @@ router.get("/:id/profile", async (req, res) => {
 // POST /api/users/me/role-switch
 router.post("/me/role-switch", requireAuth, async (req, res) => {
   try {
-    const { requestedRole } = req.body;
+    const { requestedRole, phone } = req.body;
     const allowedRoles = ["Broker", "Agency"];
     if (!allowedRoles.includes(requestedRole)) {
       return res.status(400).json({ error: "Invalid requested role. You can only switch to Broker or Agency." });
+    }
+
+    if (phone && String(phone).trim()) {
+      await pool.query(
+        "UPDATE users SET phone = COALESCE(NULLIF(phone, ''), ?) WHERE id = ?",
+        [String(phone).trim(), req.userId]
+      );
     }
 
     const [userRows] = await pool.query("SELECT role FROM users WHERE id = ?", [req.userId]);

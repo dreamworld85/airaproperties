@@ -808,11 +808,11 @@ export const api = {
     return handle<{ key: string; value: string }>(res);
   },
 
-  async requestRoleSwitch(requestedRole: string) {
+  async requestRoleSwitch(requestedRole: string, phone?: string, reason?: string) {
     const res = await fetch(`${API_URL}/api/users/me/role-switch`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify({ requestedRole }),
+      body: JSON.stringify({ requestedRole, phone, reason }),
     });
     return handle<{ message: string }>(res);
   },
