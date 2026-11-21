@@ -118,6 +118,14 @@ router.get("/me/transactions", requireAuth, async (req, res) => {
 router.patch("/me", requireAuth, async (req, res) => {
   try {
     const { name, phone, email, location, state, district, address, avatarUrl, whatsappNumber, password } = req.body;
+
+    if (phone !== undefined) {
+      const phoneDigits = String(phone || "").replace(/\D/g, "");
+      if (!phone || !String(phone).trim() || phoneDigits.length < 10) {
+        return res.status(400).json({ error: "User Phone Number is mandatory. Please provide a valid 10-digit contact number." });
+      }
+    }
+
     const cleanEmail = email !== undefined ? (email && String(email).trim() ? String(email).trim().toLowerCase() : null) : undefined;
     const cleanPhone = phone !== undefined ? (phone && String(phone).trim() ? String(phone).trim() : null) : undefined;
     const cleanName = name !== undefined ? (name && String(name).trim() ? String(name).trim() : null) : undefined;

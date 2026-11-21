@@ -6,20 +6,20 @@ import { useAuth } from "@/lib/AuthContext";
 import { useBrand } from "@/lib/BrandContext";
 
 const countries = [
-  { code: "+91", name: "India", flag: "🇮🇳" },
-  { code: "+971", name: "UAE", flag: "🇦🇪" },
-  { code: "+966", name: "Saudi Arabia", flag: "🇸🇦" },
-  { code: "+968", name: "Oman", flag: "🇴🇲" },
-  { code: "+974", name: "Qatar", flag: "🇶🇦" },
-  { code: "+973", name: "Bahrain", flag: "🇧🇭" },
-  { code: "+965", name: "Kuwait", flag: "🇰🇼" },
-  { code: "+1", name: "USA / Canada", flag: "🇺🇸" },
-  { code: "+44", name: "UK", flag: "🇬🇧" },
-  { code: "+65", name: "Singapore", flag: "🇸🇬" },
-  { code: "+61", name: "Australia", flag: "🇦🇺" },
-  { code: "+60", name: "Malaysia", flag: "🇲🇾" },
-  { code: "+49", name: "Germany", flag: "🇩🇪" },
-  { code: "+33", name: "France", flag: "🇫🇷" },
+  { code: "+91", name: "India", flag: "ðŸ‡®ðŸ‡³" },
+  { code: "+971", name: "UAE", flag: "ðŸ‡¦ðŸ‡ª" },
+  { code: "+966", name: "Saudi Arabia", flag: "ðŸ‡¸ðŸ‡¦" },
+  { code: "+968", name: "Oman", flag: "ðŸ‡´ðŸ‡²" },
+  { code: "+974", name: "Qatar", flag: "ðŸ‡¶ðŸ‡¦" },
+  { code: "+973", name: "Bahrain", flag: "ðŸ‡§ðŸ‡­" },
+  { code: "+965", name: "Kuwait", flag: "ðŸ‡°ðŸ‡¼" },
+  { code: "+1", name: "USA / Canada", flag: "ðŸ‡ºðŸ‡¸" },
+  { code: "+44", name: "UK", flag: "ðŸ‡¬ðŸ‡§" },
+  { code: "+65", name: "Singapore", flag: "ðŸ‡¸ðŸ‡¬" },
+  { code: "+61", name: "Australia", flag: "ðŸ‡¦ðŸ‡º" },
+  { code: "+60", name: "Malaysia", flag: "ðŸ‡²ðŸ‡¾" },
+  { code: "+49", name: "Germany", flag: "ðŸ‡©ðŸ‡ª" },
+  { code: "+33", name: "France", flag: "ðŸ‡«ðŸ‡·" },
 ];
 
 function detectUserCountry(): { code: string; name: string; flag: string } {
@@ -37,48 +37,48 @@ function detectUserCountry(): { code: string; name: string; flag: string } {
     const locale = (navigator.language || (navigator.languages && navigator.languages[0]) || "").toUpperCase();
 
     if (/Calcutta|Kolkata|India/i.test(tz) || locale.endsWith("-IN")) {
-      return { code: "+91", name: "India", flag: "🇮🇳" };
+      return { code: "+91", name: "India", flag: "ðŸ‡®ðŸ‡³" };
     }
     if (/Dubai/i.test(tz) || locale.endsWith("-AE")) {
-      return { code: "+971", name: "UAE", flag: "🇦🇪" };
+      return { code: "+971", name: "UAE", flag: "ðŸ‡¦ðŸ‡ª" };
     }
     if (/Riyadh/i.test(tz) || locale.endsWith("-SA")) {
-      return { code: "+966", name: "Saudi Arabia", flag: "🇸🇦" };
+      return { code: "+966", name: "Saudi Arabia", flag: "ðŸ‡¸ðŸ‡¦" };
     }
     if (/Muscat/i.test(tz) || locale.endsWith("-OM")) {
-      return { code: "+968", name: "Oman", flag: "🇴🇲" };
+      return { code: "+968", name: "Oman", flag: "ðŸ‡´ðŸ‡²" };
     }
     if (/Qatar/i.test(tz) || locale.endsWith("-QA")) {
-      return { code: "+974", name: "Qatar", flag: "🇶🇦" };
+      return { code: "+974", name: "Qatar", flag: "ðŸ‡¶ðŸ‡¦" };
     }
     if (/Bahrain/i.test(tz) || locale.endsWith("-BH")) {
-      return { code: "+973", name: "Bahrain", flag: "🇧🇭" };
+      return { code: "+973", name: "Bahrain", flag: "ðŸ‡§ðŸ‡­" };
     }
     if (/Kuwait/i.test(tz) || locale.endsWith("-KW")) {
-      return { code: "+965", name: "Kuwait", flag: "🇰🇼" };
+      return { code: "+965", name: "Kuwait", flag: "ðŸ‡°ðŸ‡¼" };
     }
     if (/Singapore/i.test(tz) || locale.endsWith("-SG")) {
-      return { code: "+65", name: "Singapore", flag: "🇸🇬" };
+      return { code: "+65", name: "Singapore", flag: "ðŸ‡¸ðŸ‡¬" };
     }
     if (/London/i.test(tz) || locale.endsWith("-GB")) {
-      return { code: "+44", name: "UK", flag: "🇬🇧" };
+      return { code: "+44", name: "UK", flag: "ðŸ‡¬ðŸ‡§" };
     }
     if (/Sydney|Melbourne|Brisbane|Perth|Adelaide|Australia/i.test(tz) || locale.endsWith("-AU")) {
-      return { code: "+61", name: "Australia", flag: "🇦🇺" };
+      return { code: "+61", name: "Australia", flag: "ðŸ‡¦ðŸ‡º" };
     }
     if (/New_York|Chicago|Denver|Los_Angeles|Toronto|America/i.test(tz) || locale.endsWith("-US") || locale.endsWith("-CA")) {
-      return { code: "+1", name: "USA / Canada", flag: "🇺🇸" };
+      return { code: "+1", name: "USA / Canada", flag: "ðŸ‡ºðŸ‡¸" };
     }
     if (/Kuala_Lumpur|Malaysia/i.test(tz) || locale.endsWith("-MY")) {
-      return { code: "+60", name: "Malaysia", flag: "🇲🇾" };
+      return { code: "+60", name: "Malaysia", flag: "ðŸ‡²ðŸ‡¾" };
     }
     if (/Berlin|Germany/i.test(tz) || locale.endsWith("-DE")) {
-      return { code: "+49", name: "Germany", flag: "🇩🇪" };
+      return { code: "+49", name: "Germany", flag: "ðŸ‡©ðŸ‡ª" };
     }
   } catch (e) {
     // ignore
   }
-  return { code: "+91", name: "India", flag: "🇮🇳" };
+  return { code: "+91", name: "India", flag: "ðŸ‡®ðŸ‡³" };
 }
 
 /**
@@ -234,13 +234,7 @@ export default function Login() {
 
   useEffect(() => {
     if (token && user) {
-      const pendingLink = localStorage.getItem("pending_deep_link") || (location.state as any)?.from;
-      if (pendingLink) {
-        localStorage.removeItem("pending_deep_link");
-        navigate(pendingLink, { replace: true });
-        return;
-      }
-      navigate("/home", { replace: true });
+      navigate("/profile/edit", { replace: true });
       return;
     }
 
@@ -310,13 +304,7 @@ export default function Login() {
           if (data && data.user) {
             const finalToken = oauthToken || localStorage.getItem("kr_token") || "";
             login(finalToken, data.user);
-            const pendingLink = localStorage.getItem("pending_deep_link") || (location.state as any)?.from;
-            if (pendingLink) {
-              localStorage.removeItem("pending_deep_link");
-              navigate(pendingLink, { replace: true });
-            } else {
-              navigate("/profile/edit", { replace: true });
-            }
+            navigate("/profile/edit", { replace: true });
           } else {
             setError("Authentication succeeded, but failed to load user profile.");
             setMode("login");
@@ -479,20 +467,7 @@ export default function Login() {
       });
 
       login(res.token, res.user);
-
-      if (res.isNewUser) {
-        // New user: navigate to Profile page to set name, email, and password
-        navigate("/profile/edit", { state: { isNewUser: true } });
-      } else {
-        // Existing registered user: login directly and redirect
-        const pendingLink = localStorage.getItem("pending_deep_link") || (location.state as any)?.from;
-        if (pendingLink) {
-          localStorage.removeItem("pending_deep_link");
-          navigate(pendingLink, { replace: true });
-        } else {
-          navigate("/home");
-        }
-      }
+      navigate("/profile/edit", { replace: true, state: { isNewUser: res.isNewUser } });
     } catch (err: any) {
       setError(err?.message || "Invalid OTP code. Please check and try again.");
       isSubmittingOtpRef.current = false;
@@ -582,14 +557,7 @@ export default function Login() {
     try {
       const { token, user } = await api.login(loginIdentifier, password);
       login(token, user);
-
-      const pendingLink = localStorage.getItem("pending_deep_link") || (location.state as any)?.from;
-      if (pendingLink) {
-        localStorage.removeItem("pending_deep_link");
-        navigate(pendingLink, { replace: true });
-      } else {
-        navigate("/home");
-      }
+      navigate("/profile/edit", { replace: true });
     } catch (err: any) {
       setError(err?.message || "Invalid credentials. Please check your details and try again.");
     } finally {
@@ -669,7 +637,7 @@ export default function Login() {
       });
 
       login(token, user);
-      navigate("/home");
+      navigate("/profile/edit", { replace: true });
     } catch (err: any) {
       setError(err?.message || "Failed to reset password. Please check your OTP code.");
     } finally {
@@ -1441,7 +1409,7 @@ export default function Login() {
                   }}
                   className="w-full h-11 bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-800 rounded-none border border-gray-300 shadow-2xs flex items-center justify-center gap-2 font-semibold text-xs transition-all active:scale-[0.99] cursor-pointer"
                 >
-                  <span className="text-sm">🔐</span>
+                  <span className="text-sm">ðŸ”</span>
                   <span>Login with Mobile OTP</span>
                 </button>
 

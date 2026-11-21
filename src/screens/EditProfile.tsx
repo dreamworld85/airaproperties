@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Camera, Lock, Eye, EyeOff, ShieldCheck, ChevronDown } from "lucide-react";
+import { Camera, Lock, Eye, EyeOff, ShieldCheck, ChevronDown, Phone, AlertCircle } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { api, mediaUrl } from "@/lib/api";
 import Header from "@/components/Header";
@@ -59,6 +59,27 @@ export default function EditProfile() {
     }
   };
 
+  const phoneInputRef = useRef<HTMLInputElement>(null);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+
+  const validatePhone = (num: string) => {
+    if (!num) return false;
+    const digits = String(num).replace(/\D/g, "");
+    return digits.length >= 10;
+  };
+  const isPhoneValid = validatePhone(phone);
+  const hasPhoneError = attemptedSubmit && !isPhoneValid;
+
+  const handleBackOrSkip = () => {
+    if (!validatePhone(user?.phone || phone)) {
+      setAttemptedSubmit(true);
+      setError("User Phone Number is mandatory to continue. Please enter and save your contact number.");
+      phoneInputRef.current?.focus();
+      return;
+    }
+    navigate("/home");
+  };
+
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -72,8 +93,15 @@ export default function EditProfile() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   async function handleSave() {
+    setAttemptedSubmit(true);
     setSaving(true);
     setError(null);
+    if (!isPhoneValid) {
+      setError("User Phone Number is mandatory. Please enter a valid 10-digit mobile number.");
+      phoneInputRef.current?.focus();
+      setSaving(false);
+      return;
+    }
     if (!state || !state.trim()) {
       setError("Please select your State.");
       setSaving(false);
@@ -159,7 +187,7 @@ export default function EditProfile() {
 
   return (
     <div className="min-h-screen flex flex-col pb-28 bg-[#FAF8F3] font-display select-none">
-      <Header title="Back To Home" showBack backTo="/home" />
+      <Header title="Back To Home" showBack onBack={handleBackOrSkip} />
 
       <div className="px-5 pt-3 flex flex-col gap-3.5 flex-1 max-w-xl mx-auto w-full">
         {/* Profile Photo Section */}
@@ -207,6 +235,12 @@ export default function EditProfile() {
             <span>Mobile verified successfully! Please enter your name, email, and set your password to finish.</span>
           </div>
         )}
+        {!validatePhone(user?.phone) && !isNewSignup && (
+          <div className="bg-amber-50 border border-amber-300/80 text-amber-900 text-xs font-semibold px-3.5 py-2.5 rounded-none flex items-center gap-2 shadow-xs">
+            <AlertCircle size={16} className="text-amber-600 shrink-0" />
+            <span>User Phone Number is mandatory. Please enter and save your contact number to proceed.</span>
+          </div>
+        )}
         <div className="flex flex-col gap-3">
           {/* Row 1: Full Name & Phone No */}
           <div className="grid grid-cols-1 gap-3">
@@ -222,14 +256,46 @@ export default function EditProfile() {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-[13px] font-medium text-charcoal/80 pl-0.5">User Phone Number</label>
-              <input
-                type="tel"
-                placeholder="e.g. +91 9876543210"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full h-10 rounded-none border border-slate-200/80 bg-white px-3.5 text-[13.5px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_1px_4px_rgba(0,0,0,0.02)] focus:border-[#59AD63] transition-all"
-              />
+              <div className="flex items-center justify-between pl-0.5">
+                <label className="text-[13px] font-medium text-charcoal/80 flex items-center gap-1">
+                  <span>User Phone Number</span>
+                  <span className="text-rose-500 font-bold">*</span>
+                </label>
+                {hasPhoneError && (
+                  <span className="text-[11px] font-bold text-rose-500">Required (min 10 digits)</span>
+                )}
+              </div>
+              <div className={`flex items-center rounded-none border transition-all ${
+                hasPhoneError
+                  ? "border-rose-500 bg-rose-50/25 ring-1 ring-rose-500"
+                  : "border-slate-200/80 bg-white focus-within:border-[#59AD63]"
+              }`}>
+                <div className="flex items-center gap-1 text-[13px] font-semibold text-charcoal px-3 py-2 border-r border-slate-200 bg-slate-50 select-none">
+                  <Phone size={13} className="text-slate-400" />
+                  <span>+91</span>
+                </div>
+                <input
+                  ref={phoneInputRef}
+                  type="tel"
+                  placeholder="Enter 10-digit mobile number"
+                  value={phone}
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    if (attemptedSubmit && validatePhone(e.target.value)) {
+                      setError(null);
+                    }
+                  }}
+                  className="flex-1 h-10 bg-transparent px-3.5 text-[13.5px] font-medium text-charcoal placeholder:text-slate/40 outline-none"
+                />
+              </div>
+              {hasPhoneError && (
+                <p className="text-[11px] font-semibold text-rose-500 flex items-center gap-1 pl-0.5 mt-0.5">
+                  <AlertCircle size={12} className="shrink-0" />
+                  {!phone.trim()
+                    ? "User phone number is mandatory to proceed."
+                    : "Please enter a valid 10-digit mobile number."}
+                </p>
+              )}
             </div>
           </div>
 
@@ -365,7 +431,7 @@ export default function EditProfile() {
           
           <button
             type="button"
-            onClick={() => navigate("/home")}
+            onClick={handleBackOrSkip}
             className="w-full h-10 bg-white hover:bg-slate-50 border border-slate-300 text-charcoal rounded-none text-[13.5px] font-medium transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center shadow-sm"
           >
             Skip to Home
