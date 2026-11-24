@@ -1409,7 +1409,7 @@ export default function Login() {
                   }}
                   className="w-full h-11 bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-800 rounded-none border border-gray-300 shadow-2xs flex items-center justify-center gap-2 font-semibold text-xs transition-all active:scale-[0.99] cursor-pointer"
                 >
-                  <span className="text-sm">ðŸ”</span>
+                  <img src="/images/otp.svg" alt="OTP" className="w-5 h-5 object-contain shrink-0" />
                   <span>Login with Mobile OTP</span>
                 </button>
 
