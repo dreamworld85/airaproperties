@@ -30,6 +30,8 @@ function toPublicProperty(row, media = [], isSaved = false) {
     price: Number(row.price),
     areaSqft: row.area_sqft,
     areaUnit: row.area_unit || null,
+    landArea: row.land_area || null,
+    buildingArea: row.building_area || null,
     address: row.address,
     state: row.state || "Kerala",
     district: row.district,
@@ -783,15 +785,20 @@ router.post("/", requireAuth, upload.any(), optimizeImages, async (req, res) => 
     const finalIsBrokerPersonalProperty = (finalRole === "broker" && (isBrokerPersonalProperty === "true" || isBrokerPersonalProperty === true || isBrokerPersonalProperty === 1)) ? 1 : 0;
     const finalIsPriceNegotiable = (isPriceNegotiable === "true" || isPriceNegotiable === true || isPriceNegotiable === 1) ? 1 : 0;
 
-    const [cols] = await conn.query("SHOW COLUMNS FROM properties LIKE 'area_unit'");
-    const hasAreaUnit = cols.length > 0;
+    const [propCols] = await conn.query("SHOW COLUMNS FROM properties");
+    const existingColNames = propCols.map(c => c.Field);
+    const hasAreaUnit = existingColNames.includes("area_unit");
+    const hasLandArea = existingColNames.includes("land_area");
+    const hasBuildingArea = existingColNames.includes("building_area");
     const areaUnitVal = req.body.areaUnit || (propertyType === "Land" || propertyType === "Plot / Land" ? "Cents" : "sq.ft.");
+    const landAreaVal = req.body.landArea || req.body.land_area || null;
+    const buildingAreaVal = req.body.buildingArea || req.body.building_area || null;
 
     let insertQuery = `INSERT INTO properties
         (owner_id, title, property_type, purpose, price, area_sqft, address, state, district,
          bedrooms, bathrooms, furnishing, facing, property_age, description, listing_role,
-         contact_number, whatsapp_number, owner_name, broker_name, agency_name, agency_logo_url, youtube_url, status, is_broker_personal_property, is_price_negotiable, latitude, longitude${hasAreaUnit ? ", area_unit" : ""})
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${hasAreaUnit ? ", ?" : ""})`;
+         contact_number, whatsapp_number, owner_name, broker_name, agency_name, agency_logo_url, youtube_url, status, is_broker_personal_property, is_price_negotiable, latitude, longitude${hasAreaUnit ? ", area_unit" : ""}${hasLandArea ? ", land_area" : ""}${hasBuildingArea ? ", building_area" : ""})
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${hasAreaUnit ? ", ?" : ""}${hasLandArea ? ", ?" : ""}${hasBuildingArea ? ", ?" : ""})`;
 
     const insertParams = [
       req.userId,
@@ -810,6 +817,12 @@ router.post("/", requireAuth, upload.any(), optimizeImages, async (req, res) => 
     ];
     if (hasAreaUnit) {
       insertParams.push(areaUnitVal);
+    }
+    if (hasLandArea) {
+      insertParams.push(landAreaVal);
+    }
+    if (hasBuildingArea) {
+      insertParams.push(buildingAreaVal);
     }
 
     const [result] = await conn.query(insertQuery, insertParams);
@@ -1053,15 +1066,20 @@ router.put("/:id", requireAuth, upload.any(), optimizeImages, async (req, res) =
     const finalIsBrokerPersonalProperty = (String(listingRole || "").toLowerCase() === "broker" && (isBrokerPersonalProperty === "true" || isBrokerPersonalProperty === true || isBrokerPersonalProperty === 1)) ? 1 : 0;
     const finalIsPriceNegotiable = (isPriceNegotiable === "true" || isPriceNegotiable === true || isPriceNegotiable === 1) ? 1 : 0;
 
-    const [cols] = await conn.query("SHOW COLUMNS FROM properties LIKE 'area_unit'");
-    const hasAreaUnit = cols.length > 0;
+    const [propCols] = await conn.query("SHOW COLUMNS FROM properties");
+    const existingColNames = propCols.map(c => c.Field);
+    const hasAreaUnit = existingColNames.includes("area_unit");
+    const hasLandArea = existingColNames.includes("land_area");
+    const hasBuildingArea = existingColNames.includes("building_area");
     const areaUnitVal = req.body.areaUnit;
+    const landAreaVal = req.body.landArea || req.body.land_area;
+    const buildingAreaVal = req.body.buildingArea || req.body.building_area;
 
     let updateQuery = `UPDATE properties SET
         title = ?, property_type = ?, purpose = ?, price = ?, area_sqft = ?, address = ?, state = ?, district = ?,
         bedrooms = ?, bathrooms = ?, furnishing = ?, facing = ?, property_age = ?, description = ?, listing_role = ?,
         contact_number = ?, whatsapp_number = ?, owner_name = ?, broker_name = ?, agency_name = ?, agency_logo_url = ?, youtube_url = ?, is_broker_personal_property = ?, is_price_negotiable = ?,
-        latitude = ?, longitude = ?${hasAreaUnit && areaUnitVal ? ", area_unit = ?" : ""}
+        latitude = ?, longitude = ?${hasAreaUnit && areaUnitVal ? ", area_unit = ?" : ""}${hasLandArea && landAreaVal !== undefined ? ", land_area = ?" : ""}${hasBuildingArea && buildingAreaVal !== undefined ? ", building_area = ?" : ""}
        WHERE id = ?`;
 
     const updateParams = [
@@ -1079,6 +1097,12 @@ router.put("/:id", requireAuth, upload.any(), optimizeImages, async (req, res) =
     ];
     if (hasAreaUnit && areaUnitVal) {
       updateParams.push(areaUnitVal);
+    }
+    if (hasLandArea && landAreaVal !== undefined) {
+      updateParams.push(landAreaVal || null);
+    }
+    if (hasBuildingArea && buildingAreaVal !== undefined) {
+      updateParams.push(buildingAreaVal || null);
     }
     updateParams.push(req.params.id);
 

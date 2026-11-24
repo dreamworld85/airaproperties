@@ -951,6 +951,18 @@ View Details: ${window.location.origin}/property/${property.id}`;
               <div className="flex flex-col items-center justify-center text-center gap-1 border-r border-charcoal/5">
                 <Maximize size={16.5} className="text-forest/85" />
                 {(() => {
+                  if (property.landArea) {
+                    return (
+                      <>
+                        <span className="font-display font-medium text-[11px] xs:text-[12.5px] text-charcoal leading-none mt-0.5 truncate max-w-[95%]">
+                          {property.landArea}
+                        </span>
+                        <span className="text-[8px] xs:text-[9px] font-medium text-slate/75 uppercase tracking-wider">
+                          {property.areaSqft ? "Land / Built" : "Land Area"}
+                        </span>
+                      </>
+                    );
+                  }
                   const landArea = getLandAreaDetails(property.areaSqft, property.price, property.areaUnit || (property as any).area_unit);
                   const parts = landArea.primary.split(" ");
                   return (

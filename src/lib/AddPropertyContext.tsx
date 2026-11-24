@@ -41,6 +41,8 @@ export interface NewPropertyForm {
   carpetArea?: string;
   builtUpArea?: string;
   superBuiltUpArea?: string;
+  buildingArea?: string;
+  landArea?: string;
   totalFloors?: string;
   propertyFloor?: string;
   isDuplex?: boolean;
@@ -92,6 +94,8 @@ const initialForm: NewPropertyForm = {
   carpetArea: "",
   builtUpArea: "",
   superBuiltUpArea: "",
+  buildingArea: "",
+  landArea: "",
   totalFloors: "",
   propertyFloor: "",
   isDuplex: false,
@@ -163,6 +167,8 @@ export function AddPropertyProvider({ children }: { children: ReactNode }) {
         if (unit === "sq.m.") return String(Number((sqft / 10.7639).toFixed(2)));
         return String(sqft);
       })(),
+      buildingArea: property.buildingArea || property.building_area || "",
+      landArea: property.landArea || property.land_area || "",
       address: property.address || "",
       state: property.state || "Kerala",
       district: property.district || "",

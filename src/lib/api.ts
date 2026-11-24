@@ -130,6 +130,8 @@ export interface ApiProperty {
   brokerName?: string | null;
   latitude?: string | number | null;
   longitude?: string | number | null;
+  landArea?: string | null;
+  buildingArea?: string | null;
 }
 
 export interface ApiPropertyDetail extends ApiProperty {

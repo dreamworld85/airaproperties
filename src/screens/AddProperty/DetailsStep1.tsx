@@ -14,6 +14,7 @@ const residentialTypesForSale = [
   "Plot / Land",
   "1 RK/ Studio Apartment",
   "Farmhouse",
+  "Hotels/Resorts",
   "Other",
 ];
 
@@ -23,6 +24,7 @@ const residentialTypesForRent = [
   "Builder Floor",
   "1 RK/ Studio Apartment",
   "Serviced Apartment",
+  "Hotels/Resorts",
   "Other",
 ];
 
@@ -31,6 +33,7 @@ const commercialTypesForSale = [
   "Retail Shop",
   "Plot / Land",
   "Warehouse",
+  "Hotels/Resorts",
   "Other",
 ];
 
@@ -39,8 +42,23 @@ const commercialTypesForRent = [
   "Retail Shop",
   "Warehouse",
   "Co-working Space",
+  "Hotels/Resorts",
   "Other",
 ];
+
+export function shouldShowFurnishingAndAge(propertyType?: string | null): boolean {
+  if (!propertyType) return false;
+  const t = propertyType.toLowerCase().trim();
+  return (
+    t.includes("house") ||
+    t.includes("villa") ||
+    t.includes("apartment") ||
+    t.includes("builder floor") ||
+    t.includes("hotel") ||
+    t.includes("resort") ||
+    t.includes("farmhouse")
+  );
+}
 
 export default function DetailsStep1() {
   const navigate = useNavigate();
@@ -101,6 +119,9 @@ export default function DetailsStep1() {
         }
       }).map(t => t.name);
 
+      if (!filtered.includes("Hotels/Resorts") && !filtered.some(n => n.toLowerCase().includes("hotel") || n.toLowerCase().includes("resort"))) {
+        filtered.push("Hotels/Resorts");
+      }
       if (!filtered.includes("Other")) {
         filtered.push("Other");
       }
@@ -120,7 +141,7 @@ export default function DetailsStep1() {
     const nextTypes = getAvailableTypes(form.propertyCategory, nextRent);
       
     const resetType = nextTypes.includes(form.propertyType) ? form.propertyType : "";
-    const isApplicable = resetType === "Apartment" || resetType === "Independent House / Villa";
+    const isApplicable = shouldShowFurnishingAndAge(resetType);
     update({ purpose: val, propertyType: resetType, ...(!isApplicable ? { furnishing: "", propertyAge: "" } : {}) });
   }
 
@@ -269,7 +290,7 @@ export default function DetailsStep1() {
                   key={type}
                   type="button"
                   onClick={() => {
-                    const isApplicable = type === "Apartment" || type === "Independent House / Villa" || type === "House" || type === "Builder Floor";
+                    const isApplicable = shouldShowFurnishingAndAge(type);
                     update({
                       propertyType: type,
                       ...(!isApplicable ? { furnishing: "", propertyAge: "" } : {})
@@ -298,8 +319,8 @@ export default function DetailsStep1() {
           </div>
         </div>
 
-        {/* Section 3.1: Furnishing (Enabled for Apartment or Independent House / Villa) */}
-        {(form.propertyType === "Apartment" || form.propertyType === "Independent House / Villa" || form.propertyType === "House" || form.propertyType === "Builder Floor") && (
+        {/* Section 3.1: Furnishing (Enabled for House, Villa, Apartment, Builder Floor, Hotels/Resorts) */}
+        {shouldShowFurnishingAndAge(form.propertyType) && (
           <div className="flex flex-col gap-2 pt-0.5 animate-fade-in">
             <span className="text-sm font-bold text-[#091F40]">Furnishing</span>
             <div className="flex items-center gap-7 pt-0.5">
@@ -343,8 +364,8 @@ export default function DetailsStep1() {
           </div>
         )}
 
-        {/* Section 3.2: Property Age (Enabled for Apartment or Independent House / Villa) */}
-        {(form.propertyType === "Apartment" || form.propertyType === "Independent House / Villa" || form.propertyType === "House" || form.propertyType === "Builder Floor") && (
+        {/* Section 3.2: Property Age (Enabled for House, Villa, Apartment, Builder Floor, Hotels/Resorts) */}
+        {shouldShowFurnishingAndAge(form.propertyType) && (
           <div className="flex flex-col gap-2 pt-1 animate-fade-in">
             <span className="text-sm font-bold text-[#091F40]">Property Age</span>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2.5 pt-0.5">

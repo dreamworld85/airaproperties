@@ -994,6 +994,14 @@ router.put("/properties/:id", upload.any(), optimizeImages, async (req, res) => 
     if (description !== undefined && description !== null) { updates.push("description = ?"); params.push(description); }
     if (status !== undefined && status !== null) { updates.push("status = ?"); params.push(status); }
     if (youtube_url !== undefined) { updates.push("youtube_url = ?"); params.push(youtube_url || null); }
+    if (req.body.land_area !== undefined || req.body.landArea !== undefined) {
+      updates.push("land_area = ?");
+      params.push(req.body.land_area || req.body.landArea || null);
+    }
+    if (req.body.building_area !== undefined || req.body.buildingArea !== undefined) {
+      updates.push("building_area = ?");
+      params.push(req.body.building_area || req.body.buildingArea || null);
+    }
 
     if (updates.length > 0) {
       params.push(id);

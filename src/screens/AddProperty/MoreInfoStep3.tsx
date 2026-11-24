@@ -82,8 +82,8 @@ export default function MoreInfoStep3() {
 
   // Validate Step 2 details
   const canContinue = 
-    (isLand || (form.bedrooms && form.bathrooms)) && 
-    (form.carpetArea || form.areaSqft) && 
+    (isLand || (form.bedrooms && form.bathrooms) || form.propertyCategory === "Commercial") && 
+    (form.carpetArea || form.areaSqft || form.buildingArea || form.landArea) && 
     form.price;
 
   function handleNext() {
@@ -220,19 +220,23 @@ export default function MoreInfoStep3() {
             Atleast one area type is mandatory
           </span>
 
-          {/* Carpet Area (Always visible) */}
+          {/* Building Area (or Primary Land Area if pure Land) */}
           <div className="flex gap-2.5 items-center mt-1">
             <div className={`flex-1 relative border rounded-[8px] px-4 pt-5 pb-2.5 bg-white flex items-center shadow-sm focus-within:border-[#59AD63] focus-within:ring-1 focus-within:ring-[#59AD63]/30 transition-all duration-150 ${
-              attemptedNext && !form.carpetArea ? "border-rose-500 bg-rose-50/5" : "border-[#59AD63]/30"
+              attemptedNext && !form.carpetArea && !form.buildingArea && !form.landArea && !form.areaSqft ? "border-rose-500 bg-rose-50/5" : "border-[#59AD63]/30"
             }`}>
               <span className="absolute top-1.5 left-4 text-[10px] font-semibold text-slate/60 select-none">
-                Carpet Area
+                {isLand ? "Land Area" : "Building Area"}
               </span>
               <input
                 type="number"
-                placeholder={form.areaUnit || "sq.ft."}
-                value={form.areaSqft || form.carpetArea || ""}
-                onChange={(e) => update({ carpetArea: e.target.value, areaSqft: e.target.value })}
+                placeholder={form.areaUnit || (isLand ? "Cents" : "sq.ft.")}
+                value={form.buildingArea || form.carpetArea || form.areaSqft || ""}
+                onChange={(e) => update({ 
+                  buildingArea: e.target.value,
+                  carpetArea: e.target.value, 
+                  areaSqft: e.target.value 
+                })}
                 className="flex-1 text-[13.5px] font-bold text-charcoal placeholder:text-slate/30 outline-none bg-transparent"
               />
             </div>
@@ -243,14 +247,36 @@ export default function MoreInfoStep3() {
                 onChange={(e) => update({ areaUnit: e.target.value })}
                 className="w-full h-[50px] rounded-[8px] bg-white border border-[#59AD63]/30 px-3.5 text-[13.5px] font-bold text-charcoal appearance-none cursor-pointer outline-none focus:border-[#59AD63]"
               >
+                {!isLand && <option value="sq.ft.">sq.ft.</option>}
                 <option value="Cents">Cents</option>
                 <option value="Acres">Acres</option>
-                <option value="sq.ft.">sq.ft.</option>
+                {isLand && <option value="sq.ft.">sq.ft.</option>}
                 <option value="sq.yrd.">sq.yrd.</option>
                 <option value="sq.m.">sq.m.</option>
               </select>
               <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate/50 pointer-events-none" />
             </div>
+          </div>
+
+          {/* Land Area Field (Accepts numbers and letters) */}
+          <div className="flex flex-col gap-1 mt-1">
+            <div className={`relative border rounded-[8px] px-4 pt-5 pb-2.5 bg-white flex items-center shadow-sm focus-within:border-[#59AD63] focus-within:ring-1 focus-within:ring-[#59AD63]/30 transition-all duration-150 ${
+              attemptedNext && !form.carpetArea && !form.buildingArea && !form.landArea && !form.areaSqft ? "border-rose-500 bg-rose-50/5" : "border-[#59AD63]/30"
+            }`}>
+              <span className="absolute top-1.5 left-4 text-[10px] font-semibold text-slate/60 select-none">
+                Land Area
+              </span>
+              <input
+                type="text"
+                placeholder="e.g. 10 Cents, 1.5 Acres, 25 Cent"
+                value={form.landArea || ""}
+                onChange={(e) => update({ landArea: e.target.value })}
+                className="flex-1 text-[13.5px] font-bold text-charcoal placeholder:text-slate/30 outline-none bg-transparent"
+              />
+            </div>
+            <span className="text-[10px] font-medium text-slate/50 px-1">
+              Enter Land Area with unit (e.g. 10 Cents, 1.5 Acres)
+            </span>
           </div>
 
         </div>

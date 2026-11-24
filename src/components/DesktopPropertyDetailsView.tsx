@@ -530,10 +530,10 @@ export default function DesktopPropertyDetailsView({
                         Baths: {property.bathrooms}
                       </span>
                     )}
-                    {property.areaSqft && (
+                    {(property.areaSqft || property.buildingArea || property.landArea) && (
                       <span className="flex items-center gap-1">
                         <Maximize className="w-3.5 h-3.5 text-gray-400" />
-                        Area: {landArea.primary}
+                        Area: {property.buildingArea || landArea.primary}{property.landArea ? ` • Land: ${property.landArea}` : ""}
                       </span>
                     )}
                   </>
@@ -797,14 +797,14 @@ export default function DesktopPropertyDetailsView({
                       </div>
                     </div>
 
-                    {/* 6. Built-up Area */}
+                    {/* 6. Built-up / Building Area */}
                     <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
                       <div className="p-2 rounded-lg bg-white shrink-0 text-blue-600 shadow-xs">
                         <Maximize className="w-4 h-4" />
                       </div>
                       <div>
-                        <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Super Built-up</span>
-                        <span className="text-xs font-extrabold text-gray-900">{landArea.primary}</span>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">{property.buildingArea ? "Building Area" : "Super Built-up"}</span>
+                        <span className="text-xs font-extrabold text-gray-900">{property.buildingArea || landArea.primary}</span>
                       </div>
                     </div>
 
@@ -819,14 +819,14 @@ export default function DesktopPropertyDetailsView({
                       </div>
                     </div>
 
-                    {/* 8. Carpet Area */}
+                    {/* 8. Carpet Area / Land Area */}
                     <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
                       <div className="p-2 rounded-lg bg-white shrink-0 text-blue-600 shadow-xs">
                         <Maximize className="w-4 h-4" />
                       </div>
                       <div>
-                        <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Carpet Area</span>
-                        <span className="text-xs font-extrabold text-gray-900">{landArea.primary}</span>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">{property.landArea ? "Land Area" : "Carpet Area"}</span>
+                        <span className="text-xs font-extrabold text-gray-900">{property.landArea || landArea.primary}</span>
                       </div>
                     </div>
                   </>

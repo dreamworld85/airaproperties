@@ -866,6 +866,16 @@ async function checkDbMigration() {
       await pool.query("ALTER TABLE properties ADD COLUMN area_unit VARCHAR(30) NULL DEFAULT 'Cents'");
     }
 
+    if (!propColNames.includes("land_area")) {
+      console.log("Adding land_area column to properties...");
+      await pool.query("ALTER TABLE properties ADD COLUMN land_area VARCHAR(100) NULL");
+    }
+
+    if (!propColNames.includes("building_area")) {
+      console.log("Adding building_area column to properties...");
+      await pool.query("ALTER TABLE properties ADD COLUMN building_area VARCHAR(100) NULL");
+    }
+
     // Ensure 'Sold' is in status ENUM of properties table and migrate any blank status to 'Sold'
     try {
       await pool.query("ALTER TABLE properties MODIFY COLUMN status ENUM('Draft','Pending','Active','Inactive','Rejected','Sold') DEFAULT 'Pending'");
@@ -983,6 +993,7 @@ async function checkDbMigration() {
         ['Retail Shop', 'Commercial', '/images/Apartment.svg', 0, 0, 1, 1],
         ['Warehouse', 'Commercial', '/images/Apartment.svg', 0, 0, 1, 1],
         ['Co-working Space', 'Commercial', '/images/Apartment.svg', 0, 0, 0, 1],
+        ['Hotels/Resorts', 'Commercial', '/images/Apartment.svg', 1, 1, 1, 1],
         ['Other', 'Both', '/images/all-properties.svg', 0, 0, 1, 1]
       ];
       for (const item of defaultTypes) {
@@ -995,6 +1006,10 @@ async function checkDbMigration() {
       // Ensure House exists if not present
       await pool.query(
         "INSERT IGNORE INTO property_types (name, category, icon_url, show_pc_header, show_mobile_header, for_sale, for_rent) VALUES ('House', 'Residential', '/images/house.svg', 1, 1, 1, 1)"
+      );
+      // Ensure Hotels/Resorts exists if not present
+      await pool.query(
+        "INSERT IGNORE INTO property_types (name, category, icon_url, show_pc_header, show_mobile_header, for_sale, for_rent) VALUES ('Hotels/Resorts', 'Commercial', '/images/Apartment.svg', 1, 1, 1, 1)"
       );
       // Update default icons and header flags for key types if currently NULL or empty
       await pool.query("UPDATE property_types SET icon_url = '/images/Apartment.svg', show_pc_header = 1, show_mobile_header = 1 WHERE name = 'Apartment' AND (icon_url IS NULL OR icon_url = '')");

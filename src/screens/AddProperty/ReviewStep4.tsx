@@ -36,7 +36,10 @@ export default function ReviewStep4() {
     ["Property Type", form.propertyType || "—"],
     ["Purpose", form.purpose || "—"],
     ["Price", `₹ ${Math.round(Number(form.price)).toLocaleString("en-IN")}` + (form.isPriceNegotiable ? " (Negotiable)" : "")],
-    ["Area", (form.carpetArea || form.areaSqft) ? `${form.carpetArea || form.areaSqft} ${form.areaUnit || (isLand ? "Cents" : "sq.ft.")}` : "—"],
+    ...(form.buildingArea || form.carpetArea || form.areaSqft ? [
+      [isLand ? "Land Area" : "Building Area", `${form.buildingArea || form.carpetArea || form.areaSqft} ${form.areaUnit || (isLand ? "Cents" : "sq.ft.")}`]
+    ] as [string, string][] : []),
+    ...(form.landArea ? ([["Land Area", form.landArea]] as [string, string][]) : []),
     ["Location", [form.address || form.mapAddress, form.district, form.state || "Kerala"].filter(Boolean).join(", ")],
     ...(!isLand
       ? ([
@@ -66,8 +69,8 @@ export default function ReviewStep4() {
     if (!form.propertyType) missing.push("Property Type");
     if (!form.purpose) missing.push("Purpose");
     if (!form.price || Number(form.price) <= 0) missing.push("Price");
-    const areaVal = Number(form.areaSqft) || Number(form.carpetArea) || 0;
-    if (areaVal <= 0) missing.push("Area (Sqft/Cents)");
+    const areaVal = Number(form.areaSqft) || Number(form.carpetArea) || Number(form.buildingArea) || (form.landArea ? 1 : 0);
+    if (areaVal <= 0) missing.push("Area (Building / Land)");
     const finalAddress = (form.mapAddress || form.address || "").trim();
     if (!finalAddress) missing.push("Address / Location");
     if (!form.district) missing.push("District");
@@ -89,7 +92,7 @@ export default function ReviewStep4() {
       fd.append("propertyType", form.propertyType);
       fd.append("purpose", form.purpose);
       fd.append("price", form.price);
-      const areaNumber = Number(form.carpetArea) || Number(form.areaSqft) || 0;
+      const areaNumber = Number(form.buildingArea) || Number(form.carpetArea) || Number(form.areaSqft) || 0;
       const chosenUnit = form.areaUnit || (isLand ? "Cents" : "sq.ft.");
       let sqftVal = areaNumber;
       if (chosenUnit === "Cents") {
@@ -101,8 +104,22 @@ export default function ReviewStep4() {
       } else if (chosenUnit === "sq.m.") {
         sqftVal = Math.round(areaNumber * 10.7639);
       }
-      fd.append("areaSqft", String(sqftVal));
+      if (sqftVal === 0 && form.landArea) {
+        const parsedNum = parseFloat(form.landArea.replace(/[^0-9.]/g, ""));
+        if (!isNaN(parsedNum) && parsedNum > 0) {
+          if (form.landArea.toLowerCase().includes("acre")) {
+            sqftVal = Math.round(parsedNum * 43560);
+          } else if (form.landArea.toLowerCase().includes("cent")) {
+            sqftVal = Math.round(parsedNum * 435.6);
+          } else {
+            sqftVal = Math.round(parsedNum);
+          }
+        }
+      }
+      fd.append("areaSqft", String(sqftVal || 0));
       fd.append("areaUnit", chosenUnit);
+      if (form.buildingArea) fd.append("buildingArea", form.buildingArea);
+      if (form.landArea) fd.append("landArea", form.landArea);
       fd.append("address", finalAddress);
       fd.append("state", form.state || "Kerala");
       

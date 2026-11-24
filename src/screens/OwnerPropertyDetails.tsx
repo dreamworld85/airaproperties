@@ -811,8 +811,8 @@ export default function OwnerPropertyDetails() {
                             <Maximize size={18} />
                           </div>
                           <div>
-                            <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Area</span>
-                            <span className="text-xs font-extrabold text-gray-900">{landArea.primary}</span>
+                            <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">{property.landArea ? "Land / Built" : "Area"}</span>
+                            <span className="text-xs font-extrabold text-gray-900">{property.landArea ? `${property.landArea} (${landArea.primary})` : landArea.primary}</span>
                           </div>
                         </div>
 
