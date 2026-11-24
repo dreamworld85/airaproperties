@@ -71,6 +71,8 @@ export interface ApiUser {
   enquiryCreditsLeft?: number;
   listingSlotsLeft?: number;
   canPostProperty?: boolean;
+  loginCount?: number;
+  isFirstLogin?: boolean;
   createdAt?: string | null;
 }
 
@@ -257,7 +259,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     });
-    return handle<{ token: string; user: ApiUser; isNewUser?: boolean; message?: string }>(res);
+    return handle<{ token: string; user: ApiUser; isNewUser?: boolean; isFirstLogin?: boolean; message?: string }>(res);
   },
 
   async sendSignupOtp(phone: string) {
@@ -274,7 +276,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     });
-    return handle<{ token: string; user: ApiUser }>(res);
+    return handle<{ token: string; user: ApiUser; isFirstLogin?: boolean }>(res);
   },
 
   async login(identifier: string, password: string) {
@@ -283,7 +285,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ identifier, password }),
     });
-    return handle<{ token: string; user: ApiUser }>(res);
+    return handle<{ token: string; user: ApiUser; isFirstLogin?: boolean }>(res);
   },
 
   async forgotPassword(identifier: string) {
@@ -310,7 +312,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     });
-    return handle<{ success: boolean; token: string; user: ApiUser }>(res);
+    return handle<{ success: boolean; token: string; user: ApiUser; isFirstLogin?: boolean }>(res);
   },
 
   getGoogleOAuthUrl() {
@@ -327,7 +329,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    return handle<{ success: boolean; token: string; user: ApiUser }>(res);
+    return handle<{ success: boolean; token: string; user: ApiUser; isFirstLogin?: boolean }>(res);
   },
 
   async loginWithFacebook(data: { accessToken?: string; email?: string; name?: string; avatarUrl?: string }) {
@@ -336,7 +338,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    return handle<{ success: boolean; token: string; user: ApiUser }>(res);
+    return handle<{ success: boolean; token: string; user: ApiUser; isFirstLogin?: boolean }>(res);
   },
 
   async fetchProperties(params: Record<string, string> = {}) {

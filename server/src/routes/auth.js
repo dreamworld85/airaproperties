@@ -31,8 +31,15 @@ async function resolveSocialUser(provider, providerUserId, profileName, profileE
   );
 
   let userId;
+  let isNewUser = false;
+  let previousLoginCount = 0;
+
   if (socialRows.length > 0) {
     userId = socialRows[0].user_id;
+    const [uRows] = await pool.query("SELECT login_count FROM users WHERE id = ?", [userId]);
+    if (uRows.length > 0) {
+      previousLoginCount = Number(uRows[0].login_count || 0);
+    }
   } else if (profileEmail && profileEmail.trim()) {
     // 2. Check users table by email
     const trimmedEmail = profileEmail.trim().toLowerCase();
@@ -43,6 +50,7 @@ async function resolveSocialUser(provider, providerUserId, profileName, profileE
 
     if (existingUsers.length > 0) {
       userId = existingUsers[0].id;
+      previousLoginCount = Number(existingUsers[0].login_count || 0);
       // Link account in social_accounts
       await pool.query(
         "INSERT IGNORE INTO social_accounts (user_id, provider, provider_user_id) VALUES (?, ?, ?)",
@@ -63,10 +71,11 @@ async function resolveSocialUser(provider, providerUserId, profileName, profileE
       }
     } else {
       // Create new user in users table
+      isNewUser = true;
       const starter = await getStarterPackConfig();
       const randomPassword = await bcrypt.hash(crypto.randomBytes(16).toString("hex"), 10);
       const [insertRes] = await pool.query(
-        "INSERT INTO users (name, email, password_hash, role, avatar_url, enquiry_credits_left, listing_slots_left) VALUES (?, ?, ?, 'Buyer', ?, ?, ?)",
+        "INSERT INTO users (name, email, password_hash, role, avatar_url, enquiry_credits_left, listing_slots_left, login_count) VALUES (?, ?, ?, 'Buyer', ?, ?, ?, 0)",
         [profileName || `${provider} User`, trimmedEmail, randomPassword, profilePicture || null, starter.enquiryTokens, starter.listingSlots]
       );
       userId = insertRes.insertId;
@@ -87,11 +96,12 @@ async function resolveSocialUser(provider, providerUserId, profileName, profileE
     }
   } else {
     // Fallback if no email provided by provider
+    isNewUser = true;
     const starter = await getStarterPackConfig();
     const placeholderEmail = `${provider}_${providerUserId}@social.auth`;
     const randomPassword = await bcrypt.hash(crypto.randomBytes(16).toString("hex"), 10);
     const [insertRes] = await pool.query(
-      "INSERT INTO users (name, email, password_hash, role, avatar_url, enquiry_credits_left, listing_slots_left) VALUES (?, ?, ?, 'Buyer', ?, ?, ?)",
+      "INSERT INTO users (name, email, password_hash, role, avatar_url, enquiry_credits_left, listing_slots_left, login_count) VALUES (?, ?, ?, 'Buyer', ?, ?, ?, 0)",
       [profileName || `${provider} User`, placeholderEmail, randomPassword, profilePicture || null, starter.enquiryTokens, starter.listingSlots]
     );
     userId = insertRes.insertId;
@@ -111,9 +121,12 @@ async function resolveSocialUser(provider, providerUserId, profileName, profileE
     );
   }
 
-  await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [userId]);
+  const isFirstLogin = isNewUser || previousLoginCount === 0;
+  await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP, login_count = COALESCE(login_count, 0) + 1 WHERE id = ?", [userId]);
   const [userRows] = await pool.query("SELECT * FROM users WHERE id = ?", [userId]);
-  return userRows[0];
+  const user = userRows[0];
+  user.isFirstLogin = isFirstLogin;
+  return user;
 }
 
 function signToken(userId) {
@@ -138,6 +151,7 @@ function toPublicUser(row) {
     agencyDistrict: row.agency_district,
     enquiryCreditsLeft: row.enquiry_credits_left !== null && row.enquiry_credits_left !== undefined ? Number(row.enquiry_credits_left) : 0,
     listingSlotsLeft: row.listing_slots_left !== null && row.listing_slots_left !== undefined ? Number(row.listing_slots_left) : 0,
+    loginCount: row.login_count !== null && row.login_count !== undefined ? Number(row.login_count) : 0,
   };
 }
 
@@ -234,7 +248,7 @@ router.post("/register", async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
-      "INSERT INTO users (name, email, phone, password_hash, role, enquiry_credits_left, listing_slots_left, trial_ends_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO users (name, email, phone, password_hash, role, enquiry_credits_left, listing_slots_left, trial_ends_at, login_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)",
       [trimmedName, trimmedEmail, trimmedPhone, passwordHash, userRole, starter.enquiryTokens, starter.listingSlots, trialEnds]
     );
 
@@ -270,7 +284,7 @@ router.post("/register", async (req, res) => {
       }
     }).catch((e) => console.warn("[ADMIN PUSH] New user alert error:", e.message));
 
-    res.status(201).json({ token, user: toPublicUser(rows[0]) });
+    res.status(201).json({ token, user: toPublicUser(rows[0]), isFirstLogin: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Registration failed" });
@@ -321,6 +335,7 @@ router.post("/login", async (req, res) => {
     }
 
     const userRow = rows[0];
+    const isFirstLogin = Number(userRow.login_count || 0) === 0;
     if (!userRow.role || userRow.role.toLowerCase() === "user") {
       await pool.query("UPDATE users SET role = 'Buyer' WHERE id = ?", [userRow.id]);
       userRow.role = "Buyer";
@@ -334,10 +349,11 @@ router.post("/login", async (req, res) => {
       if (userRow.enquiry_credits_left === null) userRow.enquiry_credits_left = starter.enquiryTokens;
       if (userRow.listing_slots_left === null) userRow.listing_slots_left = starter.listingSlots;
     }
-    await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [userRow.id]);
+    await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP, login_count = COALESCE(login_count, 0) + 1 WHERE id = ?", [userRow.id]);
+    userRow.login_count = (userRow.login_count || 0) + 1;
     const token = signToken(userRow.id);
     setAuthCookie(res, token);
-    res.json({ token, user: toPublicUser(userRow) });
+    res.json({ token, user: toPublicUser(userRow), isFirstLogin });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Login failed" });
@@ -434,10 +450,12 @@ async function handleVerifyMobileOtp(req, res) {
 
     let user;
     let isNewUser = false;
+    let isFirstLogin = false;
 
     if (existingUsers.length > 0) {
       // Existing user: direct login
       user = existingUsers[0];
+      isFirstLogin = Number(user.login_count || 0) === 0;
       if (!user.role || user.role.toLowerCase() === "user") {
         await pool.query("UPDATE users SET role = 'Buyer' WHERE id = ?", [user.id]);
         user.role = "Buyer";
@@ -451,6 +469,8 @@ async function handleVerifyMobileOtp(req, res) {
         if (user.enquiry_credits_left === null) user.enquiry_credits_left = starter.enquiryTokens;
         if (user.listing_slots_left === null) user.listing_slots_left = starter.listingSlots;
       }
+      await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP, login_count = COALESCE(login_count, 0) + 1 WHERE id = ?", [user.id]);
+      user.login_count = (user.login_count || 0) + 1;
       isNewUser = false;
     } else {
       // New user: auto-create account
@@ -460,7 +480,7 @@ async function handleVerifyMobileOtp(req, res) {
       const randomPassword = await bcrypt.hash(crypto.randomBytes(16).toString("hex"), 10);
 
       const [insertRes] = await pool.query(
-        "INSERT INTO users (name, phone, password_hash, role, enquiry_credits_left, listing_slots_left) VALUES (?, ?, ?, 'Buyer', ?, ?)",
+        "INSERT INTO users (name, phone, password_hash, role, enquiry_credits_left, listing_slots_left, login_count) VALUES (?, ?, ?, 'Buyer', ?, ?, 1)",
         [userName, fullPhone, randomPassword, starter.enquiryTokens, starter.listingSlots]
       );
       const newUserId = insertRes.insertId;
@@ -476,9 +496,11 @@ async function handleVerifyMobileOtp(req, res) {
         [newUserId, starter.listingSlots, starter.listingSlots]
       );
 
+      await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [newUserId]);
       const [userRows] = await pool.query("SELECT * FROM users WHERE id = ?", [newUserId]);
       user = userRows[0];
       isNewUser = true;
+      isFirstLogin = true;
 
       // Notify Admin of new registration via Mobile OTP
       sendAdminPushNotification({
@@ -494,7 +516,6 @@ async function handleVerifyMobileOtp(req, res) {
       }).catch((e) => console.warn("[ADMIN PUSH] Mobile OTP alert error:", e.message));
     }
 
-    await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [user.id]);
     const token = signToken(user.id);
     setAuthCookie(res, token);
 
@@ -502,6 +523,7 @@ async function handleVerifyMobileOtp(req, res) {
       token,
       user: toPublicUser(user),
       isNewUser,
+      isFirstLogin,
       message: isNewUser ? "Account created successfully" : "Logged in successfully",
     });
   } catch (err) {
@@ -692,9 +714,10 @@ router.post("/reset-password", async (req, res) => {
       return res.status(400).json({ error: "OTP code has expired. Please request a new one." });
     }
 
+    const isFirstLogin = Number(user.login_count || 0) === 0;
     const newHash = await bcrypt.hash(newPassword, 10);
     await pool.query(
-      "UPDATE users SET password_hash = ?, reset_otp = NULL, reset_otp_expires_at = NULL, last_login = CURRENT_TIMESTAMP WHERE id = ?",
+      "UPDATE users SET password_hash = ?, reset_otp = NULL, reset_otp_expires_at = NULL, last_login = CURRENT_TIMESTAMP, login_count = COALESCE(login_count, 0) + 1 WHERE id = ?",
       [newHash, user.id]
     );
 
@@ -713,7 +736,8 @@ router.post("/reset-password", async (req, res) => {
       success: true,
       message: "Password reset successful",
       token,
-      user: toPublicUser(user)
+      user: toPublicUser(user),
+      isFirstLogin,
     });
   } catch (err) {
     console.error("Reset password error:", err);
@@ -751,11 +775,13 @@ router.post("/google", async (req, res) => {
     let [rows] = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [trimmedEmail]);
 
     let userRow;
+    let isFirstLogin = false;
     if (rows.length === 0) {
+      isFirstLogin = true;
       const starter = await getStarterPackConfig();
       const randomPassword = await bcrypt.hash(Math.random().toString(36), 10);
       const [insertResult] = await pool.query(
-        "INSERT INTO users (name, email, password_hash, role, avatar_url, enquiry_credits_left, listing_slots_left) VALUES (?, ?, ?, 'Buyer', ?, ?, ?)",
+        "INSERT INTO users (name, email, password_hash, role, avatar_url, enquiry_credits_left, listing_slots_left, login_count) VALUES (?, ?, ?, 'Buyer', ?, ?, ?, 1)",
         [name, trimmedEmail, randomPassword, picture, starter.enquiryTokens, starter.listingSlots]
       );
       const newUserId = insertResult.insertId;
@@ -769,6 +795,7 @@ router.post("/google", async (req, res) => {
          VALUES (?, 'listing_slot', 'bonus', ?, ?, 'Welcome free starter listing slots')`,
         [newUserId, starter.listingSlots, starter.listingSlots]
       );
+      await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [newUserId]);
       const [newRows] = await pool.query("SELECT * FROM users WHERE id = ?", [newUserId]);
       userRow = newRows[0];
 
@@ -786,6 +813,7 @@ router.post("/google", async (req, res) => {
       }).catch((e) => console.warn("[ADMIN PUSH] Google signup alert error:", e.message));
     } else {
       userRow = rows[0];
+      isFirstLogin = Number(userRow.login_count || 0) === 0;
       if (!userRow.role || userRow.role.toLowerCase() === "user") {
         await pool.query("UPDATE users SET role = 'Buyer' WHERE id = ?", [userRow.id]);
         userRow.role = "Buyer";
@@ -803,9 +831,10 @@ router.post("/google", async (req, res) => {
         await pool.query("UPDATE users SET avatar_url = ? WHERE id = ?", [picture, userRow.id]);
         userRow.avatar_url = picture;
       }
+      await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP, login_count = COALESCE(login_count, 0) + 1 WHERE id = ?", [userRow.id]);
+      userRow.login_count = (userRow.login_count || 0) + 1;
     }
 
-    await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [userRow.id]);
     const token = signToken(userRow.id);
     setAuthCookie(res, token);
 
@@ -814,6 +843,7 @@ router.post("/google", async (req, res) => {
       message: "Successfully authenticated with Google",
       token,
       user: toPublicUser(userRow),
+      isFirstLogin,
     });
   } catch (err) {
     console.error("Google authentication error:", err);
@@ -855,6 +885,7 @@ router.post("/facebook", async (req, res) => {
       message: "Successfully authenticated with Facebook",
       token,
       user: toPublicUser(userRow),
+      isFirstLogin: !!userRow.isFirstLogin,
     });
   } catch (err) {
     console.error("Facebook authentication error:", err);
@@ -1029,7 +1060,7 @@ router.get("/google/callback", async (req, res) => {
     const token = signToken(userRow.id);
     setAuthCookie(res, token);
 
-    return res.redirect(`${frontendUrl}/login?oauth=success&token=${encodeURIComponent(token)}`);
+    return res.redirect(`${frontendUrl}/login?oauth=success&token=${encodeURIComponent(token)}&firstLogin=${userRow.isFirstLogin ? "true" : "false"}`);
   } catch (err) {
     console.error("[Google Callback Error]:", err);
     return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent("Server error during Google authentication.")}`);
@@ -1125,7 +1156,7 @@ router.get("/facebook/callback", async (req, res) => {
     const token = signToken(userRow.id);
     setAuthCookie(res, token);
 
-    return res.redirect(`${frontendUrl}/login?oauth=success&token=${encodeURIComponent(token)}`);
+    return res.redirect(`${frontendUrl}/login?oauth=success&token=${encodeURIComponent(token)}&firstLogin=${userRow.isFirstLogin ? "true" : "false"}`);
   } catch (err) {
     console.error("[Facebook Callback Error]:", err);
     return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent("Server error during Facebook authentication.")}`);

@@ -234,7 +234,7 @@ export default function Login() {
 
   useEffect(() => {
     if (token && user) {
-      navigate("/profile/edit", { replace: true });
+      navigate("/home", { replace: true });
       return;
     }
 
@@ -292,6 +292,7 @@ export default function Login() {
     }
 
     if (oauthStatus === "success") {
+      const isFirstParam = params.get("firstLogin") === "true";
       window.history.replaceState({}, document.title, window.location.pathname);
       setLoading(true);
 
@@ -304,7 +305,11 @@ export default function Login() {
           if (data && data.user) {
             const finalToken = oauthToken || localStorage.getItem("kr_token") || "";
             login(finalToken, data.user);
-            navigate("/profile/edit", { replace: true });
+            if (isFirstParam) {
+              navigate("/profile/edit", { replace: true });
+            } else {
+              navigate("/home", { replace: true });
+            }
           } else {
             setError("Authentication succeeded, but failed to load user profile.");
             setMode("login");
@@ -467,7 +472,11 @@ export default function Login() {
       });
 
       login(res.token, res.user);
-      navigate("/profile/edit", { replace: true, state: { isNewUser: res.isNewUser } });
+      if (res.isFirstLogin || res.isNewUser) {
+        navigate("/profile/edit", { replace: true, state: { isNewUser: res.isNewUser } });
+      } else {
+        navigate("/home", { replace: true });
+      }
     } catch (err: any) {
       setError(err?.message || "Invalid OTP code. Please check and try again.");
       isSubmittingOtpRef.current = false;
@@ -555,9 +564,13 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const { token, user } = await api.login(loginIdentifier, password);
-      login(token, user);
-      navigate("/profile/edit", { replace: true });
+      const res = await api.login(loginIdentifier, password);
+      login(res.token, res.user);
+      if (res.isFirstLogin) {
+        navigate("/profile/edit", { replace: true });
+      } else {
+        navigate("/home", { replace: true });
+      }
     } catch (err: any) {
       setError(err?.message || "Invalid credentials. Please check your details and try again.");
     } finally {
@@ -628,7 +641,7 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const { token, user } = await api.resetPasswordWithOtp({
+      const res = await api.resetPasswordWithOtp({
         identifier: resetTarget,
         phone: resetType === "phone" ? resetTarget : undefined,
         email: resetType === "email" ? resetTarget : undefined,
@@ -636,8 +649,12 @@ export default function Login() {
         newPassword,
       });
 
-      login(token, user);
-      navigate("/profile/edit", { replace: true });
+      login(res.token, res.user);
+      if (res.isFirstLogin) {
+        navigate("/profile/edit", { replace: true });
+      } else {
+        navigate("/home", { replace: true });
+      }
     } catch (err: any) {
       setError(err?.message || "Failed to reset password. Please check your OTP code.");
     } finally {

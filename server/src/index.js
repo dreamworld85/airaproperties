@@ -60,6 +60,7 @@ async function checkDbMigration() {
         location VARCHAR(160),
         avatar_url VARCHAR(500),
         role VARCHAR(50) NOT NULL DEFAULT 'user',
+        login_count INT NOT NULL DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
@@ -730,6 +731,12 @@ async function checkDbMigration() {
     if (!existingUserColNames.includes("is_disabled")) {
       console.log("Adding is_disabled column to users...");
       await pool.query("ALTER TABLE users ADD COLUMN is_disabled TINYINT(1) NOT NULL DEFAULT 0");
+    }
+
+    if (!existingUserColNames.includes("login_count")) {
+      console.log("Adding login_count column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN login_count INT NOT NULL DEFAULT 0").catch(() => {});
+      await pool.query("UPDATE users SET login_count = 1 WHERE last_login IS NOT NULL").catch(() => {});
     }
 
     if (!userColNames.includes("last_login")) {
