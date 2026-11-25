@@ -62,7 +62,7 @@ def ensure_keystore(keystore_path):
         print(f"Warning: Could not generate release keystore ({e}). Will build debug.")
         return False
 
-def create_android_project(project_dir, app_name, app_url, package_name, icon_src):
+def create_android_project(project_dir, app_name, app_url, package_name, icon_src, version_code=1, version_name="1.0.0"):
     print(f"Creating Android project for {app_name}...")
 
     # The WebView only trusts the app's own HTTPS origin (plus its www. twin).
@@ -145,8 +145,8 @@ android {
         applicationId '{package_name}'
         minSdk 24
         targetSdk 36
-        versionCode 10
-        versionName "0.0.5"
+        versionCode {version_code}
+        versionName "{version_name}"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -186,7 +186,12 @@ dependencies {
 }
 """
     with open(os.path.join(project_dir, "app", "build.gradle"), "w") as f:
-        f.write(app_gradle_template.replace("{package_name}", package_name))
+        f.write(
+            app_gradle_template
+            .replace("{package_name}", package_name)
+            .replace("{version_code}", str(version_code))
+            .replace("{version_name}", str(version_name))
+        )
 
     # 5. Manifest with Full Native FCM Push Notification Support
     manifest_template = """<?xml version="1.0" encoding="utf-8"?>
@@ -1346,7 +1351,9 @@ def main():
         app_name="Aira Properties",
         app_url="https://airaproperties.in",
         package_name="airaproperties.in",
-        icon_src="app-icon.png"
+        icon_src="app-icon.png",
+        version_code=1,
+        version_name="1.0.0"
     )
     
     # Admin App (Aira Admin -> https://airaproperties.in/admin)
@@ -1355,7 +1362,9 @@ def main():
         app_name="Aira Admin",
         app_url="https://airaproperties.in/admin",
         package_name="com.airaproperties.admin",
-        icon_src="app-icon.png"
+        icon_src="app-icon.png",
+        version_code=1,
+        version_name="1.0.0"
     )
     
     # Build User App (creates signed APK + Play Store AAB)
